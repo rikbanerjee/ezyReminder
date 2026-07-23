@@ -1,0 +1,3 @@
+# Supabase CLI local cache — machine-specific, not part of the schema.
+.branches
+.temp
