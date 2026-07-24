@@ -1,10 +1,11 @@
 import Link from "next/link";
-import { Settings } from "lucide-react";
+import { Settings, Truck } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { Button } from "@/components/ui/button";
 import { signOut } from "@/app/actions";
 import { HomeView } from "@/components/home/home-view";
 import type { HomeContext, HomeReminder } from "@/components/home/types";
+import { fetchOrdersMap } from "@/lib/orders";
 
 /**
  * Phase 1 — the Today screen (PLAN.md §5.2, DESIGN.md §4.1): quick-add,
@@ -12,7 +13,12 @@ import type { HomeContext, HomeReminder } from "@/components/home/types";
  * server-side (RLS-scoped); all date grouping happens client-side in the
  * user's timezone.
  */
-export default async function Home() {
+export default async function Home({
+  searchParams,
+}: {
+  searchParams: Promise<{ compose?: string; prefill?: string }>;
+}) {
+  const { compose, prefill } = await searchParams;
   const supabase = await createClient();
   const {
     data: { user },
@@ -27,7 +33,7 @@ export default async function Home() {
   const contextById = new Map(contexts.map((c) => [c.id, c]));
 
   const reminderSelect =
-    "id, title, due_at, snoozed_until, status, channels, is_order, context_id";
+    "id, title, notes, due_at, snoozed_until, status, channels, is_order, context_id";
 
   // Active list: open + snoozed.
   const { data: activeRows } = await supabase
@@ -48,6 +54,7 @@ export default async function Home() {
   type Row = {
     id: string;
     title: string;
+    notes: string | null;
     due_at: string | null;
     snoozed_until: string | null;
     status: HomeReminder["status"];
@@ -68,9 +75,12 @@ export default async function Home() {
     if (!failedByReminder.has(n.reminder_id)) failedByReminder.set(n.reminder_id, n.id);
   }
 
+  const ordersByReminder = await fetchOrdersMap(supabase);
+
   const toReminder = (r: Row): HomeReminder => ({
     id: r.id,
     title: r.title,
+    notes: r.notes,
     due_at: r.due_at,
     snoozed_until: r.snoozed_until,
     status: r.status,
@@ -78,16 +88,34 @@ export default async function Home() {
     is_order: r.is_order,
     context: contextById.get(r.context_id) ?? null,
     failedNotificationId: failedByReminder.get(r.id) ?? null,
+    order: ordersByReminder.get(r.id) ?? null,
   });
 
   const reminders = ((activeRows ?? []) as Row[]).map(toReminder);
   const doneToday = ((doneRows ?? []) as Row[]).map(toReminder);
+
+  // Ship Queue badge: unshipped orders due to ship within 3 days.
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+  const shipSoonCount = [...ordersByReminder.values()].filter((o) => {
+    if (!o.shipBy || o.shippedAt) return false;
+    const days = Math.round((new Date(`${o.shipBy}T00:00:00`).getTime() - todayStart.getTime()) / 86_400_000);
+    return days <= 3;
+  }).length;
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-md flex-col gap-5 px-4 py-8">
       <header className="flex items-center justify-between">
         <h1 className="text-[26px] font-bold tracking-tight">easyReminder</h1>
         <div className="flex items-center gap-1">
+          <Link href="/ship-queue" className="relative grid size-8 place-items-center rounded-lg text-text-2 hover:bg-muted" aria-label="Ship Queue">
+            <Truck className="size-4" />
+            {shipSoonCount > 0 && (
+              <span className="absolute right-0.5 top-0.5 grid size-3.5 place-items-center rounded-full bg-danger text-[9px] font-bold text-white">
+                {shipSoonCount}
+              </span>
+            )}
+          </Link>
           <Link href="/settings" className="grid size-8 place-items-center rounded-lg text-text-2 hover:bg-muted" aria-label="Settings">
             <Settings className="size-4" />
           </Link>
@@ -99,7 +127,13 @@ export default async function Home() {
         </div>
       </header>
 
-      <HomeView contexts={contexts} reminders={reminders} doneToday={doneToday} />
+      <HomeView
+        contexts={contexts}
+        reminders={reminders}
+        doneToday={doneToday}
+        composePrefill={prefill}
+        composeAutoFocus={!!compose}
+      />
 
       <p className="px-1 pt-2 text-[12px] text-text-2">
         Signed in as {user?.email}

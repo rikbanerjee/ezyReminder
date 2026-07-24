@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { Plus, Truck, Calendar, Mail, MessageSquare, MessageCircle } from "lucide-react";
 import { toast } from "sonner";
 import { createReminder } from "@/app/actions";
@@ -16,10 +16,15 @@ const CHANNEL_ICON: Record<Channel, typeof Mail> = {
   whatsapp: MessageCircle,
 };
 
-export function QuickAdd({ contexts }: { contexts: HomeContext[] }) {
-  const [value, setValue] = useState("");
+export function QuickAdd({ contexts, initialValue, autoFocus }: { contexts: HomeContext[]; initialValue?: string; autoFocus?: boolean }) {
+  const [value, setValue] = useState(initialValue ?? "");
   const [pending, startTransition] = useTransition();
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Share-target / "New reminder" shortcut hand-off (MOBILE.md Stage 1).
+  useEffect(() => {
+    if (autoFocus) inputRef.current?.focus();
+  }, [autoFocus]);
 
   const parsed = useMemo(() => parseQuickAdd(value, contexts), [value, contexts]);
   const matchedContext = parsed.contextSlug

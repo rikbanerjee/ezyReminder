@@ -1,9 +1,11 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { ChevronDown } from "lucide-react";
+import Link from "next/link";
+import { ChevronDown, Truck, ChevronRight } from "lucide-react";
 import { QuickAdd } from "./quick-add";
 import { ReminderRow } from "./reminder-row";
+import { ReminderSheet } from "./reminder-sheet";
 import { effectiveDue, type HomeContext, type HomeReminder } from "./types";
 import { bucketFor, type Bucket } from "@/lib/dates";
 import { cn } from "@/lib/utils";
@@ -12,6 +14,8 @@ interface HomeViewProps {
   contexts: HomeContext[];
   reminders: HomeReminder[]; // open + snoozed
   doneToday: HomeReminder[];
+  composePrefill?: string;
+  composeAutoFocus?: boolean;
 }
 
 type SectionKey = Bucket;
@@ -23,9 +27,17 @@ const SECTION_ORDER: { key: SectionKey; label: string; danger?: boolean }[] = [
   { key: "nodate", label: "Someday" },
 ];
 
-export function HomeView({ contexts, reminders, doneToday }: HomeViewProps) {
+function daysUntil(dateStr: string): number {
+  const target = new Date(`${dateStr}T00:00:00`);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return Math.round((target.getTime() - today.getTime()) / 86_400_000);
+}
+
+export function HomeView({ contexts, reminders, doneToday, composePrefill, composeAutoFocus }: HomeViewProps) {
   const [activeSlug, setActiveSlug] = useState<string | null>(null);
   const [showDone, setShowDone] = useState(false);
+  const [selected, setSelected] = useState<HomeReminder | null>(null);
 
   const visible = useMemo(
     () =>
@@ -33,6 +45,14 @@ export function HomeView({ contexts, reminders, doneToday }: HomeViewProps) {
         ? reminders.filter((r) => r.context?.slug === activeSlug)
         : reminders,
     [reminders, activeSlug],
+  );
+
+  const shipSoon = useMemo(
+    () =>
+      visible
+        .filter((r) => r.is_order && r.order?.shipBy && !r.order.shippedAt && daysUntil(r.order.shipBy) <= 3)
+        .sort((a, b) => daysUntil(a.order!.shipBy!) - daysUntil(b.order!.shipBy!)),
+    [visible],
   );
 
   const grouped = useMemo(() => {
@@ -81,7 +101,7 @@ export function HomeView({ contexts, reminders, doneToday }: HomeViewProps) {
         ))}
       </div>
 
-      <QuickAdd contexts={contexts} />
+      <QuickAdd contexts={contexts} initialValue={composePrefill} autoFocus={composeAutoFocus} />
 
       {totalVisible === 0 && visibleDone.length === 0 ? (
         <p className="px-1 py-8 text-center text-[15px] text-text-2">
@@ -90,16 +110,39 @@ export function HomeView({ contexts, reminders, doneToday }: HomeViewProps) {
       ) : (
         SECTION_ORDER.map(({ key, label, danger }) => {
           const rows = grouped[key];
-          if (rows.length === 0) return null;
           return (
-            <section key={key}>
-              <SectionHeader label={label} count={rows.length} danger={danger} />
-              <div className="divide-y divide-hairline rounded-xl border border-hairline bg-surface px-3">
-                {rows.map((r) => (
-                  <ReminderRow key={r.id} reminder={r} />
-                ))}
-              </div>
-            </section>
+            <div key={key} className="contents">
+              {rows.length > 0 && (
+                <section>
+                  <SectionHeader label={label} count={rows.length} danger={danger} />
+                  <div className="divide-y divide-hairline rounded-xl border border-hairline bg-surface px-3">
+                    {rows.map((r) => (
+                      <ReminderRow key={r.id} reminder={r} onOpen={() => setSelected(r)} />
+                    ))}
+                  </div>
+                </section>
+              )}
+              {key === "today" && shipSoon.length > 0 && (
+                <section>
+                  <div className="flex items-center justify-between px-1 pb-1.5 pt-1">
+                    <span className="flex items-center gap-1.5 text-[13px] font-semibold uppercase tracking-wide text-text-2">
+                      <Truck className="size-3.5" />
+                      Ship soon
+                      <span className="text-text-2/70">{shipSoon.length}</span>
+                    </span>
+                    <Link href="/ship-queue" className="flex items-center text-[12px] text-text-2 hover:text-foreground">
+                      Ship Queue
+                      <ChevronRight className="size-3.5" />
+                    </Link>
+                  </div>
+                  <div className="divide-y divide-hairline rounded-xl border border-hairline bg-surface px-3">
+                    {shipSoon.map((r) => (
+                      <ReminderRow key={r.id} reminder={r} onOpen={() => setSelected(r)} />
+                    ))}
+                  </div>
+                </section>
+              )}
+            </div>
           );
         })
       )}
@@ -121,11 +164,15 @@ export function HomeView({ contexts, reminders, doneToday }: HomeViewProps) {
           {showDone && (
             <div className="divide-y divide-hairline rounded-xl border border-hairline bg-surface px-3">
               {visibleDone.map((r) => (
-                <ReminderRow key={r.id} reminder={r} />
+                <ReminderRow key={r.id} reminder={r} onOpen={() => setSelected(r)} />
               ))}
             </div>
           )}
         </section>
+      )}
+
+      {selected && (
+        <ReminderSheet reminder={selected} contexts={contexts} onClose={() => setSelected(null)} />
       )}
     </div>
   );

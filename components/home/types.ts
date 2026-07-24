@@ -8,9 +8,19 @@ export interface HomeContext {
   default_channel: Channel;
 }
 
+export interface HomeOrder {
+  orderRef: string | null;
+  recipientName: string | null;
+  shipBy: string | null; // "YYYY-MM-DD"
+  carrier: string | null;
+  trackingNumber: string | null;
+  shippedAt: string | null;
+}
+
 export interface HomeReminder {
   id: string;
   title: string;
+  notes: string | null;
   due_at: string | null;
   snoozed_until: string | null;
   status: ReminderStatus;
@@ -19,6 +29,7 @@ export interface HomeReminder {
   context: HomeContext | null;
   /** Most recent failed delivery for this reminder, if any — powers the ⚠ + retry. */
   failedNotificationId: string | null;
+  order: HomeOrder | null;
 }
 
 /** Effective due time: a snoozed reminder surfaces at its snooze target. */

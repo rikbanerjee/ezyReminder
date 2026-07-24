@@ -28,7 +28,7 @@ const SNOOZE_PRESETS = [
   { key: "nextweek", label: "Next week" },
 ] as const;
 
-export function ReminderRow({ reminder }: { reminder: HomeReminder }) {
+export function ReminderRow({ reminder, onOpen }: { reminder: HomeReminder; onOpen: () => void }) {
   const [pending, startTransition] = useTransition();
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -93,8 +93,15 @@ export function ReminderRow({ reminder }: { reminder: HomeReminder }) {
         {done && <Check className="size-3 text-white" strokeWidth={3} />}
       </button>
 
-      {/* Title + meta */}
-      <div className="min-w-0 flex-1">
+      {/* Title + meta — tap to open the detail sheet (div, not button: it
+          contains the nested "delivery failed" retry button) */}
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={onOpen}
+        onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && onOpen()}
+        className="min-w-0 flex-1 cursor-pointer text-left"
+      >
         <div
           className={cn(
             "truncate text-[15px] font-medium leading-tight",
@@ -116,7 +123,10 @@ export function ReminderRow({ reminder }: { reminder: HomeReminder }) {
               <span aria-hidden>·</span>
               <button
                 type="button"
-                onClick={retry}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  retry();
+                }}
                 disabled={pending}
                 className="inline-flex items-center gap-1 font-medium text-danger"
               >
