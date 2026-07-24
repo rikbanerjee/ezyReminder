@@ -17,6 +17,23 @@ export interface HomeOrder {
   shippedAt: string | null;
 }
 
+export interface HomeWorkDetails {
+  managerName: string | null;
+  departmentResource: string | null;
+  projectName: string | null;
+}
+
+export interface HomeSidegigDetails {
+  initiativeName: string | null;
+  clientName: string | null;
+}
+
+export interface HomeShoppingItem {
+  id: string;
+  label: string;
+  checked: boolean;
+}
+
 export interface HomeReminder {
   id: string;
   title: string;
@@ -30,6 +47,15 @@ export interface HomeReminder {
   /** Most recent failed delivery for this reminder, if any — powers the ⚠ + retry. */
   failedNotificationId: string | null;
   order: HomeOrder | null;
+  workDetails: HomeWorkDetails | null;
+  sidegigDetails: HomeSidegigDetails | null;
+  /** Shopping-context reminders only (DESIGN.md §4.2.1) — the checklist. */
+  shoppingItems: HomeShoppingItem[];
+}
+
+/** Shopping-context reminders only — count of unchecked items for the row/badge. */
+export function shoppingItemsLeft(r: HomeReminder): number {
+  return r.shoppingItems.filter((i) => !i.checked).length;
 }
 
 /** Effective due time: a snoozed reminder surfaces at its snooze target. */

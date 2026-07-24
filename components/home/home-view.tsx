@@ -2,13 +2,14 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { ChevronDown, Truck, ChevronRight } from "lucide-react";
+import { ChevronDown, Truck, ChevronRight, Search } from "lucide-react";
 import { QuickAdd } from "./quick-add";
 import { ReminderRow } from "./reminder-row";
 import { ReminderSheet } from "./reminder-sheet";
 import { effectiveDue, type HomeContext, type HomeReminder } from "./types";
 import { bucketFor, type Bucket } from "@/lib/dates";
 import { cn } from "@/lib/utils";
+import { BottomDock } from "@/components/bottom-dock";
 
 interface HomeViewProps {
   contexts: HomeContext[];
@@ -16,6 +17,9 @@ interface HomeViewProps {
   doneToday: HomeReminder[];
   composePrefill?: string;
   composeAutoFocus?: boolean;
+  activeTab: "today" | "all";
+  shipSoonCount: number;
+  showSearch?: boolean;
 }
 
 type SectionKey = Bucket;
@@ -34,19 +38,27 @@ function daysUntil(dateStr: string): number {
   return Math.round((target.getTime() - today.getTime()) / 86_400_000);
 }
 
-export function HomeView({ contexts, reminders, doneToday, composePrefill, composeAutoFocus }: HomeViewProps) {
+export function HomeView({
+  contexts,
+  reminders,
+  doneToday,
+  composePrefill,
+  composeAutoFocus,
+  activeTab,
+  shipSoonCount,
+  showSearch,
+}: HomeViewProps) {
   const [activeSlug, setActiveSlug] = useState<string | null>(null);
   const [showDone, setShowDone] = useState(false);
   const [selected, setSelected] = useState<HomeReminder | null>(null);
-  const [creatingTitle, setCreatingTitle] = useState<string | null>(null);
+  const [scrollToOrderPanel, setScrollToOrderPanel] = useState(false);
+  const [query, setQuery] = useState("");
 
-  const visible = useMemo(
-    () =>
-      activeSlug
-        ? reminders.filter((r) => r.context?.slug === activeSlug)
-        : reminders,
-    [reminders, activeSlug],
-  );
+  const visible = useMemo(() => {
+    const bySlug = activeSlug ? reminders.filter((r) => r.context?.slug === activeSlug) : reminders;
+    const q = query.trim().toLowerCase();
+    return q ? bySlug.filter((r) => r.title.toLowerCase().includes(q)) : bySlug;
+  }, [reminders, activeSlug, query]);
 
   const shipSoon = useMemo(
     () =>
@@ -76,14 +88,16 @@ export function HomeView({ contexts, reminders, doneToday, composePrefill, compo
     return groups;
   }, [visible]);
 
-  const visibleDone = activeSlug
-    ? doneToday.filter((r) => r.context?.slug === activeSlug)
-    : doneToday;
+  const visibleDone = useMemo(() => {
+    const bySlug = activeSlug ? doneToday.filter((r) => r.context?.slug === activeSlug) : doneToday;
+    const q = query.trim().toLowerCase();
+    return q ? bySlug.filter((r) => r.title.toLowerCase().includes(q)) : bySlug;
+  }, [doneToday, activeSlug, query]);
 
   const totalVisible = visible.length;
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-4 pb-40">
       {/* Context filter pills */}
       <div className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-0.5">
         <FilterPill
@@ -102,11 +116,17 @@ export function HomeView({ contexts, reminders, doneToday, composePrefill, compo
         ))}
       </div>
 
-      <QuickAdd
-        initialValue={composePrefill}
-        autoFocus={composeAutoFocus}
-        onOpen={(title) => setCreatingTitle(title ?? "")}
-      />
+      {showSearch && (
+        <div className="flex h-10 items-center gap-2 rounded-xl border border-hairline bg-surface px-3 shadow-card">
+          <Search className="size-4 shrink-0 text-text-2" />
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search reminders…"
+            className="h-full w-full bg-transparent text-[15px] outline-none placeholder:text-text-2"
+          />
+        </div>
+      )}
 
       {totalVisible === 0 && visibleDone.length === 0 ? (
         <p className="px-1 py-8 text-center text-[15px] text-text-2">
@@ -120,9 +140,9 @@ export function HomeView({ contexts, reminders, doneToday, composePrefill, compo
               {rows.length > 0 && (
                 <section>
                   <SectionHeader label={label} count={rows.length} danger={danger} />
-                  <div className="divide-y divide-hairline rounded-xl border border-hairline bg-surface px-3">
+                  <div className="divide-y divide-hairline rounded-xl border border-hairline bg-surface px-3 shadow-card">
                     {rows.map((r) => (
-                      <ReminderRow key={r.id} reminder={r} onOpen={() => setSelected(r)} />
+                      <ReminderRow key={r.id} reminder={r} onOpen={() => { setSelected(r); setScrollToOrderPanel(false); }} />
                     ))}
                   </div>
                 </section>
@@ -140,9 +160,9 @@ export function HomeView({ contexts, reminders, doneToday, composePrefill, compo
                       <ChevronRight className="size-3.5" />
                     </Link>
                   </div>
-                  <div className="divide-y divide-hairline rounded-xl border border-hairline bg-surface px-3">
+                  <div className="divide-y divide-hairline rounded-xl border border-hairline bg-surface px-3 shadow-card">
                     {shipSoon.map((r) => (
-                      <ReminderRow key={r.id} reminder={r} onOpen={() => setSelected(r)} />
+                      <ReminderRow key={r.id} reminder={r} onOpen={() => { setSelected(r); setScrollToOrderPanel(false); }} />
                     ))}
                   </div>
                 </section>
@@ -167,9 +187,9 @@ export function HomeView({ contexts, reminders, doneToday, composePrefill, compo
             <span className="text-text-2/70">{visibleDone.length}</span>
           </button>
           {showDone && (
-            <div className="divide-y divide-hairline rounded-xl border border-hairline bg-surface px-3">
+            <div className="divide-y divide-hairline rounded-xl border border-hairline bg-surface px-3 shadow-card">
               {visibleDone.map((r) => (
-                <ReminderRow key={r.id} reminder={r} onOpen={() => setSelected(r)} />
+                <ReminderRow key={r.id} reminder={r} onOpen={() => { setSelected(r); setScrollToOrderPanel(false); }} />
               ))}
             </div>
           )}
@@ -177,16 +197,25 @@ export function HomeView({ contexts, reminders, doneToday, composePrefill, compo
       )}
 
       {selected && (
-        <ReminderSheet reminder={selected} contexts={contexts} onClose={() => setSelected(null)} />
-      )}
-      {creatingTitle !== null && (
         <ReminderSheet
-          reminder={null}
-          initialTitle={creatingTitle}
+          reminder={selected}
           contexts={contexts}
-          onClose={() => setCreatingTitle(null)}
+          scrollToOrderPanel={scrollToOrderPanel}
+          onClose={() => setSelected(null)}
         />
       )}
+
+      <BottomDock activeTab={activeTab} shipSoonCount={shipSoonCount}>
+        <QuickAdd
+          contexts={contexts}
+          initialValue={composePrefill}
+          autoFocus={composeAutoFocus}
+          onOfferDetails={(created) => {
+            setSelected(created);
+            setScrollToOrderPanel(true);
+          }}
+        />
+      </BottomDock>
     </div>
   );
 }
@@ -206,14 +235,15 @@ function FilterPill({
     <button
       type="button"
       onClick={onClick}
+      style={active && color ? { backgroundColor: color } : undefined}
       className={cn(
-        "inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1 text-[13px] font-medium transition-colors",
-        active
-          ? "border-transparent bg-foreground text-background"
-          : "border-hairline bg-surface text-text-2 hover:text-foreground",
+        "inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1 text-[13px] font-medium shadow-card transition-colors",
+        active && color && "border-transparent text-white",
+        active && !color && "border-transparent bg-foreground text-background",
+        !active && "border-hairline bg-surface text-text-2 hover:text-foreground",
       )}
     >
-      {color && (
+      {color && !active && (
         <span className="size-2 rounded-full" style={{ backgroundColor: color }} />
       )}
       {label}

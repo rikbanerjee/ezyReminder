@@ -10,7 +10,7 @@ import {
   deleteReminder,
   retryNotification,
 } from "@/app/actions";
-import { effectiveDue, type HomeReminder } from "./types";
+import { effectiveDue, shoppingItemsLeft, type HomeReminder } from "./types";
 import { relativeDue, bucketFor, snoozeTarget } from "@/lib/dates";
 import type { Channel } from "@/lib/supabase/types";
 import { cn } from "@/lib/utils";
@@ -36,6 +36,8 @@ export function ReminderRow({ reminder, onOpen }: { reminder: HomeReminder; onOp
   const due = effectiveDue(reminder);
   const overdue = !done && bucketFor(due) === "overdue";
   const context = reminder.context;
+  const isShopping = context?.slug === "shopping";
+  const itemsLeft = isShopping ? shoppingItemsLeft(reminder) : null;
 
   // Channels shown: explicit override, else the context default.
   const channels =
@@ -111,12 +113,16 @@ export function ReminderRow({ reminder, onOpen }: { reminder: HomeReminder; onOp
           {reminder.title}
         </div>
         <div className="mt-0.5 flex items-center gap-1.5 text-[13px] text-text-2">
-          {due && (
-            <span className={cn(overdue && "font-medium text-danger")}>
-              {relativeDue(due)}
-            </span>
+          {isShopping ? (
+            <span>{itemsLeft} item{itemsLeft === 1 ? "" : "s"} left</span>
+          ) : (
+            due && (
+              <span className={cn(overdue && "font-medium text-danger")}>
+                {relativeDue(due)}
+              </span>
+            )
           )}
-          {due && context && <span aria-hidden>·</span>}
+          {!isShopping && due && context && <span aria-hidden>·</span>}
           {context && <span>{context.name}</span>}
           {reminder.failedNotificationId && (
             <>

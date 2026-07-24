@@ -5,7 +5,7 @@ A reminder app for people juggling a corporate job and side gigs. As simple as A
 ## 1. Product principles
 
 1. **Capture in under 5 seconds.** One text box, smart parsing ("ship mug order tue 6pm #sidegig"). No required fields beyond the text.
-2. **Contexts, not folders.** Every reminder lives in exactly one context: **Work**, **Side Gig**, **Social/Personal**. Contexts drive default channel (Work → Slack, Side Gig → email/WhatsApp, Social → WhatsApp), color, and quiet hours.
+2. **Contexts, not folders.** Every reminder lives in exactly one context: **Work**, **Side Gig**, **Social/Personal**, **Shopping**. Contexts drive default channel (Work → Slack, Side Gig → email/WhatsApp, Social → WhatsApp, Shopping → none/in-app), color, and quiet hours. Shopping is the odd one out — it's a running checklist, not a single due-date item (§3.1).
 3. **The app comes to you.** Reminders are useless if you have to open the app. Delivery via email/Slack/WhatsApp is the core feature, not an add-on.
 4. **Orders are first-class.** A reminder can be flagged as an **Order** with a tiny bit of structure (recipient, carrier, tracking #, ship-by date) so a "Ship Queue" view and future Shippo integration are trivial.
 5. **Agent-ready.** Everything the UI can do, an API can do — so Claude Cowork, OpenClaw-style agents, or a cron job can create/complete reminders.
@@ -69,6 +69,42 @@ api_keys (id, user_id, name, key_hash, scopes text[], last_used_at)
 ```
 
 RLS on every table by `user_id`. Single-user is v1, but the schema is multi-user-safe from day one.
+
+## 3.1 Context-specific detail panels (2026-07 addition)
+
+Same pattern as Orders (§3): a toggle on the reminder detail sheet reveals a small, optional field set scoped to the reminder's context. None of these are required — quick-add still creates a bare reminder in under 5s; these panels are for the (optional) follow-up step.
+
+```sql
+-- Work — "who do I follow up with / what project is this"
+work_details (
+  reminder_id uuid pk fk -> reminders,
+  manager_name text,
+  department_resource text,   -- other team/dept contact
+  project_name text
+)
+
+-- Side Gig — lighter than Work; only for non-order side-gig items
+-- (order-flagged reminders use `orders`, not this)
+sidegig_details (
+  reminder_id uuid pk fk -> reminders,
+  initiative_name text,
+  client_name text            -- optional buyer/client
+)
+
+-- Shopping — the context itself is a checklist, not a due-date item.
+-- A Shopping reminder's "title" is the list name (e.g. "Costco run");
+-- items are children, added/checked/deleted instantly (no Save step).
+shopping_items (
+  id uuid pk,
+  reminder_id uuid fk -> reminders,
+  label text not null,
+  checked boolean default false,
+  position int not null,
+  created_at timestamptz default now()
+)
+```
+
+RLS on all three, scoped through the parent reminder's `user_id` (same pattern as `orders`). Shopping reminders typically have no `due_at` and are excluded from the Overdue/Today/Upcoming buckets — they live in a dedicated section (or the Someday bucket) showing "N items left" instead of a due chip.
 
 ## 4. Service integrations
 

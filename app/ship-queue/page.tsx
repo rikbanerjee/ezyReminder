@@ -3,6 +3,8 @@ import { ArrowLeft } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { ShipQueueView } from "@/components/ship-queue/ship-queue-view";
 import type { ShipQueueRow } from "@/components/ship-queue/types";
+import { BottomDock } from "@/components/bottom-dock";
+import { fetchOrdersMap } from "@/lib/orders";
 
 /** Ship Queue (PLAN.md §5.2, DESIGN.md §4.3) — orders sorted by ship-by date. */
 export default async function ShipQueuePage() {
@@ -46,8 +48,17 @@ export default async function ShipQueuePage() {
   const pending = ((pendingRows ?? []) as unknown as Raw[]).map(toRow);
   const shippedThisWeek = ((shippedRows ?? []) as unknown as Raw[]).map(toRow);
 
+  const ordersByReminder = await fetchOrdersMap(supabase);
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+  const shipSoonCount = [...ordersByReminder.values()].filter((o) => {
+    if (!o.shipBy || o.shippedAt) return false;
+    const days = Math.round((new Date(`${o.shipBy}T00:00:00`).getTime() - todayStart.getTime()) / 86_400_000);
+    return days <= 3;
+  }).length;
+
   return (
-    <main className="mx-auto flex min-h-dvh max-w-md flex-col gap-5 px-4 py-8">
+    <main className="mx-auto flex min-h-dvh max-w-md flex-col gap-5 px-4 py-8 pb-28">
       <header className="flex items-center gap-2">
         <Link href="/" className="grid size-8 place-items-center rounded-lg text-text-2 hover:bg-muted" aria-label="Back">
           <ArrowLeft className="size-4" />
@@ -56,6 +67,8 @@ export default async function ShipQueuePage() {
       </header>
 
       <ShipQueueView pending={pending} shippedThisWeek={shippedThisWeek} />
+
+      <BottomDock activeTab="ship" shipSoonCount={shipSoonCount} />
     </main>
   );
 }

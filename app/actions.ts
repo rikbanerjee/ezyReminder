@@ -31,6 +31,7 @@ export interface CreateReminderInput {
 }
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
+export type CreateReminderResult = { ok: true; id: string } | { ok: false; error: string };
 
 async function requireUser() {
   const supabase = await createClient();
@@ -41,7 +42,7 @@ async function requireUser() {
   return { supabase, user };
 }
 
-export async function createReminder(input: CreateReminderInput): Promise<ActionResult> {
+export async function createReminder(input: CreateReminderInput): Promise<CreateReminderResult> {
   const title = input.title.trim();
   if (!title) return { ok: false, error: "A reminder needs some text." };
 
@@ -93,7 +94,7 @@ export async function createReminder(input: CreateReminderInput): Promise<Action
 
   revalidatePath("/");
   revalidatePath("/ship-queue");
-  return { ok: true };
+  return { ok: true, id: inserted.id };
 }
 
 export async function completeReminder(id: string): Promise<ActionResult> {
@@ -215,6 +216,48 @@ export async function updateOrderDetails(input: UpdateOrderDetailsInput): Promis
   return { ok: true };
 }
 
+export interface UpdateWorkDetailsInput {
+  reminderId: string;
+  managerName: string | null;
+  departmentResource: string | null;
+  projectName: string | null;
+}
+
+/** Work → "Add follow-up details" panel (PLAN.md §3.1, DESIGN.md §4.2). */
+export async function updateWorkDetails(input: UpdateWorkDetailsInput): Promise<ActionResult> {
+  const { supabase, user } = await requireUser();
+  const { error } = await supabase.from("work_details").upsert({
+    reminder_id: input.reminderId,
+    user_id: user.id,
+    manager_name: input.managerName,
+    department_resource: input.departmentResource,
+    project_name: input.projectName,
+  });
+  if (error) return { ok: false, error: error.message };
+  revalidatePath("/");
+  return { ok: true };
+}
+
+export interface UpdateSidegigDetailsInput {
+  reminderId: string;
+  initiativeName: string | null;
+  clientName: string | null;
+}
+
+/** Side Gig → "Add initiative details" panel (PLAN.md §3.1, DESIGN.md §4.2). */
+export async function updateSidegigDetails(input: UpdateSidegigDetailsInput): Promise<ActionResult> {
+  const { supabase, user } = await requireUser();
+  const { error } = await supabase.from("sidegig_details").upsert({
+    reminder_id: input.reminderId,
+    user_id: user.id,
+    initiative_name: input.initiativeName,
+    client_name: input.clientName,
+  });
+  if (error) return { ok: false, error: error.message };
+  revalidatePath("/");
+  return { ok: true };
+}
+
 /** Ship Queue / detail sheet "Mark shipped" (DESIGN.md §4.2, §4.3). */
 export async function markShipped(reminderId: string, trackingNumber: string, carrier: string | null): Promise<ActionResult> {
   const { supabase } = await requireUser();
@@ -263,6 +306,52 @@ export async function createFollowUp(reminderId: string): Promise<ActionResult> 
   });
   if (error) return { ok: false, error: error.message };
 
+  revalidatePath("/");
+  return { ok: true };
+}
+
+/** Shopping checklist (DESIGN.md §4.2.1) — each add/check/delete is an instant write. */
+export type AddShoppingItemResult = { ok: true; id: string } | { ok: false; error: string };
+
+export async function addShoppingItem(reminderId: string, label: string): Promise<AddShoppingItemResult> {
+  const trimmed = label.trim();
+  if (!trimmed) return { ok: false, error: "Item needs some text." };
+
+  const { supabase, user } = await requireUser();
+
+  const { count } = await supabase
+    .from("shopping_items")
+    .select("id", { count: "exact", head: true })
+    .eq("reminder_id", reminderId);
+
+  const { data: inserted, error } = await supabase
+    .from("shopping_items")
+    .insert({
+      reminder_id: reminderId,
+      user_id: user.id,
+      label: trimmed,
+      position: count ?? 0,
+    })
+    .select("id")
+    .single();
+  if (error) return { ok: false, error: error.message };
+
+  revalidatePath("/");
+  return { ok: true, id: inserted.id };
+}
+
+export async function toggleShoppingItem(itemId: string, checked: boolean): Promise<ActionResult> {
+  const { supabase } = await requireUser();
+  const { error } = await supabase.from("shopping_items").update({ checked }).eq("id", itemId);
+  if (error) return { ok: false, error: error.message };
+  revalidatePath("/");
+  return { ok: true };
+}
+
+export async function deleteShoppingItem(itemId: string): Promise<ActionResult> {
+  const { supabase } = await requireUser();
+  const { error } = await supabase.from("shopping_items").delete().eq("id", itemId);
+  if (error) return { ok: false, error: error.message };
   revalidatePath("/");
   return { ok: true };
 }

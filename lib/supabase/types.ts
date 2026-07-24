@@ -208,6 +208,94 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["user_settings"]["Insert"]>;
         Relationships: [];
       };
+      work_details: {
+        Row: {
+          reminder_id: string;
+          user_id: string;
+          manager_name: string | null;
+          department_resource: string | null;
+          project_name: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          reminder_id: string;
+          user_id: string;
+          manager_name?: string | null;
+          department_resource?: string | null;
+          project_name?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["work_details"]["Insert"]>;
+        Relationships: [
+          {
+            foreignKeyName: "work_details_reminder_id_fkey";
+            columns: ["reminder_id"];
+            isOneToOne: true;
+            referencedRelation: "reminders";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
+      sidegig_details: {
+        Row: {
+          reminder_id: string;
+          user_id: string;
+          initiative_name: string | null;
+          client_name: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          reminder_id: string;
+          user_id: string;
+          initiative_name?: string | null;
+          client_name?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["sidegig_details"]["Insert"]>;
+        Relationships: [
+          {
+            foreignKeyName: "sidegig_details_reminder_id_fkey";
+            columns: ["reminder_id"];
+            isOneToOne: true;
+            referencedRelation: "reminders";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
+      shopping_items: {
+        Row: {
+          id: string;
+          reminder_id: string;
+          user_id: string;
+          label: string;
+          checked: boolean;
+          position: number;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          reminder_id: string;
+          user_id: string;
+          label: string;
+          checked?: boolean;
+          position: number;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["shopping_items"]["Insert"]>;
+        Relationships: [
+          {
+            foreignKeyName: "shopping_items_reminder_id_fkey";
+            columns: ["reminder_id"];
+            isOneToOne: false;
+            referencedRelation: "reminders";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
       slack_integrations: {
         Row: {
           user_id: string;

@@ -21,7 +21,17 @@ Companion to PLAN.md §5. This is the buildable spec: tokens, components, and sc
 | `work` | `#3478F6` | `#4C8DFF` | Work context |
 | `sidegig` | `#F5A623` | `#FFB340` | Side Gig context |
 | `social` | `#34C759` | `#40D66B` | Social context |
+| `shopping` | `#AF52DE` | `#BF5AF2` | Shopping context |
 | `danger` | `#FF3B30` | `#FF453A` | Overdue, delete |
+
+### Shadows (explicit — do not substitute Tailwind's default `shadow-sm`/`shadow-lg`)
+| Token | Value | Use |
+|---|---|---|
+| `--shadow-card` | `0 1px 3px rgba(0,0,0,.05)` (dark: `0 1px 3px rgba(0,0,0,.4)`) | Section list cards, quick-add bar, pills |
+| `--shadow-sheet` | `0 -8px 40px rgba(0,0,0,.18)` (dark: `0 -8px 40px rgba(0,0,0,.5)`) | Bottom sheet |
+| `--shadow-float` | `0 4px 20px rgba(0,0,0,.12)` (dark: `0 4px 20px rgba(0,0,0,.45)`) | Docked quick-add, floating menus |
+
+These must exist as real CSS custom properties (`app/globals.css`) and Tailwind utilities (`shadow-card`, `shadow-sheet`, `shadow-float`), not approximated with generic `shadow-sm`/`shadow-xl` — the flat, border-only look in earlier builds came from cards using `border` with no shadow at all.
 
 Dark mode follows the system (`prefers-color-scheme`) with a manual override in Settings. Context color is used *sparingly*: a 6px dot on rows, tinted pill when a context filter is active, tinted section accent in detail sheet. Never full-colored cards — that's what makes it feel like a toy.
 
@@ -111,6 +121,25 @@ DELIVER VIA   ✉ Email [on]  ✳ Slack [off]  ⧉ WhatsApp [on]
 - Channel toggles default from the context; changing them here affects only this reminder.
 - **Mark shipped** asks for tracking inline (one field + paste button), stamps `shipped_at`, completes the reminder, and toasts "Shipped ✓ — remind me to follow up?" with a one-tap **+3d follow-up** action.
 
+**Other context panels (same toggle-reveal pattern as Order, 2026-07):**
+- **Work → "Add follow-up details"** reveals: Manager name · Department resource · Project name (3 fields, `work_details`, PLAN.md §3.1).
+- **Side Gig → "Add initiative details"** reveals: Initiative name · Client/buyer (2 fields, `sidegig_details`) — deliberately lighter than Work's panel. Doesn't apply to order-flagged reminders (they use the Order panel instead).
+- **Shopping** reminders skip the standard sheet layout entirely — see §4.2.1.
+
+### 4.2.1 Shopping list (checklist, not a due-date reminder)
+Opening a Shopping-context reminder shows a checklist, not the title/date/notes layout:
+```
+━━━ (handle)
+Costco run                              (title = list name, inline-editable)
+[+ Add item…]                           ← always-focused input, Enter adds
+☐ Paper towels                      ⌫
+☐ Coffee beans                      ⌫
+☑ Dish soap  (struck through)       ⌫
+```
+- Every add/check/delete is its own instant write (optimistic UI, no Save button) — this list is meant to be edited standing in a store with one thumb.
+- No mandatory due date; delivery channels are hidden by default (rarely relevant) but reachable via "More options" if the user wants a nag reminder to go shopping at all.
+- Today-list row for a Shopping reminder shows **"N items left"** instead of a due chip; it lives in the Someday bucket unless the user sets an explicit due date.
+
 ### 4.3 Ship Queue tab
 The side-gig money view. Sorted by `ship_by` ascending.
 
@@ -147,7 +176,11 @@ Grouped iOS-style table: **Contexts** (rename, color, default channel, quiet hou
 4. Return/⊕ → row inserts into the list with the pop animation; composer stays open for rapid entry; swipe down/Esc closes.
 5. If `#order` was used, a toast offers "Add order details →" (opens sheet §4.2 with order panel open). Skippable — details can wait.
 
-Parsing rules: `chrono-node` for dates; `#work|#gig|#social` context (default = active filter, else last-used); `#order` flags order; `@email|@slack|@whatsapp` overrides channels. No token = no problem; everything has defaults.
+Parsing rules: `chrono-node` for dates; `#work|#gig|#social|#shopping` context (default = active filter, else last-used); `#order` flags order; `@email|@slack|@whatsapp` overrides channels. No token = no problem; everything has defaults.
+
+**Non-negotiable:** the quick-add bar is an inline text input with live parse chips, not a button that opens a form sheet. The typed text *is* the title — there is no separate "Title" field to leave blank, which is what makes 5-second capture possible. The detail sheet (§4.2) is for structured follow-up (order/work/initiative fields), opened after creation or by tapping an existing row — never the primary creation path. Any implementation that makes quick-add a trigger for a modal form has drifted from spec and should be reverted.
+
+**Validation, everywhere a Save/Add can be disabled:** a disabled button with no explanation is a dead end, not validation. If a required field is missing, the field itself shows the problem (red outline + a one-line message under it, e.g. "Title required") the moment the user tries to submit — never just a button that quietly won't click.
 
 ### 5.2 Delivery transparency
 - Row meta shows channel glyphs; after a send, glyph gets a subtle ✓ underdot; on failure an amber ⚠ badge appears on the row → tap opens the notification log for that reminder (attempt times, error, **Retry now**).
