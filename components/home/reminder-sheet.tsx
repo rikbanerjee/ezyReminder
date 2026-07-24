@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
+  createReminder,
   updateReminder,
   updateOrderDetails,
   markShipped,
@@ -40,31 +41,35 @@ function fromDatetimeLocal(value: string): string | null {
 
 export function ReminderSheet({
   reminder,
+  initialTitle,
   contexts,
   onClose,
 }: {
-  reminder: HomeReminder;
+  reminder: HomeReminder | null;
+  initialTitle?: string;
   contexts: HomeContext[];
   onClose: () => void;
 }) {
-  const [title, setTitle] = useState(reminder.title);
-  const [notes, setNotes] = useState(reminder.notes ?? "");
-  const [dueLocal, setDueLocal] = useState(toDatetimeLocal(reminder.due_at));
-  const [contextId, setContextId] = useState(reminder.context?.id ?? contexts[0]?.id ?? "");
-  const [channels, setChannels] = useState<Channel[]>(reminder.channels);
-  const [isOrder, setIsOrder] = useState(reminder.is_order);
+  const isNew = reminder === null;
 
-  const [orderRef, setOrderRef] = useState(reminder.order?.orderRef ?? "");
-  const [recipientName, setRecipientName] = useState(reminder.order?.recipientName ?? "");
-  const [shipBy, setShipBy] = useState(reminder.order?.shipBy ?? "");
-  const [carrier, setCarrier] = useState(reminder.order?.carrier ?? "");
+  const [title, setTitle] = useState(reminder?.title ?? initialTitle ?? "");
+  const [notes, setNotes] = useState(reminder?.notes ?? "");
+  const [dueLocal, setDueLocal] = useState(toDatetimeLocal(reminder?.due_at ?? null));
+  const [contextId, setContextId] = useState(reminder?.context?.id ?? contexts[0]?.id ?? "");
+  const [channels, setChannels] = useState<Channel[]>(reminder?.channels ?? []);
+  const [isOrder, setIsOrder] = useState(reminder?.is_order ?? false);
+
+  const [orderRef, setOrderRef] = useState(reminder?.order?.orderRef ?? "");
+  const [recipientName, setRecipientName] = useState(reminder?.order?.recipientName ?? "");
+  const [shipBy, setShipBy] = useState(reminder?.order?.shipBy ?? "");
+  const [carrier, setCarrier] = useState(reminder?.order?.carrier ?? "");
   const [trackingInput, setTrackingInput] = useState("");
   const [showTrackingField, setShowTrackingField] = useState(false);
 
   const [pending, startTransition] = useTransition();
 
-  const done = reminder.status === "done";
-  const shipped = !!reminder.order?.shippedAt;
+  const done = reminder?.status === "done";
+  const shipped = !!reminder?.order?.shippedAt;
 
   function toggleChannel(ch: Channel) {
     setChannels((prev) => (prev.includes(ch) ? prev.filter((c) => c !== ch) : [...prev, ch]));
@@ -72,6 +77,34 @@ export function ReminderSheet({
 
   function save() {
     startTransition(async () => {
+      const orderPayload = isOrder
+        ? {
+            orderRef: orderRef.trim() || null,
+            recipientName: recipientName.trim() || null,
+            shipBy: shipBy || null,
+            carrier: carrier.trim() || null,
+          }
+        : null;
+
+      if (isNew) {
+        const res = await createReminder({
+          title,
+          notes: notes.trim() || null,
+          dueAt: fromDatetimeLocal(dueLocal),
+          contextId,
+          channels,
+          isOrder,
+          order: orderPayload,
+        });
+        if (!res.ok) {
+          toast.error("Couldn't save", { description: res.error });
+          return;
+        }
+        toast.success("Added");
+        onClose();
+        return;
+      }
+
       const res = await updateReminder({
         id: reminder.id,
         title,
@@ -85,13 +118,10 @@ export function ReminderSheet({
         toast.error("Couldn't save", { description: res.error });
         return;
       }
-      if (isOrder) {
+      if (isOrder && orderPayload) {
         const orderRes = await updateOrderDetails({
           reminderId: reminder.id,
-          orderRef: orderRef.trim() || null,
-          recipientName: recipientName.trim() || null,
-          shipBy: shipBy || null,
-          carrier: carrier.trim() || null,
+          ...orderPayload,
         });
         if (!orderRes.ok) {
           toast.error("Saved, but order details failed", { description: orderRes.error });
@@ -104,6 +134,7 @@ export function ReminderSheet({
   }
 
   function handleMarkShipped() {
+    if (!reminder) return;
     startTransition(async () => {
       const res = await markShipped(reminder.id, trackingInput.trim(), carrier.trim() || null);
       if (!res.ok) {
@@ -127,6 +158,7 @@ export function ReminderSheet({
   }
 
   function handleDelete() {
+    if (!reminder) return;
     startTransition(async () => {
       const res = await deleteReminder(reminder.id);
       if (!res.ok) toast.error("Couldn't delete", { description: res.error });
@@ -135,6 +167,7 @@ export function ReminderSheet({
   }
 
   function handleToggleDone() {
+    if (!reminder) return;
     startTransition(async () => {
       const res = done ? await reopenReminder(reminder.id) : await completeReminder(reminder.id);
       if (!res.ok) toast.error("Couldn't update", { description: res.error });
@@ -252,43 +285,50 @@ export function ReminderSheet({
                 <Input value={carrier} onChange={(e) => setCarrier(e.target.value)} placeholder="USPS" />
               </Field>
 
-              {shipped ? (
-                <p className="mt-1 text-[13px] text-text-2">
-                  Shipped {reminder.order?.trackingNumber ? `· ${reminder.order.trackingNumber}` : ""}
-                </p>
-              ) : showTrackingField ? (
-                <div className="mt-1 flex items-center gap-2">
-                  <Input
-                    value={trackingInput}
-                    onChange={(e) => setTrackingInput(e.target.value)}
-                    placeholder="Tracking #"
-                    className="flex-1"
-                  />
-                  <Button size="sm" disabled={pending} onClick={handleMarkShipped}>
-                    Confirm
+              {!isNew &&
+                (shipped ? (
+                  <p className="mt-1 text-[13px] text-text-2">
+                    Shipped {reminder?.order?.trackingNumber ? `· ${reminder.order.trackingNumber}` : ""}
+                  </p>
+                ) : showTrackingField ? (
+                  <div className="mt-1 flex items-center gap-2">
+                    <Input
+                      value={trackingInput}
+                      onChange={(e) => setTrackingInput(e.target.value)}
+                      placeholder="Tracking #"
+                      className="flex-1"
+                    />
+                    <Button size="sm" disabled={pending} onClick={handleMarkShipped}>
+                      Confirm
+                    </Button>
+                  </div>
+                ) : (
+                  <Button size="sm" variant="outline" className="mt-1 self-start" onClick={() => setShowTrackingField(true)}>
+                    Mark shipped
                   </Button>
-                </div>
-              ) : (
-                <Button size="sm" variant="outline" className="mt-1 self-start" onClick={() => setShowTrackingField(true)}>
-                  Mark shipped
-                </Button>
-              )}
+                ))}
             </div>
           )}
         </div>
 
         <div className="mt-5 flex items-center justify-between border-t border-hairline pt-3">
-          <Button variant="ghost" size="sm" disabled={pending} onClick={handleDelete} className="text-danger">
-            <Trash2 className="size-3.5" />
-            Delete
-          </Button>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" disabled={pending} onClick={handleToggleDone}>
-              {done ? <RotateCcw className="size-3.5" /> : <Check className="size-3.5" />}
-              {done ? "Reopen" : "Done"}
+          {isNew ? (
+            <span />
+          ) : (
+            <Button variant="ghost" size="sm" disabled={pending} onClick={handleDelete} className="text-danger">
+              <Trash2 className="size-3.5" />
+              Delete
             </Button>
+          )}
+          <div className="flex items-center gap-2">
+            {!isNew && (
+              <Button variant="outline" size="sm" disabled={pending} onClick={handleToggleDone}>
+                {done ? <RotateCcw className="size-3.5" /> : <Check className="size-3.5" />}
+                {done ? "Reopen" : "Done"}
+              </Button>
+            )}
             <Button size="sm" disabled={pending || !title.trim()} onClick={save}>
-              Save
+              {isNew ? "Add" : "Save"}
             </Button>
           </div>
         </div>

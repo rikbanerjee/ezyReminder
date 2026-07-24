@@ -14,13 +14,20 @@ export async function signOut() {
   redirect("/login");
 }
 
-/** Payload the quick-add box sends after client-side smart-parse. */
+/** Payload the reminder sheet sends when creating a new reminder. */
 export interface CreateReminderInput {
   title: string;
+  notes?: string | null;
   dueAt: string | null; // ISO
-  contextSlug: string | null;
+  contextId?: string | null;
   isOrder: boolean;
   channels: Channel[];
+  order?: {
+    orderRef: string | null;
+    recipientName: string | null;
+    shipBy: string | null; // "YYYY-MM-DD"
+    carrier: string | null;
+  } | null;
 }
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
@@ -40,28 +47,27 @@ export async function createReminder(input: CreateReminderInput): Promise<Action
 
   const { supabase, user } = await requireUser();
 
-  // Resolve the context: matched slug, else fall back to Side Gig / first.
-  const { data: contexts, error: ctxErr } = await supabase
-    .from("contexts")
-    .select("id, slug")
-    .order("name");
-
-  if (ctxErr) return { ok: false, error: ctxErr.message };
-  if (!contexts || contexts.length === 0) {
-    return { ok: false, error: "No contexts found for your account." };
+  // Resolve the context: explicit id, else Side Gig / first.
+  let contextId = input.contextId ?? null;
+  if (!contextId) {
+    const { data: contexts, error: ctxErr } = await supabase
+      .from("contexts")
+      .select("id, slug")
+      .order("name");
+    if (ctxErr) return { ok: false, error: ctxErr.message };
+    if (!contexts || contexts.length === 0) {
+      return { ok: false, error: "No contexts found for your account." };
+    }
+    contextId = (contexts.find((c) => c.slug === "sidegig") ?? contexts[0]).id;
   }
-
-  const context =
-    (input.contextSlug && contexts.find((c) => c.slug === input.contextSlug)) ||
-    contexts.find((c) => c.slug === "sidegig") ||
-    contexts[0];
 
   const { data: inserted, error } = await supabase
     .from("reminders")
     .insert({
       user_id: user.id,
-      context_id: context.id,
+      context_id: contextId,
       title,
+      notes: input.notes ?? null,
       due_at: input.dueAt,
       channels: input.channels ?? [],
       is_order: input.isOrder,
@@ -73,16 +79,20 @@ export async function createReminder(input: CreateReminderInput): Promise<Action
   if (error) return { ok: false, error: error.message };
 
   if (input.isOrder && inserted) {
-    const shipBy = input.dueAt ? input.dueAt.slice(0, 10) : null;
+    const shipBy = input.order?.shipBy ?? (input.dueAt ? input.dueAt.slice(0, 10) : null);
     const { error: orderErr } = await supabase.from("orders").insert({
       reminder_id: inserted.id,
       user_id: user.id,
+      order_ref: input.order?.orderRef ?? null,
+      recipient_name: input.order?.recipientName ?? null,
       ship_by: shipBy,
+      carrier: input.order?.carrier ?? null,
     });
     if (orderErr) return { ok: false, error: orderErr.message };
   }
 
   revalidatePath("/");
+  revalidatePath("/ship-queue");
   return { ok: true };
 }
 

@@ -38,6 +38,7 @@ export function HomeView({ contexts, reminders, doneToday, composePrefill, compo
   const [activeSlug, setActiveSlug] = useState<string | null>(null);
   const [showDone, setShowDone] = useState(false);
   const [selected, setSelected] = useState<HomeReminder | null>(null);
+  const [creatingTitle, setCreatingTitle] = useState<string | null>(null);
 
   const visible = useMemo(
     () =>
@@ -101,7 +102,11 @@ export function HomeView({ contexts, reminders, doneToday, composePrefill, compo
         ))}
       </div>
 
-      <QuickAdd contexts={contexts} initialValue={composePrefill} autoFocus={composeAutoFocus} />
+      <QuickAdd
+        initialValue={composePrefill}
+        autoFocus={composeAutoFocus}
+        onOpen={(title) => setCreatingTitle(title ?? "")}
+      />
 
       {totalVisible === 0 && visibleDone.length === 0 ? (
         <p className="px-1 py-8 text-center text-[15px] text-text-2">
@@ -173,6 +178,14 @@ export function HomeView({ contexts, reminders, doneToday, composePrefill, compo
 
       {selected && (
         <ReminderSheet reminder={selected} contexts={contexts} onClose={() => setSelected(null)} />
+      )}
+      {creatingTitle !== null && (
+        <ReminderSheet
+          reminder={null}
+          initialTitle={creatingTitle}
+          contexts={contexts}
+          onClose={() => setCreatingTitle(null)}
+        />
       )}
     </div>
   );
