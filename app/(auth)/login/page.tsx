@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { GoogleNativeButton } from "@/components/auth/google-native-button";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -86,6 +87,17 @@ export default function LoginPage() {
                 <GoogleIcon className="size-4" />
                 {googlePending ? "Redirecting…" : "Continue with Google"}
               </Button>
+
+              {/* Second, experimental sign-in path (GOOGLE_NATIVE_SIGNIN_PROMPT.md)
+                  — Google's own rendered button, kept visually distinct so it's
+                  easy to tell apart from the redirect-based one above while both
+                  are being tested side by side. */}
+              <div className="flex flex-col items-center gap-1.5 rounded-lg border border-dashed border-hairline p-2.5">
+                <span className="text-[11px] font-semibold uppercase tracking-wide text-text-2">
+                  Trying: native Google sign-in
+                </span>
+                <GoogleNativeButton />
+              </div>
 
               <div className="flex items-center gap-3 text-[12px] text-text-2">
                 <div className="h-px flex-1 bg-hairline" />
