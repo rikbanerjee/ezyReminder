@@ -14,7 +14,7 @@ interface SlackOAuthResponse {
 
 /**
  * Slack OAuth callback (PLAN.md §4.1). Exchanges the code for a bot token
- * and stores it against the *currently signed-in easyReminder user* — the
+ * and stores it against the *currently signed-in ezyReminder user* — the
  * Supabase session cookie carries identity here, `state` is CSRF-only.
  */
 export async function GET(request: Request) {

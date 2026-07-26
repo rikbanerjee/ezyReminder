@@ -57,7 +57,7 @@ export default function LoginPage() {
       <Card className="w-full max-w-sm border-hairline">
         <CardHeader>
           <CardTitle className="text-2xl font-bold tracking-tight">
-            easyReminder
+            ezyReminder
           </CardTitle>
           <CardDescription>
             {status === "sent"

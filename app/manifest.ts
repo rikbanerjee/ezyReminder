@@ -7,8 +7,8 @@ import type { MetadataRoute } from "next";
  */
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "easyReminder",
-    short_name: "easyReminder",
+    name: "ezyReminder",
+    short_name: "ezyReminder",
     description: "Reminders that reach you — email, Slack, or WhatsApp.",
     start_url: "/",
     display: "standalone",

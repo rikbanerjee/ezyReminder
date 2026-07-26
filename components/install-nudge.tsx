@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { X, Share } from "lucide-react";
 
-const DISMISSED_KEY = "easyreminder:install-nudge-dismissed";
+const DISMISSED_KEY = "ezyreminder:install-nudge-dismissed";
 
 function isIosSafari(): boolean {
   const ua = window.navigator.userAgent;
@@ -41,7 +41,7 @@ export function InstallNudge() {
   return (
     <div className="fixed inset-x-0 bottom-0 z-40 flex items-center gap-3 border-t border-hairline bg-surface px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] shadow-lg">
       <p className="flex-1 text-[13px] text-foreground">
-        Install easyReminder: tap <Share className="mx-0.5 inline size-3.5 align-text-bottom" /> then{" "}
+        Install ezyReminder: tap <Share className="mx-0.5 inline size-3.5 align-text-bottom" /> then{" "}
         <span className="font-medium">Add to Home Screen</span>.
       </p>
       <button type="button" onClick={dismiss} aria-label="Dismiss" className="shrink-0 rounded-md p-1 text-text-2 hover:bg-muted">

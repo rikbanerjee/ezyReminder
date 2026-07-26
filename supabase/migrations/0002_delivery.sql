@@ -1,4 +1,4 @@
--- easyReminder — delivery pipeline (PLAN.md §4.1, Phase 2)
+-- ezyReminder — delivery pipeline (PLAN.md §4.1, Phase 2)
 -- Adds: per-user Slack OAuth installs, per-user timezone (needed to resolve
 -- quiet_hours, which are wall-clock local), a 'sending' claim state, and a
 -- SECURITY DEFINER RPC the minute-sweep uses to atomically claim due

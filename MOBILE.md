@@ -1,4 +1,4 @@
-# easyReminder — iOS/Android Strategy (no Swift/Kotlin rewrite)
+# ezyReminder — iOS/Android Strategy (no Swift/Kotlin rewrite)
 
 Goal: the webapp should feel native on iOS (and Android) without a rewrite. Two stages — ship Stage 1 with the webapp; adopt Stage 2 only if App Store presence or deeper native hooks become worth it.
 
@@ -13,7 +13,7 @@ Next.js already supports everything needed:
    - `viewport-fit=cover` + safe-area insets (notch/home bar)
    - `-webkit-tap-highlight-color: transparent`, `overscroll-behavior: none`
    - bottom-sheet detail view (thumb-reachable), 44px touch targets
-   - `share_target` in manifest → easyReminder appears in the iOS Share Sheet (share an Etsy order page straight into a Side Gig reminder)
+   - `share_target` in manifest → ezyReminder appears in the iOS Share Sheet (share an Etsy order page straight into a Side Gig reminder)
    - App shortcuts in manifest: "New reminder", "Ship Queue"
 5. **Install nudge:** small dismissible banner on iOS Safari explaining Add to Home Screen (Apple provides no install prompt API).
 

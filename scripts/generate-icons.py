@@ -1,4 +1,4 @@
-"""Generates easyReminder's PWA icon set (MOBILE.md Stage 1).
+"""Generates ezyReminder's PWA icon set (MOBILE.md Stage 1).
 
 Mark: a white completion-ring + checkmark on the Work-context blue
 (DESIGN.md §2) — the same "tap to complete" ring used throughout the

@@ -1,10 +1,10 @@
-# Build Prompt — easyReminder Phase 1 (Today screen)
+# Build Prompt — ezyReminder Phase 1 (Today screen)
 
 Paste everything below into your coding agent.
 
 ---
 
-You are working in the **easyReminder** repo — a Next.js 15 (App Router) + TypeScript + Tailwind v4 + shadcn/ui reminder app on Supabase, deployed to Vercel. Read `CLAUDE.md`, `PLAN.md`, `DESIGN.md`, and `MOBILE.md` before making product or architecture decisions and do not re-ask for context that's in them.
+You are working in the **ezyReminder** repo — a Next.js 15 (App Router) + TypeScript + Tailwind v4 + shadcn/ui reminder app on Supabase, deployed to Vercel. Read `CLAUDE.md`, `PLAN.md`, `DESIGN.md`, and `MOBILE.md` before making product or architecture decisions and do not re-ask for context that's in them.
 
 **Current state:** Phase 0 (scaffold) is complete — Supabase magic-link + Google auth, the full schema in `supabase/migrations/0001_init.sql` (contexts, reminders, orders, notifications, api_keys, all with RLS by `user_id`, plus a trigger that seeds Work/Side Gig/Social contexts per user), design tokens in `app/globals.css`, and shadcn components in `components/ui/`. The home page `app/page.tsx` is a temporary placeholder that just lists the user's contexts.
 

@@ -1,4 +1,4 @@
--- easyReminder — Shopping context + checklist items (PLAN.md §3.1, §8, DESIGN.md §2/§4.2.1)
+-- ezyReminder — Shopping context + checklist items (PLAN.md §3.1, §8, DESIGN.md §2/§4.2.1)
 
 -- ─────────────────────────────────────────────────────────────────────────
 -- shopping_items — children of a Shopping-context reminder; the reminder's

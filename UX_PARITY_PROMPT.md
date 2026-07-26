@@ -4,7 +4,7 @@ Paste everything below into your coding agent.
 
 ---
 
-You are working in the **easyReminder** repo. Read `CLAUDE.md`, `PLAN.md`, `DESIGN.md`, and `MOBILE.md` first — they were just updated (2026-07) to reflect this work, so re-read them even if you've read them before in this project. `design/prototype.html` is the visual and interaction reference; open it and compare side-by-side with the running app before touching code.
+You are working in the **ezyReminder** repo. Read `CLAUDE.md`, `PLAN.md`, `DESIGN.md`, and `MOBILE.md` first — they were just updated (2026-07) to reflect this work, so re-read them even if you've read them before in this project. `design/prototype.html` is the visual and interaction reference; open it and compare side-by-side with the running app before touching code.
 
 **Context for why this prompt exists:** the shipped app has drifted from `DESIGN.md`/the prototype in specific, identifiable ways — this isn't "make it feel nicer," it's "match the spec that already exists." Work phase by phase below. After each phase: `npx tsc --noEmit` and `npx eslint .` must be clean, then stop and let me review before starting the next phase.
 

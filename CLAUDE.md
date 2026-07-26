@@ -1,4 +1,4 @@
-# easyReminder
+# ezyReminder
 
 Reminder webapp for people balancing a corporate job with side gigs. Apple-Notes simple, but reminders are *delivered* to you (email / Slack DM / WhatsApp). Owner: Rik (rikbanerjee007@gmail.com).
 

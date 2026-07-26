@@ -6,7 +6,7 @@ import { InstallNudge } from "@/components/install-nudge";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "easyReminder",
+  title: "ezyReminder",
   description:
     "Reminders that reach you — email, Slack, or WhatsApp — for people juggling a job and side gigs.",
   icons: {
@@ -19,7 +19,7 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "easyReminder",
+    title: "ezyReminder",
   },
 };
 

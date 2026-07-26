@@ -1,4 +1,4 @@
--- easyReminder — initial schema (PLAN.md §3)
+-- ezyReminder — initial schema (PLAN.md §3)
 -- Single-user today, multi-user-safe always: every table carries user_id
 -- and is locked down with Row Level Security.
 

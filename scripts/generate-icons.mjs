@@ -65,7 +65,7 @@ function makePng(size, bg, fg) {
   return Buffer.concat([signature, chunk("IHDR", ihdr), chunk("IDAT", idat), chunk("IEND", Buffer.alloc(0))]);
 }
 
-const BLUE = [0x34, 0x78, 0xf6]; // easyReminder Work-context blue (DESIGN.md)
+const BLUE = [0x34, 0x78, 0xf6]; // ezyReminder Work-context blue (DESIGN.md)
 const WHITE = [0xff, 0xff, 0xff];
 
 const targets = [

@@ -6,7 +6,7 @@ const STATE_COOKIE = "slack_oauth_state";
 
 /**
  * Begins the Slack OAuth install (PLAN.md §4.1). Requires an authenticated
- * easyReminder session — the callback re-checks auth rather than trusting
+ * ezyReminder session — the callback re-checks auth rather than trusting
  * `state` to carry identity, so `state` only needs to be a CSRF nonce.
  */
 export async function GET(request: Request) {

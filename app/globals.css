@@ -10,7 +10,7 @@
   --font-sans: var(--font-sans);
   --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
   --font-heading: var(--font-sans);
-  /* easyReminder context + status tokens — DESIGN.md §2 */
+  /* ezyReminder context + status tokens — DESIGN.md §2 */
   --color-surface: var(--surface);
   --color-text-2: var(--text-2);
   --color-hairline: var(--hairline);

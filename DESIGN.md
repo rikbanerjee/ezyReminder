@@ -1,4 +1,4 @@
-# easyReminder — Design Spec (native-feel webapp)
+# ezyReminder — Design Spec (native-feel webapp)
 
 Companion to PLAN.md §5. This is the buildable spec: tokens, components, and screen-by-screen behavior. A clickable prototype lives at `design/prototype.html` — open it in a browser (narrow window or phone) to feel the interactions.
 

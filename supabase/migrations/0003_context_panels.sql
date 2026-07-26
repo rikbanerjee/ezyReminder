@@ -1,4 +1,4 @@
--- easyReminder — context-specific detail panels (PLAN.md §3.1, DESIGN.md §4.2)
+-- ezyReminder — context-specific detail panels (PLAN.md §3.1, DESIGN.md §4.2)
 -- Same pattern as `orders`: optional 1:1 detail row, denormalized user_id
 -- for a direct RLS check (no join needed), toggle-reveal in the sheet.
 

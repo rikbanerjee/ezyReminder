@@ -1,4 +1,4 @@
-# easyReminder — Product & Technical Plan
+# ezyReminder — Product & Technical Plan
 
 A reminder app for people juggling a corporate job and side gigs. As simple as Apple Notes, but it *reaches out to you* — via email, Slack, or WhatsApp — and understands that "ship order #42" is different from "prep for Monday's standup."
 
@@ -138,7 +138,7 @@ Two layers, same underlying service functions:
    - `GET/POST /reminders`, `PATCH /reminders/:id` (complete/snooze/edit)
    - `GET /reminders?due_before=&context=&is_order=true`
    - `POST /orders/:id/shipped`
-2. **MCP server** (`@easyreminder/mcp`, thin wrapper over the REST API) exposing tools: `create_reminder`, `list_due_reminders`, `complete_reminder`, `snooze_reminder`, `list_ship_queue`, `mark_order_shipped`. This is what makes "hey Claude, remind me to ship the Portland order Friday" work from Cowork.
+2. **MCP server** (`@ezyreminder/mcp`, thin wrapper over the REST API) exposing tools: `create_reminder`, `list_due_reminders`, `complete_reminder`, `snooze_reminder`, `list_ship_queue`, `mark_order_shipped`. This is what makes "hey Claude, remind me to ship the Portland order Friday" work from Cowork.
 - All agent writes carry `created_by: 'agent:<name>'` for auditability; a settings toggle can require confirmation for agent-initiated deletes.
 
 ### 4.4 Capture integrations (later, in priority order)
