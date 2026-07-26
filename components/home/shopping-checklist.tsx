@@ -77,7 +77,10 @@ export function ShoppingChecklist({ reminderId, initialItems }: { reminderId: st
             }
           }}
           placeholder="Add item…"
-          autoFocus
+          // No autoFocus: this component mounts every time a shopping
+          // reminder's sheet opens (create and edit both), and focusing
+          // immediately popped the keyboard before the sheet had even
+          // finished its slide-up, shoving the whole sheet upward on load.
           className="h-10 w-full min-w-0 flex-1 rounded-lg border border-input bg-transparent px-3 text-[15px] outline-none placeholder:text-text-2"
         />
         <button

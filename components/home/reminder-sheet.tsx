@@ -332,7 +332,16 @@ export function ReminderSheet({
           // switches sitting flush against the right edge, per feedback) —
           // the content box stays the same whether or not a scrollbar is
           // actually showing.
-          "relative flex max-h-[85vh] w-full max-w-md flex-col overflow-y-auto rounded-t-[20px] bg-surface p-4 shadow-sheet transition-transform duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] [scrollbar-gutter:stable]",
+          //
+          // overflow-x-hidden is deliberate, not decorative: with only
+          // overflow-y set, the CSS spec forces the x-axis to "auto" too,
+          // and DateTimePicker's absolutely-positioned popover can extend
+          // past the sheet's left edge depending on how wide the selected
+          // context name renders — which then made the whole sheet
+          // horizontally scrollable on some phone widths (iPhone Pro
+          // reported). Pinning x to hidden keeps the sheet's own width
+          // fixed; an overflowing popover just clips instead.
+          "relative flex max-h-[85vh] w-full max-w-md flex-col overflow-y-auto overflow-x-hidden rounded-t-[20px] bg-surface p-4 shadow-sheet transition-transform duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] [scrollbar-gutter:stable]",
           open ? "translate-y-0" : "translate-y-full",
         )}
       >
