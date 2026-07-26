@@ -21,6 +21,15 @@ const CHANNEL_ICON: Record<Channel, typeof Mail> = {
   whatsapp: MessageCircle,
 };
 
+// Distinct colors per channel (prototype.html's colorful glyphs — real
+// icon color, not a flat gray fade) so the row's right-side meta reads at
+// a glance instead of blurring into one muted cluster.
+const CHANNEL_COLOR: Record<Channel, string> = {
+  email: "text-work",
+  slack: "text-shopping",
+  whatsapp: "text-social",
+};
+
 const SNOOZE_PRESETS = [
   { key: "1h", label: "1 hour" },
   { key: "tonight", label: "Tonight" },
@@ -145,12 +154,16 @@ export function ReminderRow({ reminder, onOpen }: { reminder: HomeReminder; onOp
         </div>
       </div>
 
-      {/* Right meta: order + channels */}
-      <div className="flex shrink-0 items-center gap-1.5 text-text-2">
-        {reminder.is_order && <Truck className="size-4" aria-label="Order" />}
+      {/* Right meta: order (prominent) + channels (colorful, not flat gray) */}
+      <div className="flex shrink-0 items-center gap-1.5">
+        {reminder.is_order && (
+          <span className="grid size-6 place-items-center rounded-full bg-sidegig/15 text-sidegig" aria-label="Order">
+            <Truck className="size-3.5" strokeWidth={2.5} />
+          </span>
+        )}
         {channels.map((ch) => {
           const Icon = CHANNEL_ICON[ch];
-          return <Icon key={ch} className="size-3.5 opacity-40" aria-label={ch} />;
+          return <Icon key={ch} className={cn("size-3.5", CHANNEL_COLOR[ch])} aria-label={ch} />;
         })}
       </div>
 

@@ -12,7 +12,7 @@ Reminder webapp for people balancing a corporate job with side gigs. Apple-Notes
 - **UI must match `design/prototype.html` and DESIGN.md exactly** — card shadows, borders, context-colored active states, and the sheet slide-up motion are not optional polish, they're the spec. If implementation and prototype disagree, the prototype wins; fix the code, not the doc.
 - Shipping is behind a provider interface (`lib/shipping/provider.ts`); manual now, **Shippo** later. Don't hardcode any carrier API.
 - Agent-ready: REST API (`/api/v1/*`, scoped API keys) + MCP server so Claude Cowork / OpenClaw-type agents can create/complete reminders. Agent writes tagged `created_by: 'agent:<name>'`.
-- UX bar: capture a reminder in <5s via one smart-parse quick-add box (`chrono-node` for dates; `#context`, `#order`, `@channel` tokens). No mandatory fields beyond the text.
+- Quick-add (revised 2026-07, see DESIGN.md §5.1): the docked bar is a tap-anywhere trigger that opens the full create sheet — not an inline shorthand-parse text field. Same sheet as editing (context select, compact `DateTimePicker` with OK, Order/Work/Side Gig panels). `lib/parse/quick-add.ts`'s token parser is unused but kept for possible reuse.
 
 ## Stack (decided — don't relitigate)
 - Next.js 15 App Router + TypeScript + Tailwind + shadcn/ui, deployed on Vercel

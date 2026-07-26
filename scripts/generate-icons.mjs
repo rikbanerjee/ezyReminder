@@ -1,7 +1,10 @@
-// Generates placeholder PWA icons (solid brand-blue square, no external
-// deps — pure zlib + hand-rolled PNG chunks). Swap public/icon-*.png for
-// real branded artwork before shipping; this just satisfies the manifest
-// so "Add to Home Screen" has something to show.
+// SUPERSEDED — public/icon-*.png are now real branded artwork (ring +
+// checkmark mark, see scripts/generate-icons.py). Do not run this file;
+// it will overwrite them with the old placeholder blue square. Kept only
+// as a zero-dependency fallback if Pillow/Python isn't available.
+//
+// Original placeholder generator (solid brand-blue square, no external
+// deps — pure zlib + hand-rolled PNG chunks):
 import { deflateSync } from "node:zlib";
 import { writeFileSync } from "node:fs";
 

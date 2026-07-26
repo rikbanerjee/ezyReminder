@@ -27,7 +27,10 @@ export function TabBar({ activeTab, shipSoonCount }: { activeTab: TabKey; shipSo
               active ? "text-work" : "text-text-2",
             )}
           >
-            <Icon className="size-5" />
+            {/* Ship keeps its amber (sidegig) tint whether active or not —
+                matches the prototype's 🚚 emoji, which renders in its own
+                colors regardless of tab state, unlike the other glyph icons. */}
+            <Icon className={cn("size-5", key === "ship" && "text-sidegig")} />
             {label}
             {key === "ship" && shipSoonCount > 0 && (
               <span className="absolute -top-0.5 right-[calc(50%-22px)] grid min-w-[16px] place-items-center rounded-full bg-danger px-1 text-[10px] font-bold leading-[16px] text-white">

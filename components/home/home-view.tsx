@@ -20,6 +20,8 @@ interface HomeViewProps {
   activeTab: "today" | "all";
   shipSoonCount: number;
   showSearch?: boolean;
+  /** Small text rendered at the end of the scrollable area, e.g. "Signed in as…". */
+  footer?: string;
 }
 
 type SectionKey = Bucket;
@@ -47,10 +49,13 @@ export function HomeView({
   activeTab,
   shipSoonCount,
   showSearch,
+  footer,
 }: HomeViewProps) {
   const [activeSlug, setActiveSlug] = useState<string | null>(null);
   const [showDone, setShowDone] = useState(false);
   const [selected, setSelected] = useState<HomeReminder | null>(null);
+  // null = closed; otherwise the create sheet is open, pre-filled with this title.
+  const [creatingNew, setCreatingNew] = useState<string | null>(null);
   const [scrollToOrderPanel, setScrollToOrderPanel] = useState(false);
   const [query, setQuery] = useState("");
 
@@ -97,26 +102,32 @@ export function HomeView({
   const totalVisible = visible.length;
 
   return (
-    <div className="flex flex-col gap-4 pb-40">
-      {/* Context filter pills */}
-      <div className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-0.5">
-        <FilterPill
-          active={activeSlug === null}
-          onClick={() => setActiveSlug(null)}
-          label="All"
-        />
-        {contexts.map((c) => (
+    // Outer: no overflow/position of its own — just the flex column that
+    // lets the scroll area (below) grow/shrink while the sheet and dock
+    // stay normal, non-scrolling siblings after it (DESIGN.md §3). This is
+    // what makes the dock "frozen" at the bottom of the frame instead of
+    // sitting wherever short content happens to end.
+    <div className="flex h-full min-h-0 flex-col">
+      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-1 pb-4 pt-1">
+        {/* Context filter pills */}
+        <div className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-0.5">
           <FilterPill
-            key={c.id}
-            active={activeSlug === c.slug}
-            onClick={() => setActiveSlug(c.slug)}
-            label={c.name}
-            color={c.color}
+            active={activeSlug === null}
+            onClick={() => setActiveSlug(null)}
+            label="All"
           />
-        ))}
-      </div>
+          {contexts.map((c) => (
+            <FilterPill
+              key={c.id}
+              active={activeSlug === c.slug}
+              onClick={() => setActiveSlug(c.slug)}
+              label={c.name}
+              color={c.color}
+            />
+          ))}
+        </div>
 
-      {showSearch && (
+        {showSearch && (
         <div className="flex h-10 items-center gap-2 rounded-xl border border-hairline bg-surface px-3 shadow-card">
           <Search className="size-4 shrink-0 text-text-2" />
           <input
@@ -151,7 +162,7 @@ export function HomeView({
                 <section>
                   <div className="flex items-center justify-between px-1 pb-1.5 pt-1">
                     <span className="flex items-center gap-1.5 text-[13px] font-semibold uppercase tracking-wide text-text-2">
-                      <Truck className="size-3.5" />
+                      <Truck className="size-3.5 text-sidegig" />
                       Ship soon
                       <span className="text-text-2/70">{shipSoon.length}</span>
                     </span>
@@ -196,6 +207,9 @@ export function HomeView({
         </section>
       )}
 
+      {footer && <p className="px-1 pt-2 text-[12px] text-text-2">{footer}</p>}
+      </div>
+
       {selected && (
         <ReminderSheet
           reminder={selected}
@@ -205,15 +219,27 @@ export function HomeView({
         />
       )}
 
+      {creatingNew !== null && (
+        <ReminderSheet
+          reminder={null}
+          initialTitle={creatingNew}
+          contexts={contexts}
+          onClose={() => setCreatingNew(null)}
+          onCreated={(created) => {
+            // Shopping lists only (see ReminderSheet) — swap straight into
+            // edit mode for the reminder just created instead of closing,
+            // so the checklist is immediately usable.
+            setCreatingNew(null);
+            setSelected(created);
+          }}
+        />
+      )}
+
       <BottomDock activeTab={activeTab} shipSoonCount={shipSoonCount}>
         <QuickAdd
-          contexts={contexts}
           initialValue={composePrefill}
           autoFocus={composeAutoFocus}
-          onOfferDetails={(created) => {
-            setSelected(created);
-            setScrollToOrderPanel(true);
-          }}
+          onOpenCreateSheet={(title) => setCreatingNew(title ?? "")}
         />
       </BottomDock>
     </div>

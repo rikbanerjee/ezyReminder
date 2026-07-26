@@ -26,9 +26,9 @@ export default async function Home({
   const { contexts, reminders, doneToday, shipSoonCount } = await fetchHomeData(supabase);
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-md flex-col gap-5 px-4 py-8">
-      <header className="flex items-center justify-between">
-        <h1 className="text-[26px] font-bold tracking-tight">easyReminder</h1>
+    <main className="mx-auto flex h-full min-h-0 w-full max-w-md flex-col">
+      <header className="flex shrink-0 items-center justify-between px-4 pb-2 pt-8">
+        <h1 className="text-[26px] font-bold tracking-tight">Today</h1>
         <div className="flex items-center gap-1">
           <Link href="/settings" className="grid size-8 place-items-center rounded-lg text-text-2 hover:bg-muted" aria-label="Settings">
             <Settings className="size-4" />
@@ -41,19 +41,18 @@ export default async function Home({
         </div>
       </header>
 
-      <HomeView
-        contexts={contexts}
-        reminders={reminders}
-        doneToday={doneToday}
-        composePrefill={prefill}
-        composeAutoFocus={!!compose}
-        activeTab="today"
-        shipSoonCount={shipSoonCount}
-      />
-
-      <p className="px-1 pt-2 text-[12px] text-text-2">
-        Signed in as {user?.email}
-      </p>
+      <div className="min-h-0 flex-1 px-4">
+        <HomeView
+          contexts={contexts}
+          reminders={reminders}
+          doneToday={doneToday}
+          composePrefill={prefill}
+          composeAutoFocus={!!compose}
+          activeTab="today"
+          shipSoonCount={shipSoonCount}
+          footer={`Signed in as ${user?.email}`}
+        />
+      </div>
     </main>
   );
 }

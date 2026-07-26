@@ -167,18 +167,14 @@ Grouped iOS-style table: **Contexts** (rename, color, default channel, quiet hou
 
 ## 5. Key flows
 
-### 5.1 Quick add (< 5 seconds, the whole point)
-1. Tap the bar (or `n`) → expands into composer; keyboard up; cursor ready.
-2. Type naturally: `ship mug order tue 6pm #gig #order @whatsapp`
-3. **Live parse chips** render under the input as you type:
-   `[⏰ Tue 6:00 PM] [● Side Gig] [🚚 Order] [⧉ WhatsApp]`
-   — each chip is tappable to correct, ⌫ on a chip removes just that token. Parsed tokens are highlighted inline in the text so nothing feels magical.
-4. Return/⊕ → row inserts into the list with the pop animation; composer stays open for rapid entry; swipe down/Esc closes.
-5. If `#order` was used, a toast offers "Add order details →" (opens sheet §4.2 with order panel open). Skippable — details can wait.
+### 5.1 Quick add — revised 2026-07 (supersedes the original inline-parse spec)
+The docked quick-add bar is a **trigger, not a text field** — tapping anywhere on it (not just a "+" glyph) opens the full create sheet (§4.2, `reminder={null}` mode), per direct product feedback after the inline shorthand-parsing version shipped and proved less intuitive in practice than just filling in the same structured form used for editing. There is one creation path now: the full sheet, with the context select, `DateTimePicker` (below), and the same Order/Work/Side Gig panels as editing.
 
-Parsing rules: `chrono-node` for dates; `#work|#gig|#social|#shopping` context (default = active filter, else last-used); `#order` flags order; `@email|@slack|@whatsapp` overrides channels. No token = no problem; everything has defaults.
+`lib/parse/quick-add.ts`'s `chrono-node`/`#context`/`@channel` token parser is no longer wired into the UI but is left in place — it's cheap to resurrect later (e.g. inside the sheet's title field, or a search box) if shorthand entry turns out to be worth reintroducing.
 
-**Non-negotiable:** the quick-add bar is an inline text input with live parse chips, not a button that opens a form sheet. The typed text *is* the title — there is no separate "Title" field to leave blank, which is what makes 5-second capture possible. The detail sheet (§4.2) is for structured follow-up (order/work/initiative fields), opened after creation or by tapping an existing row — never the primary creation path. Any implementation that makes quick-add a trigger for a modal form has drifted from spec and should be reverted.
+**Date/time — compact calendar, not the native picker.** The due-date control is a custom `DateTimePicker` (small popover: month grid with small cells, a time input, and an explicit **OK** button to confirm), not `<input type="datetime-local">` — the native OS picker was too large and had no explicit confirm step. "No date" clears it.
+
+**Context select starts blank ("Choose template").** Creating fresh never silently defaults to an arbitrarily-sorted first context — the select's first option is a disabled "Choose template" placeholder, and attempting to save without picking one shows inline validation (same red-outline-plus-message pattern as a missing title), not a silently-disabled button.
 
 **Validation, everywhere a Save/Add can be disabled:** a disabled button with no explanation is a dead end, not validation. If a required field is missing, the field itself shows the problem (red outline + a one-line message under it, e.g. "Title required") the moment the user tries to submit — never just a button that quietly won't click.
 

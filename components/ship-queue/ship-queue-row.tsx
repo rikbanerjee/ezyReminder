@@ -67,7 +67,12 @@ export function ShipQueueRowItem({ row }: { row: ShipQueueRow }) {
           </Button>
         </div>
       ) : (
-        <Button size="sm" variant="outline" className="self-start" disabled={pending} onClick={() => setShowTracking(true)}>
+        <Button
+          size="sm"
+          className="self-start bg-sidegig text-white hover:bg-sidegig/90"
+          disabled={pending}
+          onClick={() => setShowTracking(true)}
+        >
           Mark shipped
         </Button>
       )}

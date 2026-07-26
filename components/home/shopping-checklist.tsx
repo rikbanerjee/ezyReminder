@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { X } from "lucide-react";
+import { Plus, X } from "lucide-react";
 import { toast } from "sonner";
 import { addShoppingItem, toggleShoppingItem, deleteShoppingItem } from "@/app/actions";
 import type { HomeShoppingItem } from "./types";
@@ -57,21 +57,39 @@ export function ShoppingChecklist({ reminderId, initialItems }: { reminderId: st
   }
 
   return (
-    <div className="mt-3">
-      <input
-        ref={inputRef}
-        value={draft}
-        onChange={(e) => setDraft(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") {
-            e.preventDefault();
-            addItem();
-          }
-        }}
-        placeholder="+ Add item…"
-        autoFocus
-        className="h-10 w-full rounded-lg border border-input bg-transparent px-3 text-[15px] outline-none placeholder:text-text-2"
-      />
+    // min-h matches the "save the list first" placeholder shown before a
+    // reminder exists (reminder-sheet.tsx) — keeps the sheet the same
+    // minimum height in both create and edit mode so the date popover
+    // never gets clipped, regardless of how many items are in the list.
+    <div className="mt-3 min-h-[220px]">
+      {/* Enter still adds (fast path for typing multiple items in a row),
+          but a visible + button is the discoverable affordance — relying
+          on the keyboard's return key alone wasn't obvious enough. */}
+      <div className="flex items-center gap-2">
+        <input
+          ref={inputRef}
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              addItem();
+            }
+          }}
+          placeholder="Add item…"
+          autoFocus
+          className="h-10 w-full min-w-0 flex-1 rounded-lg border border-input bg-transparent px-3 text-[15px] outline-none placeholder:text-text-2"
+        />
+        <button
+          type="button"
+          onClick={addItem}
+          disabled={!draft.trim()}
+          aria-label="Add item"
+          className="grid size-10 shrink-0 place-items-center rounded-lg bg-work text-white disabled:opacity-40"
+        >
+          <Plus className="size-4" strokeWidth={2.5} />
+        </button>
+      </div>
 
       {items.length > 0 && (
         <ul className="mt-2 divide-y divide-hairline rounded-lg border border-hairline">
