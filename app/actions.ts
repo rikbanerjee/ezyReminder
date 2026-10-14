@@ -5,7 +5,6 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import type { Channel } from "@/lib/supabase/types";
 import { sendEmail } from "@/lib/integrations/email";
-import { sendSlackDm } from "@/lib/integrations/slack";
 import type { ReminderForDelivery } from "@/lib/integrations/types";
 
 export async function signOut() {
@@ -389,15 +388,6 @@ export async function retryNotification(id: string): Promise<ActionResult> {
       if (!apiKey || !from || !user.email) return { ok: false as const, error: "Email delivery isn't configured yet." };
       return sendEmail({ apiKey, from, to: user.email, reminder: delivery });
     }
-    if (notification.channel === "slack") {
-      const { data: integration } = await supabase
-        .from("slack_integrations")
-        .select("bot_token, slack_user_id")
-        .eq("user_id", user.id)
-        .maybeSingle();
-      if (!integration) return { ok: false as const, error: "Slack isn't connected." };
-      return sendSlackDm({ botToken: integration.bot_token, slackUserId: integration.slack_user_id, reminder: delivery });
-    }
     return { ok: false as const, error: "WhatsApp delivery isn't available yet." };
   })();
 
@@ -433,10 +423,11 @@ export async function updateQuietHours(contextId: string, start: string, end: st
   return { ok: true };
 }
 
-export async function disconnectSlack(): Promise<ActionResult> {
+export async function completeOnboarding(): Promise<ActionResult> {
   const { supabase, user } = await requireUser();
-  const { error } = await supabase.from("slack_integrations").delete().eq("user_id", user.id);
+  const { error } = await supabase
+    .from("user_settings")
+    .upsert({ user_id: user.id, onboarded_at: new Date().toISOString() });
   if (error) return { ok: false, error: error.message };
-  revalidatePath("/settings");
   return { ok: true };
 }

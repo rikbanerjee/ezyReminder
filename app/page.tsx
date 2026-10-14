@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { Settings } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { Button } from "@/components/ui/button";
@@ -22,6 +23,10 @@ export default async function Home({
   const {
     data: { user },
   } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  const { data: settings } = await supabase.from("user_settings").select("onboarded_at").maybeSingle();
+  if (!settings?.onboarded_at) redirect("/onboarding");
 
   const { contexts, reminders, doneToday, shipSoonCount } = await fetchHomeData(supabase);
 

@@ -8,7 +8,7 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "ezyReminder",
   description:
-    "Reminders that reach you — email, Slack, or WhatsApp — for people juggling a job and side gigs.",
+    "Reminders that reach you — on your phone or by email — for people juggling a job and side gigs.",
   icons: {
     icon: [
       { url: "/icon-192.png", sizes: "192x192", type: "image/png" },

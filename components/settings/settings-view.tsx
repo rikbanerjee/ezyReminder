@@ -1,13 +1,11 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import Link from "next/link";
 import { toast } from "sonner";
-import { MessageSquare, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { updateTimezone, updateQuietHours, disconnectSlack } from "@/app/actions";
+import { updateTimezone, updateQuietHours } from "@/app/actions";
 
 export interface SettingsContext {
   id: string;
@@ -19,14 +17,11 @@ export interface SettingsContext {
 export interface SettingsViewProps {
   timezone: string;
   contexts: SettingsContext[];
-  slackConnected: boolean;
-  slackTeamName: string | null;
 }
 
-export function SettingsView({ timezone, contexts, slackConnected, slackTeamName }: SettingsViewProps) {
+export function SettingsView({ timezone, contexts }: SettingsViewProps) {
   return (
     <div className="flex flex-col gap-6">
-      <SlackSection connected={slackConnected} teamName={slackTeamName} />
       <TimezoneSection initialTimezone={timezone} />
       <QuietHoursSection contexts={contexts} />
     </div>
@@ -40,42 +35,6 @@ function Section({ title, description, children }: { title: string; description?
       {description && <p className="mt-0.5 text-[13px] text-text-2">{description}</p>}
       <div className="mt-3">{children}</div>
     </section>
-  );
-}
-
-function SlackSection({ connected, teamName }: { connected: boolean; teamName: string | null }) {
-  const [pending, startTransition] = useTransition();
-
-  function disconnect() {
-    startTransition(async () => {
-      const res = await disconnectSlack();
-      if (res.ok) toast.success("Slack disconnected");
-      else toast.error("Couldn't disconnect", { description: res.error });
-    });
-  }
-
-  return (
-    <Section title="Slack" description="Get reminders as a DM with Done / Snooze buttons.">
-      {connected ? (
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2 text-[14px]">
-            <MessageSquare className="size-4 text-text-2" />
-            Connected{teamName ? ` to ${teamName}` : ""}
-          </div>
-          <Button type="button" variant="ghost" size="sm" disabled={pending} onClick={disconnect}>
-            <Trash2 className="size-3.5" />
-            Disconnect
-          </Button>
-        </div>
-      ) : (
-        <Button asChild size="sm">
-          <Link href="/api/integrations/slack/oauth/start">
-            <MessageSquare className="size-4" />
-            Connect Slack
-          </Link>
-        </Button>
-      )}
-    </Section>
   );
 }
 

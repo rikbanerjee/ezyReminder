@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
-import { X, Trash2, Truck, Mail, MessageSquare, Check, RotateCcw, Briefcase, Lightbulb } from "lucide-react";
+import { X, Trash2, Truck, Mail, Check, RotateCcw, Briefcase, Lightbulb } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -29,7 +29,6 @@ import { cn } from "@/lib/utils";
 // reminder already tagged with it still renders fine elsewhere.
 const CHANNELS: { key: Channel; label: string; icon: typeof Mail }[] = [
   { key: "email", label: "Email", icon: Mail },
-  { key: "slack", label: "Slack", icon: MessageSquare },
 ];
 
 function toDatetimeLocal(iso: string | null): string {

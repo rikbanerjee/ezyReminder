@@ -8,7 +8,7 @@
  * server.ts don't need to change.
  */
 
-export type Channel = "email" | "slack" | "whatsapp";
+export type Channel = "email" | "whatsapp";
 export type ReminderStatus = "open" | "done" | "snoozed" | "cancelled";
 export type NotificationStatus = "pending" | "sending" | "sent" | "failed" | "retrying";
 export type CreatedBy = "ui" | "api" | `agent:${string}`;
@@ -196,12 +196,14 @@ export interface Database {
         Row: {
           user_id: string;
           timezone: string;
+          onboarded_at: string | null;
           created_at: string;
           updated_at: string;
         };
         Insert: {
           user_id: string;
           timezone?: string;
+          onboarded_at?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -295,28 +297,6 @@ export interface Database {
             referencedColumns: ["id"];
           }
         ];
-      };
-      slack_integrations: {
-        Row: {
-          user_id: string;
-          team_id: string;
-          team_name: string | null;
-          bot_token: string;
-          slack_user_id: string;
-          created_at: string;
-          updated_at: string;
-        };
-        Insert: {
-          user_id: string;
-          team_id: string;
-          team_name?: string | null;
-          bot_token: string;
-          slack_user_id: string;
-          created_at?: string;
-          updated_at?: string;
-        };
-        Update: Partial<Database["public"]["Tables"]["slack_integrations"]["Insert"]>;
-        Relationships: [];
       };
     };
     Views: Record<string, never>;

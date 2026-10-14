@@ -13,7 +13,6 @@
 import { createClient } from "npm:@supabase/supabase-js@2.110.7";
 import { isQuietNow, nextAllowedTime, type QuietHours } from "../../../lib/quiet-hours.ts";
 import { sendEmail } from "../../../lib/integrations/email/index.ts";
-import { sendSlackDm } from "../../../lib/integrations/slack/index.ts";
 import type { ReminderForDelivery } from "../../../lib/integrations/types.ts";
 
 const MAX_ATTEMPTS = 3;
@@ -31,7 +30,7 @@ interface NotificationRow {
   id: string;
   user_id: string;
   reminder_id: string;
-  channel: "email" | "slack" | "whatsapp";
+  channel: "email" | "whatsapp";
   scheduled_for: string;
   attempt_count: number;
 }
@@ -78,16 +77,6 @@ async function dispatch(
     const to = userRes?.user?.email;
     if (!to) return { ok: false, error: "user_email_not_found" };
     return sendEmail({ apiKey: resendApiKey, from: resendFromEmail, to, reminder: delivery });
-  }
-
-  if (n.channel === "slack") {
-    const { data: integration } = await supabase
-      .from("slack_integrations")
-      .select("bot_token, slack_user_id")
-      .eq("user_id", n.user_id)
-      .maybeSingle();
-    if (!integration) return { ok: false, error: "slack_not_connected" };
-    return sendSlackDm({ botToken: integration.bot_token, slackUserId: integration.slack_user_id, reminder: delivery });
   }
 
   return { ok: false, error: "whatsapp_not_implemented" };

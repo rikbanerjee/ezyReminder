@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Check, Truck, AlarmClock, Trash2, Mail, MessageSquare, MessageCircle, TriangleAlert, RotateCw } from "lucide-react";
+import { Check, Truck, AlarmClock, Trash2, Mail, MessageCircle, TriangleAlert, RotateCw } from "lucide-react";
 import { toast } from "sonner";
 import {
   completeReminder,
@@ -17,7 +17,6 @@ import { cn } from "@/lib/utils";
 
 const CHANNEL_ICON: Record<Channel, typeof Mail> = {
   email: Mail,
-  slack: MessageSquare,
   whatsapp: MessageCircle,
 };
 
@@ -26,7 +25,6 @@ const CHANNEL_ICON: Record<Channel, typeof Mail> = {
 // a glance instead of blurring into one muted cluster.
 const CHANNEL_COLOR: Record<Channel, string> = {
   email: "text-work",
-  slack: "text-shopping",
   whatsapp: "text-social",
 };
 
