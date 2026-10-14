@@ -1,12 +1,12 @@
 # ezyReminder — Product & Technical Plan
 
-A reminder app for people juggling a corporate job and side gigs. As simple as Apple Notes, but it *reaches out to you* — via email, Slack, or WhatsApp — and understands that "ship order #42" is different from "prep for Monday's standup."
+A reminder app for people juggling a corporate job and side gigs. As simple as Apple Notes, but it *reaches out to you* — via iPhone notifications or email — and understands that "ship order #42" is different from "prep for Monday's standup."
 
 ## 1. Product principles
 
 1. **Capture in under 5 seconds.** One text box, smart parsing ("ship mug order tue 6pm #sidegig"). No required fields beyond the text.
-2. **Contexts, not folders.** Every reminder lives in exactly one context: **Work**, **Side Gig**, **Social/Personal**, **Shopping**. Contexts drive default channel (Work → Slack, Side Gig → email/WhatsApp, Social → WhatsApp, Shopping → none/in-app), color, and quiet hours. Shopping is the odd one out — it's a running checklist, not a single due-date item (§3.1).
-3. **The app comes to you.** Reminders are useless if you have to open the app. Delivery via email/Slack/WhatsApp is the core feature, not an add-on.
+2. **Contexts, not folders.** Every reminder lives in exactly one context: **Work**, **Side Gig**, **Social/Personal**, **Shopping**. Contexts drive default channel (email for every context until the iOS app adds push; Social → WhatsApp once v1.5 lands; Shopping → none/in-app), color, and quiet hours. Shopping is the odd one out — it's a running checklist, not a single due-date item (§3.1).
+3. **The app comes to you.** Reminders are useless if you have to open the app. Delivery via iPhone notifications and email is the core feature, not an add-on.
 4. **Orders are first-class.** A reminder can be flagged as an **Order** with a tiny bit of structure (recipient, carrier, tracking #, ship-by date) so a "Ship Queue" view and future Shippo integration are trivial.
 5. **Agent-ready.** Everything the UI can do, an API can do — so Claude Cowork, OpenClaw-style agents, or a cron job can create/complete reminders.
 
@@ -14,12 +14,13 @@ A reminder app for people juggling a corporate job and side gigs. As simple as A
 
 | Layer | Choice | Why |
 |---|---|---|
-| Frontend | Next.js 15 (App Router), TypeScript, Tailwind, shadcn/ui | Fast to build, PWA-friendly, huge ecosystem |
+| Web client | Next.js 15 (App Router), TypeScript, Tailwind, shadcn/ui | Fast to build, PWA-friendly, huge ecosystem |
+| iOS client (2026-10) | Flutter (`mobile/`), Android later from the same project | Native feel, pixel-matches the prototype, one codebase for both phones (MOBILE.md) |
 | Backend | Next.js API routes / server actions | One deployable unit |
 | DB + Auth | Supabase (Postgres, Row Level Security, magic-link auth) | Free tier, realtime, built-in auth |
 | Scheduling | Supabase `pg_cron` → Edge Function every minute (fallback: Vercel Cron) | Reliable due-reminder sweep |
 | Email | Resend | Simple API, generous free tier |
-| Slack | Slack app (bot token, `chat.postMessage` DM) | Reliable work-channel delivery |
+| iOS notifications | On-device local notifications + APNs from the sweep (hybrid, deduped) | Works offline *and* for web-created reminders (MOBILE.md §3) |
 | WhatsApp | Twilio WhatsApp API (v2; template messages) | Least Meta-approval friction |
 | Shipping (future) | Shippo API | Labels, rates, tracking webhooks |
 | Hosting | Vercel | Zero-config Next.js deploys |
@@ -38,7 +39,7 @@ reminders (
   notes text,
   due_at timestamptz,
   recurrence text,          -- rrule string, null = one-off
-  channels text[],          -- ['email','slack','whatsapp']
+  channels text[],          -- ['email','whatsapp'] (+ 'apns' with the iOS app)
   status text,              -- open | done | snoozed | cancelled
   snoozed_until timestamptz,
   tags text[],
@@ -117,14 +118,16 @@ Setup: create one OAuth 2.0 **Web application** Client ID in Google Cloud Consol
 ### 4.1 Notification pipeline (v1 core)
 - `pg_cron` fires an Edge Function every minute: `SELECT reminders due AND status='open'` → enqueue a `notifications` row per channel → dispatch.
 - Each channel is a small adapter behind one interface: `send(reminder, channel) → {ok, providerMessageId | error}`. Adding a channel later = one new adapter file.
-- Retries: 3 attempts with backoff; failures visible in UI ("⚠ Slack delivery failed").
+- Retries: 3 attempts with backoff; failures visible in UI ("⚠ Email delivery failed").
 - Quiet hours per context: work reminders don't ping WhatsApp at 11pm; they defer to next allowed window (user-overridable per reminder).
 
 **Email (Resend)** — v1, week 1. Reply-to-complete stretch goal: replying "done" marks the reminder done (inbound webhook).
 
-**Slack** — v1. Single-workspace Slack app, bot token stored per user, DM via `chat.postMessage` with Block Kit buttons: **Done · Snooze 1h · Snooze 1d**. Interactivity endpoint: `/api/integrations/slack/actions`.
+**iOS notifications** — v1 with the Flutter app. A hybrid of on-device local notifications (scheduled by the app, works offline) and APNs push from the sweep (covers reminders created or edited on the web), deduplicated so each reminder fires once. Actionable: **Done · Snooze 1h**. Full design in MOBILE.md §3.
 
-**WhatsApp (Twilio)** — v1.5 (after email+Slack are solid). Requires a pre-approved message template, e.g. `Reminder: {{1}} is due {{2}}. Reply DONE to complete.` Inbound webhook handles DONE/SNOOZE replies. Costs ~ $0.005–0.05/message; show a monthly count in settings.
+**Slack** — removed 2026-10 (adapter, OAuth routes and `slack_integrations` table deleted in `0006_remove_slack.sql`) to keep delivery simple.
+
+**WhatsApp (Twilio)** — v1.5 (after email + iOS notifications are solid). Requires a pre-approved message template, e.g. `Reminder: {{1}} is due {{2}}. Reply DONE to complete.` Inbound webhook handles DONE/SNOOZE replies. Costs ~ $0.005–0.05/message; show a monthly count in settings.
 
 ### 4.2 Shipping — Shippo (future, designed-for now)
 - v1 ships the **Order** flag + Ship Queue view with manual carrier/tracking entry. No API dependency.
@@ -142,7 +145,7 @@ Two layers, same underlying service functions:
 - All agent writes carry `created_by: 'agent:<name>'` for auditability; a settings toggle can require confirmation for agent-initiated deletes.
 
 ### 4.4 Capture integrations (later, in priority order)
-Slack slash command `/remind-me ship order #42 friday` → creates a Side Gig reminder; email-in address (`todo@…`); iOS Share Sheet via PWA share_target.
+Email-in address (`todo@…`); iOS Share Sheet via the Flutter app's Share Extension (web: PWA share_target).
 
 ## 5. UX / design
 
@@ -180,14 +183,15 @@ Slack slash command `/remind-me ship order #42 friday` → creates a Side Gig re
 |---|---|---|
 | **0 — Scaffold** | Next.js + Supabase, auth, schema, RLS | ~1 day |
 | **1 — Core loop** | CRUD, quick-add parsing, contexts, list views, done/snooze | 2–3 days |
-| **2 — Delivery** | Cron sweep, email (Resend), Slack DM + action buttons, notification log | 2–3 days |
+| **2 — Delivery** | Cron sweep, email (Resend), notification log (Slack DM shipped, then removed 2026-10) | 2–3 days |
 | **3 — Orders** | Order flag, Ship Queue, manual tracking | 1–2 days |
 | **4 — PWA/iOS** | Manifest, service worker, share_target, install flow (see MOBILE.md) | 1–2 days |
 | **5 — WhatsApp** | Twilio templates, inbound DONE/SNOOZE | 2 days |
 | **6 — Agents** | REST API keys + MCP server | 2–3 days |
 | **7 — Shippo** | Label purchase, tracking webhooks | 2–3 days |
+| **8 — iOS app (Flutter)** | RPCs + Realtime, Flutter screens, hybrid notifications, Share Extension, TestFlight (MOBILE.md §6) | 3–5 weeks |
 
 ## 7. Risks / notes
 - WhatsApp is the highest-friction channel (template approval, cost) — that's why it's phase 5, not phase 2.
-- Web push on iOS requires the PWA to be installed to Home Screen (iOS 16.4+); email/Slack/WhatsApp are the reliable channels regardless.
+- iOS notifications come from the native Flutter app, not Web Push; email is the reliable fallback for web-only users.
 - Keep Supabase Edge Function sweep idempotent (claim rows with `FOR UPDATE SKIP LOCKED`) so double-fires can't double-notify.

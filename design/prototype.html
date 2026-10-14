@@ -213,7 +213,7 @@
     <div class="sh-label">DELIVER VIA</div>
     <div class="chanrow">
       <button class="chan on" data-ch="email">✉ Email</button>
-      <button class="chan" data-ch="slack">✳ Slack</button>
+      <button class="chan on" data-ch="iphone">📱 iPhone</button>
       <button class="chan on" data-ch="wa">⧉ WhatsApp</button>
     </div>
     <div class="quiet">Quiet hours 9 PM – 8 AM (from Side Gig) · <u>Override</u></div>
@@ -243,12 +243,12 @@
 /* ---------- data ---------- */
 const CTX = {work:{name:"Work",cls:"work"}, gig:{name:"Side Gig",cls:"gig"}, social:{name:"Social",cls:"social"}};
 let reminders = [
- {id:1, title:"Prep talking points for standup", ctx:"work", due:"9:00 AM", over:true,  ch:"✳", section:"overdue"},
+ {id:1, title:"Prep talking points for standup", ctx:"work", due:"9:00 AM", over:true,  ch:"📱", section:"overdue"},
  {id:2, title:"Ship mug order to Portland", ctx:"gig", due:"in 2h", ch:"✉ ⧉", order:true, section:"today"},
- {id:3, title:"Send Q3 capacity plan to Priya", ctx:"work", due:"4:00 PM", ch:"✳", section:"today", warn:true},
+ {id:3, title:"Send Q3 capacity plan to Priya", ctx:"work", due:"4:00 PM", ch:"📱", section:"today", warn:true},
  {id:4, title:"Call Mom re: weekend plans", ctx:"social", due:"7:30 PM", ch:"⧉", section:"today"},
  {id:5, title:"Restock kraft mailers", ctx:"gig", due:"Tomorrow", ch:"✉", section:"upcoming"},
- {id:6, title:"1:1 agenda for Marcus", ctx:"work", due:"Tue 10 AM", ch:"✳", section:"upcoming"},
+ {id:6, title:"1:1 agenda for Marcus", ctx:"work", due:"Tue 10 AM", ch:"📱", section:"upcoming"},
  {id:7, title:"RSVP to Dana's party", ctx:"social", due:"Wed", ch:"⧉", section:"upcoming"},
  {id:8, title:"Sticker order · Etsy #1038 · Ben K.", ctx:"gig", due:"ship by Fri", ch:"✉", order:true, section:"today"},
 ];
@@ -357,14 +357,14 @@ function renderSettings(){
   main.innerHTML = `
   <div class="section-h"><span>Contexts</span></div>
   <div class="card set-group">
-    <div class="set-row"><span><span class="dot work" style="display:inline-block;margin-right:8px"></span>Work</span><span class="v">Slack · quiet 7p–8a ›</span></div>
+    <div class="set-row"><span><span class="dot work" style="display:inline-block;margin-right:8px"></span>Work</span><span class="v">iPhone · quiet 7p–8a ›</span></div>
     <div class="set-row"><span><span class="dot gig" style="display:inline-block;margin-right:8px"></span>Side Gig</span><span class="v">Email · quiet 9p–8a ›</span></div>
     <div class="set-row"><span><span class="dot social" style="display:inline-block;margin-right:8px"></span>Social</span><span class="v">WhatsApp ›</span></div>
   </div>
   <div class="section-h"><span>Channels</span></div>
   <div class="card set-group">
     <div class="set-row"><span>✉ Email</span><span class="v" style="color:var(--social)">Connected ✓</span></div>
-    <div class="set-row"><span>✳ Slack</span><span class="v" style="color:var(--social)">Connected ✓</span></div>
+    <div class="set-row"><span>📱 iPhone notifications</span><span class="v" style="color:var(--social)">On ✓</span></div>
     <div class="set-row"><span>⧉ WhatsApp</span><span class="v">14 msgs this month ›</span></div>
   </div>
   <div class="section-h"><span>API &amp; Agents</span></div>
@@ -453,7 +453,7 @@ function parseQA(text){
   const t = text.toLowerCase();
   const cm = t.match(/#(work|gig|sidegig|social)/); if(cm){ ctx = cm[1]==="sidegig"?"gig":cm[1]; }
   if(/#order/.test(t)) order = true;
-  (t.match(/@(email|slack|whatsapp)/g)||[]).forEach(m=>chans.push(m.slice(1)));
+  (t.match(/@(email|iphone|whatsapp)/g)||[]).forEach(m=>chans.push(m.slice(1)));
   const dm = t.match(/\b(today|tomorrow|tonight|sun|mon|tue|wed|thu|fri|sat)\b(\s+(\d{1,2})(:(\d{2}))?\s*(am|pm)?)?/);
   if(dm){
     let label = dm[1][0].toUpperCase()+dm[1].slice(1);
@@ -463,7 +463,7 @@ function parseQA(text){
   if(due) chips.push({t:"⏰ "+due});
   if(ctx) chips.push({t:"● "+CTX[ctx].name, cls:"ctx-"+ctx});
   if(order) chips.push({t:"🚚 Order"});
-  chans.forEach(c=>chips.push({t:{email:"✉ Email",slack:"✳ Slack",whatsapp:"⧉ WhatsApp"}[c]}));
+  chans.forEach(c=>chips.push({t:{email:"✉ Email",iphone:"📱 iPhone",whatsapp:"⧉ WhatsApp"}[c]}));
   return {chips, ctx, order, due, chans};
 }
 const qaInput = $("#qaInput"), qaChips = $("#qaChips"), qaHint = $("#qaHint");
@@ -480,7 +480,7 @@ qaInput.addEventListener("keydown", e=>{
   let title = qaInput.value.replace(/#\w+|@\w+/g,"").replace(/\s+/g," ").trim();
   title = title[0] ? title[0].toUpperCase()+title.slice(1) : "New reminder";
   reminders.unshift({ id:Date.now(), title, ctx: p.ctx || (activeCtx!=="all"?activeCtx:"gig"),
-    due: p.due || "Today", ch: p.chans.length? p.chans.map(c=>({email:"✉",slack:"✳",whatsapp:"⧉"}[c])).join(" ") : "✉",
+    due: p.due || "Today", ch: p.chans.length? p.chans.map(c=>({email:"✉",iphone:"📱",whatsapp:"⧉"}[c])).join(" ") : "✉",
     order: p.order, section:"today" });
   qaInput.value=""; qaChips.style.display="none"; haptic(); render();
   if(p.order) toast("Added ✓ — add order details?", "Open →", ()=>{ openSheet(reminders[0].id); $("#toast").classList.remove("show"); });

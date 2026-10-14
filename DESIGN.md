@@ -1,6 +1,6 @@
-# ezyReminder — Design Spec (native-feel webapp)
+# ezyReminder — Design Spec (web + Flutter iOS)
 
-Companion to PLAN.md §5. This is the buildable spec: tokens, components, and screen-by-screen behavior. A clickable prototype lives at `design/prototype.html` — open it in a browser (narrow window or phone) to feel the interactions.
+Companion to PLAN.md §5. This is the buildable spec: tokens, components, and screen-by-screen behavior. **It applies to both clients**: the Next.js web app and the Flutter iOS app (MOBILE.md §2) render from the same tokens. The Flutter mappings are `BoxShadow` for the shadows, `Cubic(0.32, 0.72, 0, 1)` for the sheet curve, `DraggableScrollableSheet` for the sheet, and `HapticFeedback` in place of `navigator.vibrate`. A clickable prototype lives at `design/prototype.html` — open it in a browser (narrow window or phone) to feel the interactions.
 
 ## 1. Design goals
 
@@ -86,7 +86,7 @@ Sections in order, each a rounded `surface` card of rows:
 - Left: completion ring (context color outline → filled on complete).
 - Title 17/600, one line, ellipsized.
 - Second line 13px `text-2`: relative due ("in 2h", "Tue 6pm", red "2h overdue") · context name.
-- Right meta: 🚚 if order, channel glyphs (✉ ✳ ⧉ = email/Slack/WhatsApp) at 40% opacity.
+- Right meta: 🚚 if order, channel glyphs (📱 ✉ ⧉ = iPhone notification/email/WhatsApp) at 40% opacity.
 
 **Row gestures:**
 - Tap row → detail sheet (§4.2).
@@ -104,7 +104,7 @@ Half-height sheet, drag handle, drag up for full height, drag down or scrim-tap 
 Title (inline-editable, 20/600)
 [● Side Gig ▾]  [Tue 6:00 PM ▾]  [Repeat: off ▾]
 Notes… (grows)
-DELIVER VIA   ✉ Email [on]  ✳ Slack [off]  ⧉ WhatsApp [on]
+DELIVER VIA   📱 iPhone [on]  ✉ Email [on]  ⧉ WhatsApp [off]
               Quiet hours: 9pm–8am (from context) · Override ↗
 🚚 THIS IS AN ORDER  [toggle]
    ┌ order panel (slides open when on) ─────────┐
@@ -163,7 +163,7 @@ SHIPPED THIS WEEK (2)  — collapsed
 Search field (filters as you type) + the full list grouped by context, including items with no due date ("Someday" group per context). Same row component everywhere.
 
 ### 4.5 Settings (gear)
-Grouped iOS-style table: **Contexts** (rename, color, default channel, quiet hours per context), **Channels** (connect email/Slack/WhatsApp, test-send button, monthly WhatsApp count), **API & Agents** (API keys list, create key with scopes, MCP setup snippet, per-agent activity log), **Appearance** (system/light/dark), **Account** (email, sign out).
+Grouped iOS-style table: **Contexts** (rename, color, default channel, quiet hours per context), **Channels** (iPhone notifications status per device, email, WhatsApp later; test-send button), **API & Agents** (API keys list, create key with scopes, MCP setup snippet, per-agent activity log), **Appearance** (system/light/dark), **Account** (email, sign out).
 
 ## 5. Key flows
 
@@ -180,7 +180,7 @@ The docked quick-add bar is a **trigger, not a text field** — tapping anywhere
 
 ### 5.2 Delivery transparency
 - Row meta shows channel glyphs; after a send, glyph gets a subtle ✓ underdot; on failure an amber ⚠ badge appears on the row → tap opens the notification log for that reminder (attempt times, error, **Retry now**).
-- iOS push (installed PWA) mirrors deliveries as local notifications when available — bonus, never the only channel.
+- iPhone notifications come from the Flutter app (local + APNs, MOBILE.md §3); email is the fallback so a reminder is never iPhone-only.
 
 ### 5.3 Agent activity
 Reminders created by agents show a tiny ✦ before the context name ("✦ via claude-cowork" in the detail sheet). Settings → API & Agents lists recent agent actions. No approval friction by default; a per-key "require confirmation for deletes" toggle exists.

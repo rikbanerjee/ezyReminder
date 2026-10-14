@@ -1,38 +1,93 @@
-# ezyReminder — iOS/Android Strategy (no Swift/Kotlin rewrite)
+# ezyReminder — iOS/Android Strategy
 
-Goal: the webapp should feel native on iOS (and Android) without a rewrite. Two stages — ship Stage 1 with the webapp; adopt Stage 2 only if App Store presence or deeper native hooks become worth it.
+**Decided 2026-10:** native iOS app in **Flutter**, alongside the existing Next.js web app. Android comes later from the same Flutter project. This replaces the earlier "PWA → Capacitor wrapper" plan.
 
-## Stage 1: PWA (ships with the webapp, ~1–2 days)
+## 1. Why Flutter (and not Capacitor or SwiftUI)
 
-Next.js already supports everything needed:
+- **Capacitor** wraps the web UI. It's cheap, but it doesn't give native-feeling rendering, and an App Store app that's mostly a website risks rejection under guideline 4.2.
+- **SwiftUI** gives the best iOS fidelity (Liquid Glass, system sheets, Foundation Models without a bridge). But Android would then be a third UI in Kotlin, alongside web and iOS.
+- **Flutter** draws every pixel itself, so it can match `design/prototype.html` exactly (custom tokens, shadows, Apple's sheet curve). It ships iOS now and Android later from one codebase. The only Swift needed is a few thin native targets (§5).
 
-1. **Web App Manifest** (`app/manifest.ts`): name, icons (180/192/512px + maskable), `display: "standalone"`, theme color per light/dark. Installed via Safari → Share → **Add to Home Screen**; runs full-screen with no browser chrome.
-2. **Service worker** (`@serwist/next`): cache app shell + last-fetched reminders → instant launch and read-only offline; queue writes with Background Sync when back online.
-3. **Web Push on iOS** (16.4+): works **only when installed to Home Screen**. Use it as a bonus layer — email/Slack/WhatsApp remain the guaranteed channels, so push being best-effort costs nothing.
-4. **Native-feel details** (cheap, high impact):
-   - `viewport-fit=cover` + safe-area insets (notch/home bar)
-   - `-webkit-tap-highlight-color: transparent`, `overscroll-behavior: none`
-   - bottom-sheet detail view (thumb-reachable), 44px touch targets
-   - `share_target` in manifest → ezyReminder appears in the iOS Share Sheet (share an Etsy order page straight into a Side Gig reminder)
-   - App shortcuts in manifest: "New reminder", "Ship Queue"
-5. **Install nudge:** small dismissible banner on iOS Safari explaining Add to Home Screen (Apple provides no install prompt API).
+Apple doesn't reject apps for using Flutter. The real App Review risks are listed in §7.
 
-**Limitations to accept:** no App Store listing, push requires install, no Siri/widgets.
+## 2. Two clients, one backend
 
-## Stage 2: Capacitor wrapper (optional, ~2–3 days, still zero rewrite)
+```
+             Supabase (Postgres + RLS + RPCs + Realtime + sweep)
+              ▲                                       ▲
+   Flutter iOS app (mobile/)                 Next.js web app (any browser,
+   (Android later)                           incl. iPhone Safari)
+              └────────── same DESIGN.md tokens ──────┘
+```
 
-[Capacitor](https://capacitorjs.com) wraps the *same* Next.js app in a real native shell — the web code stays the single source of truth.
+- **Same data:** both clients use Supabase directly under RLS (`supabase_flutter` / `@supabase/ssr`), with one login and one set of reminders. A reminder created on the iPhone app shows up in the browser, and the other way round.
+- **Same behaviour:** multi-step writes move out of Next.js server actions (`app/actions.ts`) into **Postgres RPC functions** that both clients call: `create_reminder` (reminder + order rows), `mark_shipped`, `create_follow_up`, `add_shopping_item` (position counter). Simple single-row CRUD stays a direct table call. Anything needing secrets (e.g. `retryNotification`) becomes an edge function. The REST API and MCP server (PLAN.md §4.3) reuse the same RPCs.
+- **Live sync:** both clients subscribe to Supabase Realtime on `reminders`, `orders` and `shopping_items`, and refetch on focus. An edit made on one device appears on the other without a reload.
+- **Conflicts: last edit wins** (decided 2026-10). An `updated_at` precondition can be added later if this ever bites.
+- **Same look:** a single `design/tokens.json` (colors, shadows, radii, type scale, motion) generates both `app/globals.css` variables and the Flutter `ThemeExtension`. Change a token once and both clients follow.
+- **Same dates:** due times are stored in UTC and rendered in `user_settings.timezone`. The Dart port of `lib/dates.ts` must pass the same shared test fixtures, so "in 2h" and "Tue 6pm" read identically on both clients.
+- **One link, both places:** `/r/<id>` opens a single reminder. With universal links (`/.well-known/apple-app-site-association`) it opens the iOS app when installed, otherwise the web page. Email notifications link there too.
 
-- **What it adds:** App Store + Play Store listing, reliable APNs/FCM push (no install caveat), badge counts, haptics, local notifications that fire offline, future Siri Shortcut / widget plugins.
-- **How:** `npx cap add ios android`; point Capacitor at the deployed web URL (server-rendered mode) or a static export; add `@capacitor/push-notifications` + `@capacitor/local-notifications`; write once, both platforms.
-- **Cost:** Apple Developer account ($99/yr), App Store review, Xcode builds (automatable with GitHub Actions + fastlane). Swift/Kotlin exposure is limited to a few generated lines you never touch.
+## 3. Notifications: hybrid local + APNs, email fallback
 
-## Decision rule
+Slack was removed 2026-10. Channels are now **iOS notifications** plus **email** (Resend) as the fallback. WhatsApp remains a v1.5 stub.
 
-| Trigger | Move |
-|---|---|
-| Just you + a few users, channels doing the notifying | Stay Stage 1 (PWA) |
-| Want App Store presence, reliable native push, or badge counts | Add Stage 2 (Capacitor) |
-| Ever need deep Siri/widgets/Watch | Re-evaluate; still likely Capacitor plugins before any rewrite |
+| Path | Covers | How |
+|---|---|---|
+| **Local** (on-device) | Reminders the phone knows about, including while offline | `flutter_local_notifications`. The app reschedules on launch, on Realtime changes and on background refresh. iOS allows at most 64 pending, so schedule the soonest 64. |
+| **APNs** (server push) | Reminders created or edited on the web, or anything the phone hasn't synced yet | A new `apns` channel adapter in `lib/integrations/apns/`, called by the existing minute sweep. ES256 JWT signed with WebCrypto (stays Node-free like the other adapters). A `device_tokens` table, with RLS, stores tokens. |
+| **Email** | Web-only users; fallback when push fails or there's no device | Existing Resend adapter. |
 
-Either way, 100% of product code remains the Next.js webapp.
+**Deduplication (a reminder notifies once):**
+- When the app schedules a local notification, it records an ack (`reminder_id`, `due_at` version, device) in a `local_schedules` table.
+- The sweep skips the APNs send for a reminder whose current `due_at` has a live local ack from that device.
+- Any edit changes `due_at`/`updated_at`, which invalidates the ack. The phone reschedules on its next sync; if it hasn't synced by due time, APNs covers it.
+- The notification identifier is the reminder id, so if both paths ever fire, iOS replaces one with the other rather than showing two.
+
+**Other rules:**
+- Quiet hours are enforced by the server sweep for APNs and email, and by the app when scheduling local notifications (same `lib/quiet-hours.ts` logic, ported to Dart with shared fixtures).
+- Actionable notifications offer **Done** and **Snooze 1h**, using `UNNotificationCategory` via the plugin.
+- Asking for push permission must come from a user gesture, and the app must work fine if it's declined (email still fires).
+
+## 4. On-device AI: Apple Foundation Models (planned)
+
+- **Uses:** prefilling the create sheet from free text ("ship Sarah's Etsy order by Fri" → context, due, `is_order`, recipient, ship-by); extracting order fields in the Share Extension; suggesting a context or channel; a short daily summary.
+- **Constraints:** Swift-only API, iOS 26+, Apple Intelligence devices only (iPhone 15 Pro and later), a ~4K-token context window. Good at extraction and classification, not world knowledge.
+- **Shape:**
+  - A Pigeon bridge with one entry point. Dart sends the text and the user's contexts; Swift runs a `LanguageModelSession` with a `@Generable ReminderDraft` and returns JSON.
+  - In Dart, a `ReminderDraftParser` interface with three implementations: `AppleFoundationModelsParser`, `GeminiNanoParser` (Android, later) and `RuleBasedParser` (a port of `lib/parse/quick-add.ts`, used as the fallback everywhere).
+  - Pick the implementation at runtime based on model availability.
+  - The Foundation Models code lives in a shared Swift package linked by the Runner, Share Extension and widget targets.
+- **AI never saves on its own.** It fills the sheet; the user taps save (`created_by: 'ui'`). On-device processing also avoids App Review's third-party-AI data-sharing consent requirement.
+
+## 5. Swift targets (thin, data bridged via an App Group)
+
+- **Share Extension:** replaces the PWA `share_target`. A shared URL or text prefills a new reminder (`receive_sharing_intent`).
+- **WidgetKit widget:** Today and Ship Queue (`home_widget`).
+- **Later:** App Intents for Siri, and Live Activities for ship-by countdowns.
+
+## 6. Build order
+
+1. **Backend groundwork** (helps the web app too): server actions → Postgres RPCs; Realtime on the web; `design/tokens.json` with CSS generation; `/r/<id>` route.
+2. **Flutter spike (1–2 days):** Today screen and reminder sheet against real Supabase data, run on device next to the PWA. Go/no-go on feel before committing further.
+3. **Scaffold properly:** `mobile/` project, theme from tokens, auth (magic link via universal link, Google via `signInWithIdToken`, **Sign in with Apple**), demo reviewer account.
+4. **Port the screens:** Today, reminder sheet (Order/Work/Side Gig panels), DateTimePicker, Shopping checklist, Ship Queue, All, Settings (including **Delete account**), Onboarding.
+5. **Notifications:** local scheduling, then `device_tokens` + `local_schedules` + the APNs adapter, then actionable categories.
+6. **Share Extension and widget.**
+7. **TestFlight**, then App Store submission (§7 checklist).
+8. **Later:** Foundation Models bridge (§4); then Android (FCM adapter, Play Store, Gemini Nano parser).
+
+## 7. App Review checklist (bake in from day one)
+
+- [ ] Sign in with Apple, since Google login is offered (4.8)
+- [ ] Demo account with a password for reviewers, because magic links can't reach them (2.1)
+- [ ] In-app account deletion, backed by an edge function (5.1.1(v))
+- [ ] `PrivacyInfo.xcprivacy` present for the app and all plugins; privacy nutrition labels accurate
+- [ ] App works fully with push declined; no marketing pushes (4.5.4)
+- [ ] No over-the-air code updates (2.5.2)
+- [ ] Built with a current Xcode and iOS SDK
+- [ ] If paid features ever ship in-app, they use Apple's in-app purchase (3.1)
+
+## 8. Web app (stays)
+
+The Next.js PWA remains the browser client: manifest, serwist, share_target and the install nudge all stay. Web Push (`WEB_PUSH_PROMPT.md`) is **on hold**: its Slack-related instructions are obsolete, so revisit it only if browser-only users need push. For now, browser users get email and iPhone users get the native app.
