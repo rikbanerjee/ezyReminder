@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Script from "next/script";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
+import { currentAuthReturnPath } from "@/lib/auth-redirect";
 
 // Minimal shape of the `window.google` Identity Services API we use —
 // no official types package for this (it's a plain <script>, not an npm
@@ -66,7 +67,7 @@ export function GoogleNativeButton() {
         return;
       }
 
-      router.push("/");
+      router.replace(currentAuthReturnPath());
     }
 
     function tryRender() {

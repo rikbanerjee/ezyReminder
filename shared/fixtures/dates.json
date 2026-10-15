@@ -1,0 +1,297 @@
+[
+  {
+    "name": "New York: due now is today and exact minute remains visible",
+    "timeZone": "America/New_York",
+    "now": "2026-10-14T12:00:00.000Z",
+    "cases": [
+      {
+        "fn": "bucketFor",
+        "due": "2026-10-14T12:00:00.000Z",
+        "expected": "today"
+      },
+      {
+        "fn": "bucketFor",
+        "due": "2026-10-15T04:00:00.000Z",
+        "expected": "upcoming"
+      },
+      {
+        "fn": "bucketFor",
+        "due": "2026-10-15T04:00:00.001Z",
+        "expected": "upcoming"
+      },
+      {
+        "fn": "bucketFor",
+        "due": null,
+        "expected": "nodate"
+      },
+      {
+        "fn": "relativeDue",
+        "due": "2026-10-14T12:04:00.000Z",
+        "expected": "in 4m"
+      },
+      {
+        "fn": "relativeDue",
+        "due": "2026-10-14T12:04:30.000Z",
+        "expected": "in 5m"
+      },
+      {
+        "fn": "relativeDue",
+        "due": "2026-10-14T14:00:00.000Z",
+        "expected": "in 2h"
+      },
+      {
+        "fn": "relativeDue",
+        "due": "2026-10-15T13:00:00.000Z",
+        "expected": "Tomorrow 9 AM"
+      },
+      {
+        "fn": "relativeDue",
+        "due": null,
+        "expected": ""
+      },
+      {
+        "fn": "snoozeTarget",
+        "preset": "1h",
+        "expected": "2026-10-14T13:00:00.000Z"
+      },
+      {
+        "fn": "snoozeTarget",
+        "preset": "tonight",
+        "expected": "2026-10-14T23:00:00.000Z"
+      },
+      {
+        "fn": "snoozeTarget",
+        "preset": "tomorrow",
+        "expected": "2026-10-15T13:00:00.000Z"
+      },
+      {
+        "fn": "snoozeTarget",
+        "preset": "nextweek",
+        "expected": "2026-10-21T13:00:00.000Z"
+      }
+    ]
+  },
+  {
+    "name": "Los Angeles: local midnight boundaries",
+    "timeZone": "America/Los_Angeles",
+    "now": "2026-10-14T06:30:00.000Z",
+    "cases": [
+      {
+        "fn": "bucketFor",
+        "due": "2026-10-14T06:29:59.999Z",
+        "expected": "overdue"
+      },
+      {
+        "fn": "bucketFor",
+        "due": "2026-10-14T06:30:00.000Z",
+        "expected": "today"
+      },
+      {
+        "fn": "bucketFor",
+        "due": "2026-10-14T07:00:00.000Z",
+        "expected": "upcoming"
+      },
+      {
+        "fn": "bucketFor",
+        "due": "2026-10-14T07:00:00.001Z",
+        "expected": "upcoming"
+      },
+      {
+        "fn": "relativeDue",
+        "due": "2026-10-14T07:00:00.000Z",
+        "expected": "in 30m"
+      },
+      {
+        "fn": "relativeDue",
+        "due": "2026-10-15T07:00:00.000Z",
+        "expected": "Thu 12 AM"
+      },
+      {
+        "fn": "snoozeTarget",
+        "preset": "tomorrow",
+        "expected": "2026-10-14T16:00:00.000Z"
+      }
+    ]
+  },
+  {
+    "name": "London: winter date rendering and snooze",
+    "timeZone": "Europe/London",
+    "now": "2026-01-10T10:00:00.000Z",
+    "cases": [
+      {
+        "fn": "bucketFor",
+        "due": "2026-01-10T23:59:59.999Z",
+        "expected": "today"
+      },
+      {
+        "fn": "bucketFor",
+        "due": "2026-01-11T00:00:00.000Z",
+        "expected": "upcoming"
+      },
+      {
+        "fn": "relativeDue",
+        "due": "2026-01-10T10:05:00.000Z",
+        "expected": "in 5m"
+      },
+      {
+        "fn": "relativeDue",
+        "due": "2026-01-11T09:00:00.000Z",
+        "expected": "Tomorrow 9 AM"
+      },
+      {
+        "fn": "snoozeTarget",
+        "preset": "tonight",
+        "expected": "2026-01-10T19:00:00.000Z"
+      }
+    ]
+  },
+  {
+    "name": "Tokyo: local calendar semantics",
+    "timeZone": "Asia/Tokyo",
+    "now": "2026-10-14T15:30:00.000Z",
+    "cases": [
+      {
+        "fn": "bucketFor",
+        "due": "2026-10-15T14:59:59.999Z",
+        "expected": "today"
+      },
+      {
+        "fn": "bucketFor",
+        "due": "2026-10-15T15:00:00.000Z",
+        "expected": "upcoming"
+      },
+      {
+        "fn": "relativeDue",
+        "due": "2026-10-14T16:00:00.000Z",
+        "expected": "in 30m"
+      },
+      {
+        "fn": "snoozeTarget",
+        "preset": "tomorrow",
+        "expected": "2026-10-16T00:00:00.000Z"
+      }
+    ]
+  },
+  {
+    "name": "Los Angeles spring-forward snooze preserves local wall time",
+    "timeZone": "America/Los_Angeles",
+    "now": "2026-03-07T17:00:00.000Z",
+    "cases": [
+      {
+        "fn": "snoozeTarget",
+        "preset": "tomorrow",
+        "expected": "2026-03-08T16:00:00.000Z"
+      },
+      {
+        "fn": "snoozeTarget",
+        "preset": "nextweek",
+        "expected": "2026-03-14T16:00:00.000Z"
+      }
+    ]
+  },
+  {
+    "name": "London fall-back snooze preserves local wall time",
+    "timeZone": "Europe/London",
+    "now": "2026-10-24T08:00:00.000Z",
+    "cases": [
+      {
+        "fn": "snoozeTarget",
+        "preset": "tomorrow",
+        "expected": "2026-10-25T09:00:00.000Z"
+      },
+      {
+        "fn": "snoozeTarget",
+        "preset": "nextweek",
+        "expected": "2026-10-31T09:00:00.000Z"
+      }
+    ]
+  },
+  {
+    "name": "New York: relative labels and after-hours snooze",
+    "timeZone": "America/New_York",
+    "now": "2026-10-14T04:00:00.000Z",
+    "cases": [
+      {
+        "fn": "relativeDue",
+        "due": "2026-10-13T16:00:00.000Z",
+        "expected": "Yesterday 12 PM"
+      },
+      {
+        "fn": "relativeDue",
+        "due": "2026-10-16T13:00:00.000Z",
+        "expected": "Fri 9 AM"
+      },
+      {
+        "fn": "relativeDue",
+        "due": "2026-10-22T13:00:00.000Z",
+        "expected": "Oct 22 9 AM"
+      },
+      {
+        "fn": "relativeDue",
+        "due": "2026-10-15T03:29:00.000Z",
+        "expected": "in 23h"
+      },
+      {
+        "fn": "relativeDue",
+        "due": "2026-10-15T03:30:00.000Z",
+        "expected": "in 24h"
+      }
+    ]
+  },
+  {
+    "name": "New York: due-today near midnight",
+    "timeZone": "America/New_York",
+    "now": "2026-10-14T03:50:00.000Z",
+    "cases": [
+      {
+        "fn": "bucketFor",
+        "due": "2026-10-14T03:59:00.000Z",
+        "expected": "today"
+      },
+      {
+        "fn": "relativeDue",
+        "due": "2026-10-14T03:59:00.000Z",
+        "expected": "in 9m"
+      },
+      {
+        "fn": "bucketFor",
+        "due": "2026-10-14T04:00:00.000Z",
+        "expected": "upcoming"
+      }
+    ]
+  },
+  {
+    "name": "Los Angeles: due-today near midnight",
+    "timeZone": "America/Los_Angeles",
+    "now": "2026-10-14T06:50:00.000Z",
+    "cases": [
+      {
+        "fn": "bucketFor",
+        "due": "2026-10-14T06:59:00.000Z",
+        "expected": "today"
+      },
+      {
+        "fn": "relativeDue",
+        "due": "2026-10-14T06:59:00.000Z",
+        "expected": "in 9m"
+      },
+      {
+        "fn": "bucketFor",
+        "due": "2026-10-14T07:00:00.000Z",
+        "expected": "upcoming"
+      }
+    ]
+  },
+  {
+    "name": "New York: tonight snooze after 19:00",
+    "timeZone": "America/New_York",
+    "now": "2026-10-15T00:30:00.000Z",
+    "cases": [
+      {
+        "fn": "snoozeTarget",
+        "preset": "tonight",
+        "expected": "2026-10-15T23:00:00.000Z"
+      }
+    ]
+  }
+]

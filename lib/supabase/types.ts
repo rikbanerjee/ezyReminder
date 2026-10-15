@@ -8,7 +8,11 @@
  * server.ts don't need to change.
  */
 
-export type Channel = "email" | "whatsapp";
+/** Delivery channels supported by the database. */
+export type Channel = "email" | "whatsapp" | "apns";
+export type DeliveryChannel = Channel;
+export type DeviceTokenEnvironment = "sandbox" | "production";
+export type DeviceTokenPlatform = "ios";
 export type ReminderStatus = "open" | "done" | "snoozed" | "cancelled";
 export type NotificationStatus = "pending" | "sending" | "sent" | "failed" | "retrying";
 export type CreatedBy = "ui" | "api" | `agent:${string}`;
@@ -23,7 +27,7 @@ export interface Database {
           name: string;
           slug: string;
           color: string;
-          default_channel: Channel;
+          default_channel: DeliveryChannel;
           quiet_hours: Record<string, unknown>;
           created_at: string;
           updated_at: string;
@@ -34,7 +38,7 @@ export interface Database {
           name: string;
           slug: string;
           color: string;
-          default_channel: Channel;
+          default_channel: DeliveryChannel;
           quiet_hours?: Record<string, unknown>;
           created_at?: string;
           updated_at?: string;
@@ -51,7 +55,7 @@ export interface Database {
           notes: string | null;
           due_at: string | null;
           recurrence: string | null;
-          channels: Channel[];
+          channels: DeliveryChannel[];
           status: ReminderStatus;
           snoozed_until: string | null;
           tags: string[];
@@ -68,7 +72,7 @@ export interface Database {
           notes?: string | null;
           due_at?: string | null;
           recurrence?: string | null;
-          channels?: Channel[];
+          channels?: DeliveryChannel[];
           status?: ReminderStatus;
           snoozed_until?: string | null;
           tags?: string[];
@@ -133,7 +137,7 @@ export interface Database {
           id: string;
           user_id: string;
           reminder_id: string;
-          channel: Channel;
+          channel: DeliveryChannel;
           scheduled_for: string;
           sent_at: string | null;
           status: NotificationStatus;
@@ -147,7 +151,7 @@ export interface Database {
           id?: string;
           user_id: string;
           reminder_id: string;
-          channel: Channel;
+          channel: DeliveryChannel;
           scheduled_for: string;
           sent_at?: string | null;
           status?: NotificationStatus;
@@ -298,6 +302,65 @@ export interface Database {
           }
         ];
       };
+      device_tokens: {
+        Row: {
+          id: string;
+          user_id: string;
+          token: string;
+          platform: DeviceTokenPlatform;
+          environment: DeviceTokenEnvironment;
+          app_version: string | null;
+          last_seen_at: string;
+          disabled_at: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          token: string;
+          platform?: DeviceTokenPlatform;
+          environment: DeviceTokenEnvironment;
+          app_version?: string | null;
+          last_seen_at?: string;
+          disabled_at?: string | null;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["device_tokens"]["Insert"]>;
+        Relationships: [];
+      };
+      local_schedules: {
+        Row: {
+          user_id: string;
+          reminder_id: string;
+          device_token_id: string;
+          fire_at: string;
+          scheduled_at: string;
+        };
+        Insert: {
+          user_id: string;
+          reminder_id: string;
+          device_token_id: string;
+          fire_at: string;
+          scheduled_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["local_schedules"]["Insert"]>;
+        Relationships: [
+          {
+            foreignKeyName: "local_schedules_reminder_id_fkey";
+            columns: ["reminder_id"];
+            isOneToOne: false;
+            referencedRelation: "reminders";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "local_schedules_device_token_id_fkey";
+            columns: ["device_token_id"];
+            isOneToOne: false;
+            referencedRelation: "device_tokens";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
     };
     Views: Record<string, never>;
     Functions: {
@@ -308,6 +371,49 @@ export interface Database {
       enqueue_due_notifications: {
         Args: Record<string, never>;
         Returns: undefined;
+      };
+      create_reminder: {
+        Args: {
+          p_title: string;
+          p_notes: string | null;
+          p_due_at: string | null;
+          p_context_id: string;
+          p_channels: DeliveryChannel[];
+          p_is_order: boolean;
+          p_order_ref: string | null;
+          p_recipient_name: string | null;
+          p_ship_by: string | null;
+          p_carrier: string | null;
+        };
+        Returns: string;
+      };
+      update_reminder: {
+        Args: {
+          p_id: string;
+          p_title: string;
+          p_notes: string | null;
+          p_due_at: string | null;
+          p_context_id: string;
+          p_channels: DeliveryChannel[];
+          p_is_order: boolean;
+        };
+        Returns: string;
+      };
+      mark_shipped: {
+        Args: {
+          p_reminder_id: string;
+          p_tracking_number: string | null;
+          p_carrier: string | null;
+        };
+        Returns: string;
+      };
+      create_follow_up: {
+        Args: { p_reminder_id: string };
+        Returns: string;
+      };
+      add_shopping_item: {
+        Args: { p_reminder_id: string; p_label: string };
+        Returns: string;
       };
     };
   };

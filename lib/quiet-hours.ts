@@ -43,9 +43,46 @@ function localParts(date: Date, timeZone: string): { y: number; mo: number; d: n
 }
 
 /** Convert a local wall-clock date+time in `timeZone` to a UTC instant. */
-function localToUTC(y: number, mo: number, d: number, h: number, m: number, timeZone: string, near: Date): Date {
-  const offset = offsetMsForZone(near, timeZone);
-  return new Date(Date.UTC(y, mo - 1, d, h, m, 0) - offset);
+function localToUTC(y: number, mo: number, d: number, h: number, m: number, timeZone: string, after?: Date): Date {
+  const wallTime = Date.UTC(y, mo - 1, d, h, m, 0);
+  const offsets = new Set<number>();
+
+  // Collect both sides of any nearby offset transition. A single offset from
+  // `now` is insufficient when the target wall time is tomorrow across DST.
+  for (let hours = -48; hours <= 48; hours += 6) {
+    offsets.add(offsetMsForZone(new Date(wallTime + hours * 60 * 60 * 1000), timeZone));
+  }
+
+  const candidates = [...offsets].map((offset) => new Date(wallTime - offset));
+  const partsForWall = (date: Date) => localParts(date, timeZone);
+  const matches = candidates.filter((candidate) => {
+    const local = partsForWall(candidate);
+    return local.y === y && local.mo === mo && local.d === d && local.h === h && local.m === m;
+  });
+
+  // During fall-back, choose the first occurrence that is still in the future.
+  // If both have passed, nextAllowedTime advances to tomorrow's local date.
+  if (matches.length) {
+    const futureMatches = after ? matches.filter((candidate) => candidate.getTime() > after.getTime()) : matches;
+    const eligible = futureMatches.length ? futureMatches : matches;
+    return new Date(Math.min(...eligible.map((candidate) => candidate.getTime())));
+  }
+
+  // During spring-forward the wall time does not exist. Shift it forward by
+  // the DST gap, preserving its minutes (02:30 becomes 03:30, for example).
+  const afterGap = candidates
+    .map((candidate) => ({ candidate, local: partsForWall(candidate) }))
+    .filter(({ local }) => {
+      const localWallTime = Date.UTC(local.y, local.mo - 1, local.d, local.h, local.m);
+      return localWallTime > wallTime;
+    })
+    .sort((a, b) => {
+      const aWall = Date.UTC(a.local.y, a.local.mo - 1, a.local.d, a.local.h, a.local.m);
+      const bWall = Date.UTC(b.local.y, b.local.mo - 1, b.local.d, b.local.h, b.local.m);
+      return aWall - bWall || a.candidate.getTime() - b.candidate.getTime();
+    });
+
+  return afterGap[0]?.candidate ?? candidates[0] ?? new Date(wallTime);
 }
 
 function parseHM(hm: string): { h: number; m: number } {
@@ -84,7 +121,7 @@ export function nextAllowedTime(quietHours: QuietHours, timeZone: string, now: D
   if (candidate.getTime() <= now.getTime()) {
     // End time already passed today (local) — try tomorrow's local date.
     const tomorrow = new Date(Date.UTC(today.y, today.mo - 1, today.d + 1, 12));
-    candidate = localToUTC(tomorrow.getUTCFullYear(), tomorrow.getUTCMonth() + 1, tomorrow.getUTCDate(), end.h, end.m, timeZone, now);
+    candidate = localToUTC(tomorrow.getUTCFullYear(), tomorrow.getUTCMonth() + 1, tomorrow.getUTCDate(), end.h, end.m, timeZone);
   }
   return candidate;
 }

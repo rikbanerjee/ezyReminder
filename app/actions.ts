@@ -45,7 +45,7 @@ export async function createReminder(input: CreateReminderInput): Promise<Create
   const title = input.title.trim();
   if (!title) return { ok: false, error: "A reminder needs some text." };
 
-  const { supabase, user } = await requireUser();
+  const { supabase } = await requireUser();
 
   // Resolve the context: explicit id, else Side Gig / first.
   let contextId = input.contextId ?? null;
@@ -61,39 +61,25 @@ export async function createReminder(input: CreateReminderInput): Promise<Create
     contextId = (contexts.find((c) => c.slug === "sidegig") ?? contexts[0]).id;
   }
 
-  const { data: inserted, error } = await supabase
-    .from("reminders")
-    .insert({
-      user_id: user.id,
-      context_id: contextId,
-      title,
-      notes: input.notes ?? null,
-      due_at: input.dueAt,
-      channels: input.channels ?? [],
-      is_order: input.isOrder,
-      created_by: "ui",
-    })
-    .select("id")
-    .single();
-
+  const shipBy = input.order?.shipBy ?? (input.dueAt ? input.dueAt.slice(0, 10) : null);
+  const { data: id, error } = await supabase.rpc("create_reminder", {
+    p_title: title,
+    p_notes: input.notes ?? null,
+    p_due_at: input.dueAt,
+    p_context_id: contextId,
+    p_channels: input.channels ?? [],
+    p_is_order: input.isOrder,
+    p_order_ref: input.order?.orderRef ?? null,
+    p_recipient_name: input.order?.recipientName ?? null,
+    p_ship_by: shipBy,
+    p_carrier: input.order?.carrier ?? null,
+  });
   if (error) return { ok: false, error: error.message };
-
-  if (input.isOrder && inserted) {
-    const shipBy = input.order?.shipBy ?? (input.dueAt ? input.dueAt.slice(0, 10) : null);
-    const { error: orderErr } = await supabase.from("orders").insert({
-      reminder_id: inserted.id,
-      user_id: user.id,
-      order_ref: input.order?.orderRef ?? null,
-      recipient_name: input.order?.recipientName ?? null,
-      ship_by: shipBy,
-      carrier: input.order?.carrier ?? null,
-    });
-    if (orderErr) return { ok: false, error: orderErr.message };
-  }
+  if (!id) return { ok: false, error: "Reminder could not be created." };
 
   revalidatePath("/");
   revalidatePath("/ship-queue");
-  return { ok: true, id: inserted.id };
+  return { ok: true, id };
 }
 
 export async function completeReminder(id: string): Promise<ActionResult> {
@@ -152,39 +138,17 @@ export async function updateReminder(input: UpdateReminderInput): Promise<Action
   const title = input.title.trim();
   if (!title) return { ok: false, error: "A reminder needs some text." };
 
-  const { supabase, user } = await requireUser();
-
-  const { error } = await supabase
-    .from("reminders")
-    .update({
-      title,
-      notes: input.notes,
-      due_at: input.dueAt,
-      context_id: input.contextId,
-      channels: input.channels,
-      is_order: input.isOrder,
-    })
-    .eq("id", input.id);
+  const { supabase } = await requireUser();
+  const { error } = await supabase.rpc("update_reminder", {
+    p_id: input.id,
+    p_title: title,
+    p_notes: input.notes,
+    p_due_at: input.dueAt,
+    p_context_id: input.contextId,
+    p_channels: input.channels,
+    p_is_order: input.isOrder,
+  });
   if (error) return { ok: false, error: error.message };
-
-  if (input.isOrder) {
-    const { data: existing } = await supabase
-      .from("orders")
-      .select("reminder_id")
-      .eq("reminder_id", input.id)
-      .maybeSingle();
-    if (!existing) {
-      const shipBy = input.dueAt ? input.dueAt.slice(0, 10) : null;
-      const { error: orderErr } = await supabase.from("orders").insert({
-        reminder_id: input.id,
-        user_id: user.id,
-        ship_by: shipBy,
-      });
-      if (orderErr) return { ok: false, error: orderErr.message };
-    }
-  } else {
-    await supabase.from("orders").delete().eq("reminder_id", input.id);
-  }
 
   revalidatePath("/");
   revalidatePath("/ship-queue");
@@ -261,21 +225,12 @@ export async function updateSidegigDetails(input: UpdateSidegigDetailsInput): Pr
 export async function markShipped(reminderId: string, trackingNumber: string, carrier: string | null): Promise<ActionResult> {
   const { supabase } = await requireUser();
 
-  const { error: orderErr } = await supabase
-    .from("orders")
-    .update({
-      shipped_at: new Date().toISOString(),
-      tracking_number: trackingNumber || null,
-      carrier: carrier || null,
-    })
-    .eq("reminder_id", reminderId);
-  if (orderErr) return { ok: false, error: orderErr.message };
-
-  const { error: reminderErr } = await supabase
-    .from("reminders")
-    .update({ status: "done", snoozed_until: null })
-    .eq("id", reminderId);
-  if (reminderErr) return { ok: false, error: reminderErr.message };
+  const { error } = await supabase.rpc("mark_shipped", {
+    p_reminder_id: reminderId,
+    p_tracking_number: trackingNumber || null,
+    p_carrier: carrier || null,
+  });
+  if (error) return { ok: false, error: error.message };
 
   revalidatePath("/");
   revalidatePath("/ship-queue");
@@ -284,25 +239,8 @@ export async function markShipped(reminderId: string, trackingNumber: string, ca
 
 /** "+3d follow-up" toast action after marking an order shipped. */
 export async function createFollowUp(reminderId: string): Promise<ActionResult> {
-  const { supabase, user } = await requireUser();
-
-  const { data: reminder } = await supabase
-    .from("reminders")
-    .select("title, context_id")
-    .eq("id", reminderId)
-    .single();
-  if (!reminder) return { ok: false, error: "Reminder not found." };
-
-  const dueAt = new Date();
-  dueAt.setDate(dueAt.getDate() + 3);
-
-  const { error } = await supabase.from("reminders").insert({
-    user_id: user.id,
-    context_id: reminder.context_id,
-    title: `Follow up: ${reminder.title}`,
-    due_at: dueAt.toISOString(),
-    created_by: "ui",
-  });
+  const { supabase } = await requireUser();
+  const { error } = await supabase.rpc("create_follow_up", { p_reminder_id: reminderId });
   if (error) return { ok: false, error: error.message };
 
   revalidatePath("/");
@@ -316,27 +254,16 @@ export async function addShoppingItem(reminderId: string, label: string): Promis
   const trimmed = label.trim();
   if (!trimmed) return { ok: false, error: "Item needs some text." };
 
-  const { supabase, user } = await requireUser();
-
-  const { count } = await supabase
-    .from("shopping_items")
-    .select("id", { count: "exact", head: true })
-    .eq("reminder_id", reminderId);
-
-  const { data: inserted, error } = await supabase
-    .from("shopping_items")
-    .insert({
-      reminder_id: reminderId,
-      user_id: user.id,
-      label: trimmed,
-      position: count ?? 0,
-    })
-    .select("id")
-    .single();
+  const { supabase } = await requireUser();
+  const { data: id, error } = await supabase.rpc("add_shopping_item", {
+    p_reminder_id: reminderId,
+    p_label: trimmed,
+  });
   if (error) return { ok: false, error: error.message };
+  if (!id) return { ok: false, error: "Shopping item could not be added." };
 
   revalidatePath("/");
-  return { ok: true, id: inserted.id };
+  return { ok: true, id };
 }
 
 export async function toggleShoppingItem(itemId: string, checked: boolean): Promise<ActionResult> {

@@ -1,11 +1,13 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { updateTimezone, updateQuietHours } from "@/app/actions";
+import { createClient } from "@/lib/supabase/client";
 
 export interface SettingsContext {
   id: string;
@@ -24,7 +26,58 @@ export function SettingsView({ timezone, contexts }: SettingsViewProps) {
     <div className="flex flex-col gap-6">
       <TimezoneSection initialTimezone={timezone} />
       <QuietHoursSection contexts={contexts} />
+      <DeleteAccountSection />
     </div>
+  );
+}
+
+function DeleteAccountSection() {
+  const [confirmation, setConfirmation] = useState("");
+  const [pending, startTransition] = useTransition();
+  const router = useRouter();
+
+  function deleteAccount() {
+    if (confirmation !== "DELETE") return;
+
+    startTransition(async () => {
+      try {
+        const supabase = createClient();
+        const { error } = await supabase.functions.invoke("delete-account", { method: "POST" });
+
+        if (error) {
+          toast.error("Couldn't delete your account", { description: "Please try again." });
+          return;
+        }
+
+        await supabase.auth.signOut().catch(() => undefined);
+        router.replace("/login");
+        router.refresh();
+      } catch {
+        toast.error("Couldn't delete your account", { description: "Please try again." });
+      }
+    });
+  }
+
+  return (
+    <Section title="Delete account" description="Permanently delete your account and all associated reminders and data.">
+      <div className="flex flex-col items-start gap-3">
+        <Label htmlFor="delete-account-confirmation">Type DELETE to confirm</Label>
+        <Input
+          id="delete-account-confirmation"
+          autoComplete="off"
+          value={confirmation}
+          onChange={(event) => setConfirmation(event.target.value)}
+          className="max-w-[240px]"
+          aria-describedby="delete-account-help"
+        />
+        <p id="delete-account-help" className="text-[12px] text-text-2">
+          This action is permanent and cannot be undone.
+        </p>
+        <Button variant="destructive" disabled={pending || confirmation !== "DELETE"} onClick={deleteAccount}>
+          {pending ? "Deleting account…" : "Delete account"}
+        </Button>
+      </div>
+    </Section>
   );
 }
 

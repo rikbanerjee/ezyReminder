@@ -6,7 +6,12 @@
     "dev": "next dev --turbopack -p 3001",
     "build": "next build --turbopack",
     "start": "next start -p 3001",
-    "lint": "eslint"
+    "lint": "eslint",
+    "tokens": "node scripts/gen-tokens.mjs",
+    "test:shared": "node scripts/test-shared.mjs",
+    "test:ios-foundation": "node scripts/test-ios-foundation.mjs",
+    "test:edge": "node --test supabase/functions/delete-account/index.test.mjs",
+    "test:auth": "node --test lib/auth-redirect.test.ts"
   },
   "dependencies": {
     "@serwist/next": "^9.5.12",

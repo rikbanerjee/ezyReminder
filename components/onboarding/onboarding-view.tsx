@@ -7,14 +7,14 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { completeOnboarding } from "@/app/actions";
 
-export function OnboardingView({ email }: { email: string }) {
+export function OnboardingView({ email, continueTo = "/" }: { email: string; continueTo?: string }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
 
   function finish() {
     startTransition(async () => {
       await completeOnboarding();
-      router.push("/");
+      router.replace(continueTo);
     });
   }
 

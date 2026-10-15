@@ -62,14 +62,12 @@
 }
 
 :root {
-  /* DESIGN.md §2 — type stack */
-  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", Inter,
-    "Segoe UI", Roboto, sans-serif;
-
-  /* DESIGN.md §2 — light */
+  /* BEGIN GENERATED DESIGN TOKENS — scripts/gen-tokens.mjs */
+  /* Generated from design/tokens.json (light). */
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", Inter, "Segoe UI", Roboto, sans-serif;
   --background: #F7F6F3;
-  --foreground: #1A1A1A;
   --surface: #FFFFFF;
+  --foreground: #1A1A1A;
   --text-2: #8A8A8E;
   --hairline: #E5E4E0;
   --work: #3478F6;
@@ -77,11 +75,38 @@
   --social: #34C759;
   --shopping: #AF52DE;
   --danger: #FF3B30;
-
-  /* DESIGN.md §2 — shadows (light) */
   --shadow-card-value: 0 1px 3px rgba(0, 0, 0, 0.05);
   --shadow-sheet-value: 0 -8px 40px rgba(0, 0, 0, 0.18);
   --shadow-float-value: 0 4px 20px rgba(0, 0, 0, 0.12);
+  --scrim: rgba(0, 0, 0, 0.4);
+  --row-radius: 12px;
+  --sheet-radius: 20px;
+  --pill-radius: 999px;
+  --spacing-unit: 4px;
+  --screen-gutter: 16px;
+  --row-min-height: 52px;
+  --touch-target-min: 44px;
+  --motion-sheet: 300ms;
+  --motion-row-pop: 200ms;
+  --motion-row-collapse: 250ms;
+  --motion-context-crossfade: 150ms;
+  --sheet-curve: cubic-bezier(0.32, 0.72, 0, 1);
+  --row-pop-scale-start: 1;
+  --row-pop-scale-peak: 1.15;
+  --row-pop-scale-end: 1;
+  --scrim-opacity: 0.4;
+  --type-screen-title-size: 28px;
+  --type-screen-title-weight: 700;
+  --type-row-title-size: 17px;
+  --type-row-title-weight: 600;
+  --type-notes-preview-size: 15px;
+  --type-notes-preview-weight: 400;
+  --type-due-chip-size: 13px;
+  --type-due-chip-weight: 500;
+  --type-section-header-size: 13px;
+  --type-section-header-weight: 500;
+  --type-section-header-letter-spacing: 0.6px;
+  /* END GENERATED DESIGN TOKENS */
   /* Page backdrop behind the app "frame" on wide screens — see
      design/prototype.html body{background:#d7d5d0}. Deliberately distinct
      from --background so the frame reads as a contained app, not a
@@ -121,10 +146,11 @@
 }
 
 .dark {
-  /* DESIGN.md §2 — dark */
+  /* BEGIN GENERATED DESIGN TOKENS — scripts/gen-tokens.mjs */
+  /* Generated from design/tokens.json (dark). */
   --background: #111113;
-  --foreground: #F2F2F2;
   --surface: #1C1C1F;
+  --foreground: #F2F2F2;
   --text-2: #98989E;
   --hairline: #2C2C2E;
   --work: #4C8DFF;
@@ -132,11 +158,38 @@
   --social: #40D66B;
   --shopping: #BF5AF2;
   --danger: #FF453A;
-
-  /* DESIGN.md §2 — shadows (dark) */
   --shadow-card-value: 0 1px 3px rgba(0, 0, 0, 0.4);
   --shadow-sheet-value: 0 -8px 40px rgba(0, 0, 0, 0.5);
   --shadow-float-value: 0 4px 20px rgba(0, 0, 0, 0.45);
+  --scrim: rgba(0, 0, 0, 0.4);
+  --row-radius: 12px;
+  --sheet-radius: 20px;
+  --pill-radius: 999px;
+  --spacing-unit: 4px;
+  --screen-gutter: 16px;
+  --row-min-height: 52px;
+  --touch-target-min: 44px;
+  --motion-sheet: 300ms;
+  --motion-row-pop: 200ms;
+  --motion-row-collapse: 250ms;
+  --motion-context-crossfade: 150ms;
+  --sheet-curve: cubic-bezier(0.32, 0.72, 0, 1);
+  --row-pop-scale-start: 1;
+  --row-pop-scale-peak: 1.15;
+  --row-pop-scale-end: 1;
+  --scrim-opacity: 0.4;
+  --type-screen-title-size: 28px;
+  --type-screen-title-weight: 700;
+  --type-row-title-size: 17px;
+  --type-row-title-weight: 600;
+  --type-notes-preview-size: 15px;
+  --type-notes-preview-weight: 400;
+  --type-due-chip-size: 13px;
+  --type-due-chip-weight: 500;
+  --type-section-header-size: 13px;
+  --type-section-header-weight: 500;
+  --type-section-header-letter-spacing: 0.6px;
+  /* END GENERATED DESIGN TOKENS */
   /* prototype.html .dark-page{background:#000} */
   --page-backdrop: #000000;
 

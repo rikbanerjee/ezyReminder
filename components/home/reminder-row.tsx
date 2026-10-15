@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Check, Truck, AlarmClock, Trash2, Mail, MessageCircle, TriangleAlert, RotateCw } from "lucide-react";
+import { Check, Truck, AlarmClock, Trash2, Mail, MessageCircle, Smartphone, TriangleAlert, RotateCw } from "lucide-react";
 import { toast } from "sonner";
 import {
   completeReminder,
@@ -16,6 +16,7 @@ import type { Channel } from "@/lib/supabase/types";
 import { cn } from "@/lib/utils";
 
 const CHANNEL_ICON: Record<Channel, typeof Mail> = {
+  apns: Smartphone,
   email: Mail,
   whatsapp: MessageCircle,
 };
@@ -24,6 +25,7 @@ const CHANNEL_ICON: Record<Channel, typeof Mail> = {
 // icon color, not a flat gray fade) so the row's right-side meta reads at
 // a glance instead of blurring into one muted cluster.
 const CHANNEL_COLOR: Record<Channel, string> = {
+  apns: "text-work",
   email: "text-work",
   whatsapp: "text-social",
 };

@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { ChevronDown, Truck, ChevronRight, Search } from "lucide-react";
 import { QuickAdd } from "./quick-add";
 import { ReminderRow } from "./reminder-row";
@@ -22,6 +23,8 @@ interface HomeViewProps {
   showSearch?: boolean;
   /** Small text rendered at the end of the scrollable area, e.g. "Signed in as…". */
   footer?: string;
+  openReminderId?: string;
+  openReminder?: HomeReminder;
 }
 
 type SectionKey = Bucket;
@@ -50,7 +53,11 @@ export function HomeView({
   shipSoonCount,
   showSearch,
   footer,
+  openReminderId,
+  openReminder,
 }: HomeViewProps) {
+  const router = useRouter();
+  const openedId = useRef<string | null>(null);
   const [activeSlug, setActiveSlug] = useState<string | null>(null);
   const [showDone, setShowDone] = useState(false);
   const [selected, setSelected] = useState<HomeReminder | null>(null);
@@ -58,6 +65,25 @@ export function HomeView({
   const [creatingNew, setCreatingNew] = useState<string | null>(null);
   const [scrollToOrderPanel, setScrollToOrderPanel] = useState(false);
   const [query, setQuery] = useState("");
+
+  useEffect(() => {
+    if (!openReminderId) {
+      openedId.current = null;
+      return;
+    }
+    if (!openReminder || openReminder.id !== openReminderId || openedId.current === openReminderId) return;
+    openedId.current = openReminderId;
+    setSelected(openReminder);
+    setScrollToOrderPanel(false);
+  }, [openReminderId, openReminder]);
+
+  const closeSelected = () => {
+    setSelected(null);
+    if (typeof window !== "undefined" && new URLSearchParams(window.location.search).has("open")) {
+      // Remove the one-shot deep-link parameter so a later refresh cannot reopen a dismissed sheet.
+      router.replace("/", { scroll: false });
+    }
+  };
 
   const visible = useMemo(() => {
     const bySlug = activeSlug ? reminders.filter((r) => r.context?.slug === activeSlug) : reminders;
@@ -215,7 +241,7 @@ export function HomeView({
           reminder={selected}
           contexts={contexts}
           scrollToOrderPanel={scrollToOrderPanel}
-          onClose={() => setSelected(null)}
+          onClose={closeSelected}
         />
       )}
 

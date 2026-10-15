@@ -3,6 +3,7 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { RegisterServiceWorker } from "@/components/register-sw";
 import { InstallNudge } from "@/components/install-nudge";
+import { RealtimeRefresh } from "@/components/realtime-refresh";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -69,6 +70,7 @@ export default function RootLayout({
           <Toaster position="bottom-center" />
           <RegisterServiceWorker />
           <InstallNudge />
+          <RealtimeRefresh />
         </ThemeProvider>
       </body>
     </html>
