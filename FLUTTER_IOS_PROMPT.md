@@ -288,7 +288,7 @@ Each builder must:
 
 ### Phase 5: Notifications (2 builders in parallel)
 
-- **5A: Server** (owns `lib/integrations/apns/index.ts`, `supabase/functions/notification-sweep/`, `supabase/migrations/0008_apns.sql`):
+- **5A: Server** (owns `lib/integrations/apns/index.ts`, `supabase/functions/notification-sweep/`, `supabase/migrations/0009_apns.sql`; use the next unused number if more migrations have landed):
   - **First:** a spike proving HTTP/2 from Edge Functions to APNs sandbox (see §2). Report the result before building on it.
   - The adapter:
     - ES256 provider JWT signed with WebCrypto from `APNS_KEY_P8`, `APNS_KEY_ID` and `APNS_TEAM_ID`; cached about 50 minutes.
@@ -315,7 +315,7 @@ Each builder must:
 
 **Gate:** server unit tests pass; `flutter test` passes; simulated pushes render, and their actions work.
 
-**STOP: real-device test with Rik** (his `HUMAN_TODO` items: APNs key, secrets, migration 0008, deploying the sweep). Run these cases:
+**STOP: real-device test with Rik** (his `HUMAN_TODO` items: APNs key, secrets, APNs migration 0009 or the next unused number, deploying the sweep). Run these cases:
 1. Reminder created on the web, due in 3 minutes, app killed → exactly one push.
 2. Reminder created on the phone in airplane mode → exactly one local notification.
 3. A reminder due during quiet hours fires when the window ends.
@@ -364,7 +364,7 @@ Each builder must:
 - [ ] Apple Developer Program ($99/yr); Team ID
 - [ ] Bundle ID, App Group, and the Push / Associated Domains / Sign in with Apple capabilities (Xcode automatic signing covers most of this)
 - [ ] APNs auth key (`.p8`) and Key ID → `supabase secrets set APNS_KEY_P8=… APNS_KEY_ID=… APNS_TEAM_ID=… APNS_BUNDLE_ID=…`
-- [ ] Apply migrations 0007 and 0008; deploy `delete-account` and `notification-sweep`
+- [ ] Apply pending migrations (0007 foundation is applied; 0008 guards reminder channels; 0009 is reserved for APNs); deploy `delete-account` and `notification-sweep`
 - [ ] Supabase Auth:
   - add the redirect URL `ezyreminder://login-callback` (and the universal-link URL later);
   - enable the Apple provider with the bundle ID as the client ID;

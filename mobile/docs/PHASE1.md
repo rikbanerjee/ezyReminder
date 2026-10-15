@@ -8,7 +8,7 @@ Implemented on `ios-mvp`, 2026-10-14. Rik requested a local checkpoint commit af
 - This session independently checked the connected Supabase OpenAPI schema and confirmed all five new RPCs are visible. This resolves the earlier missing-function setup issue; it does not replace the signed-in web smoke test.
 - Migration 0007 is now immutable, SHA-256 `55dae2dbbf14d29005e48d4ef4079bf3882b83392db9ded34bd0faeece752c8c`. Future schema fixes require a new migration, starting at 0008.
 - The `delete-account` Edge Function deployment and the order/shipping/follow-up, Shopping, and two-tab smoke tests remain open. This session has not performed hosted migrations, deployments, secret changes, pushes, account deletions, or Apple submissions.
-- Rik reports production main still exposes Slack. A stale client can write unsupported reminder channels and break the global enqueue batch. Deploy the updated web client promptly; a separate unapplied 0008 channel guard is being prepared for review.
+- Rik reports production main still exposes Slack. A stale client can write unsupported reminder channels and break the global enqueue batch. Deploy the updated web client promptly. The separate, unapplied `0008_guard_notification_channels.sql` repairs invalid channel arrays and adds a constraint rejecting future unsupported/null channel values. A legacy Slack save fails individually, protecting other users' queued notifications. Phase 1 checkpoint: `224d3ee`.
 
 ## Built
 
@@ -30,7 +30,7 @@ Implemented on `ios-mvp`, 2026-10-14. Rik requested a local checkpoint commit af
 - `npm run test:shared`: passed in America/New_York, America/Los_Angeles, Europe/London, and Asia/Tokyo. All five date/quiet-hours helpers use portable JSON expectations.
 - `npm run test:edge`: eight tests passed against the actual Edge handler with mocked Auth/admin clients; no network calls or real deletion.
 - `npm run test:auth`: passed internal return-target and open-redirect rejection cases.
-- `npm run test:ios-foundation`: sixteen checks passed in in-memory PGlite 0.5.10 against migrations 0001–0007. Includes RLS isolation/hostile references, invoker/role privileges, order edits, shipping, checklist positions, injected-failure transaction rollback, device acknowledgement ownership, notification ownership, and auth-user cascade deletion.
+- `npm run test:ios-foundation`: nineteen checks passed in in-memory PGlite 0.5.10 against migrations 0001–0008. Includes RLS isolation/hostile references, invoker/role privileges, order edits, shipping, checklist positions, injected-failure transaction rollback, device acknowledgement ownership, notification ownership, auth-user cascade deletion, invalid channel repair/rejection, and idempotent enqueue across users.
 - `npm run tokens`: repeat generation is byte-identical; existing CSS declarations compare equal after whitespace normalization.
 - Local built AASA endpoint: HTTP 200, `Content-Type: application/json`, no cookie and no redirect. Production verification remains on Rik's checklist.
 - `git diff --check`: passed.

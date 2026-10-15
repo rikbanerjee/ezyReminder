@@ -24,7 +24,9 @@ Migration 0007 is immutable now. Put all subsequent database changes in a new mi
 - [x] Authorize a local Phase 1 checkpoint commit (Rik's deployment handoff).
 - [ ] Complete the outstanding Phase 1 checks and approve starting the Flutter spike.
 
-Production rollout: Rik reports live main still exposes Slack, while the hosted database no longer supports it. Deploy the `ios-mvp` web changes promptly. A legacy reminder with a Slack channel can fail the global enqueue batch; a separate unapplied 0008 guard is being prepared. Do not choose Slack in the old production UI.
+Production rollout: Rik reports live main still exposes Slack, while the hosted database no longer supports it. Deploy the `ios-mvp` web changes promptly. A legacy reminder with a Slack channel can fail the global enqueue batch. The separately committed `0008_guard_notification_channels.sql` repairs invalid arrays and rejects future unsupported channel writes; it is **not applied** to hosted Supabase. Do not choose Slack in the old production UI.
+
+- [ ] Review/apply `0008_guard_notification_channels.sql` to prevent stale clients from breaking the global enqueue batch. An unsupported channel will fail that individual save instead. This does not update the old web UI; deploy the updated client too.
 
 Do not select `apns` as a delivery channel yet: Phase 1 makes the schema ready, but the APNs dispatcher is built in Phase 5. No context defaults were switched to push.
 
