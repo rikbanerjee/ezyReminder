@@ -292,3 +292,44 @@ Pilot hypotheses: five target users; at least four can assign a task to Saturday
 Decisions made for the first planned release: weekly local Focus times; Thursday/Saturday as alternatives or an explicitly selected weekly pattern; one outstanding assignment per reminder; manual recovery instead of automatic rollover; no notification for empty times; no calendar required; one-tap start from known work; Work/Side Gig eligibility; notifications opt-in; optional protection only after all delivery paths agree.
 
 Decisions to validate in the prototype/pilot: preferred name “Focus times”; whether people understand a 30-minute budget; whether a lightweight weekly recap helps; whether two or three upcoming occurrences is the right amount of Today content. These do not block the initial specification or require Rik to supply information already present in the repo.
+
+## 13. Build contract — Phase 1 + slim Phase 2 (2026-10-18)
+
+This section is the binding contract for the first build. It narrows sections 4–7; anything not listed here is deferred. Old 0012 RPCs stay unchanged for installed clients.
+
+### 13.1 Migration 0015 — `focus_preferences` (Phase 1)
+
+- `focus_preferences(user_id uuid pk → auth.users on delete cascade, preferred_minutes int not null default 25 check 1–180, updated_at timestamptz)`. Owner-only SELECT RLS; writes only through RPCs; added to Realtime.
+- `save_focus_preferences(p_preferred_minutes int) → int`: upsert for `auth.uid()`; 22023 outside 1–180.
+- `get_focus_dashboard_v2() → jsonb`: everything `get_focus_state` returns, plus `preferred_minutes` (default 25 with no row), `highlight_next_step` and `session_next_step` (the latest finished session's `next_step` for that reminder, null when the latest one is blank — never an older note).
+
+### 13.2 Migration 0016 — Focus times (slim Phase 2)
+
+- `focus_times`: `id uuid pk` (client-generated), `user_id`, `label text null ≤40`, `context_slug in ('work','sidegig')`, `weekdays smallint[]` (ISO 1=Mon…7=Sun, non-empty, distinct, 1–7), `start_time time`, `budget_minutes int 1–180 default 30`, `enabled bool default true`, `archived_at timestamptz null`, `created_at`, `updated_at`.
+- `focus_assignments`: `id uuid pk` (client operation ID → idempotent), `user_id`, `reminder_id → reminders on delete set null`, `reminder_title`/`context_slug` snapshots, `focus_time_id → focus_times null` (null = one-off "Pick another day"), `local_date date`, `start_time time`, `planned_minutes int 1–180`, `position int`, `state in ('planned','in_progress','reviewed','skipped','moved','cancelled')`, `moved_to uuid null`, `created_at`, `updated_at`. Partial unique index on `reminder_id where state in ('planned','in_progress')`. **Occurrences are not stored**: an occurrence is `(focus_time_id, local_date)`; its UTC start is derived from the account timezone.
+- `focus_sessions.assignment_id uuid null → focus_assignments on delete set null`, unique where not null.
+- RPCs (all `security definer`, `auth.uid()` owner checks on every related row, anon revoked, authenticated granted):
+  - `save_focus_time(p_id, p_label, p_context_slug, p_weekdays, p_start_time, p_budget_minutes, p_enabled) → uuid`: upsert. Edits apply to future choices; already-planned assignments keep their own date/time snapshot.
+  - `archive_focus_time(p_id) → uuid`: sets `archived_at`, `enabled=false`. Planned work stays visible and recoverable.
+  - `assign_focus_work(p_id, p_reminder_id, p_focus_time_id, p_local_date, p_start_time, p_planned_minutes) → uuid`: idempotent on `p_id`. Reminder must be open/snoozed Work/Side Gig; a focus time must belong to the user, not be archived and match the reminder's context; `p_local_date` must not be before today in the account timezone. An existing `planned` assignment for the reminder is atomically marked `moved` (`moved_to = p_id`); an `in_progress` one raises "Finish the current session first". Position = last in that occurrence.
+  - `skip_focus_work(p_id) → uuid`: planned → skipped. Used for both "Skip" and "Leave unscheduled". No reminder side effects.
+  - `start_assigned_focus(p_session_id, p_assignment_id, p_duration_minutes) → uuid`: under the same per-user advisory lock as `start_focus_session`; assignment must be planned and its reminder eligible; creates the session with `assignment_id` and marks the assignment `in_progress`. Idempotent on `p_session_id`.
+  - Trigger: when a session with `assignment_id` gets `finished_at`, its assignment becomes `reviewed` (covers the old `finish_focus_session`).
+  - Trigger: a reminder leaving open/snoozed, moving outside Work/Side Gig or being deleted cancels its `planned` assignments (in-progress ones stay until the session is reviewed).
+  - `get_focus_dashboard_v2` is replaced (`create or replace`) to add `focus_times` (non-archived, by start time) and `assignments` (planned/in_progress, by date, time, position) with reminder `due_at` and order `ship_by` for deadline warnings.
+- Realtime: `focus_times`, `focus_assignments`.
+
+### 13.3 Shared occurrence rules
+
+`nextFocusOccurrences(time, now, timeZone, count)` lives in `lib/focus.ts` and in Dart `focus_models.dart`, both tested against `design/focus-time-fixtures.json`: weekly dates on or after today's account-local date whose start is not yet past its budget; spring DST gap shifts forward by the gap; autumn repeated hour uses the first instance. An occurrence is **missed** when `start + max(budget, Σ planned)` is past and it still has planned work. "Next {weekday}" resolves strictly after the missed date.
+
+### 13.4 Client behaviour (web + Flutter, identical)
+
+- **Today card priority:** unfinished session → highlight → first planned task of the current/next occurrence (labelled "Up next · Saturday 9 AM") → empty state with **Choose a reminder** and **Set my focus times**.
+- **One-tap start:** the card's primary button is **Start N min** (N = assignment planned minutes, else the saved preference). A small adjacent "N min" chip opens the setup sheet. Setup shows "Next step from last time" and the prompt "What could you finish in 10–15 minutes?". Starting from setup with a different duration saves it as the preference.
+- **Review:** outcomes "Finished what I planned / Made progress / Got interrupted"; prominent "Where will you start next time?". After saving, offer **Continue for 10 min**, **Choose another focus time** (when it has Focus times), **I'm done for now**, and, after "Finished", a separate **Mark reminder done**. Never auto-complete.
+- **Your focus times** (below the card): next 3 populated occurrences: "Thursday · 7 PM", first task + "3 tasks · 35 min planned", capacity hint when over budget. Tapping one opens the occurrence sheet: ordered tasks, Start per task, Skip.
+- **Missed recovery card:** "Didn't get to this?" → Start now / Next {weekday} / Choose another time / Leave unscheduled. One card, oldest missed first, with a "+N more" count.
+- **Work on this** (eligible reminder's sheet, next to Focus on this): next 4 occurrences of enabled times in the reminder's context ("Thursday · 7 PM", date as secondary text), **Pick another day** (date + time with OK), planned minutes chips 10/15/25/custom. Shows the current plan and says choosing another moves it. If the occurrence starts after `due_at`/`ship_by`, show a warning with **Choose an earlier time** and **Plan it anyway**.
+- **Focus times sheet** (from the card and Settings → Focus): list + edit form: name (optional), weekday chips, time, "I usually have" 15/30/60/custom, Work/Side Gig, account timezone note. Archive to delete.
+- Deferred from this build: create-sheet "Work on this", notifications/invitations, protection, captures, weekly recap, schedule-edit remapping.
