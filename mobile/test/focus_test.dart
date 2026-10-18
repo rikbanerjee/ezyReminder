@@ -142,13 +142,25 @@ void main() {
       await tester.tap(find.text('Custom'));
       await tester.pumpAndSettle();
       await tester.enterText(
-        find.widgetWithText(TextField, 'Minutes (1–180)'),
+        find.descendant(
+          of: find.byKey(const ValueKey('focus-custom-minutes')),
+          matching: find.byType(TextField),
+        ),
         '0',
       );
       await tester.pump();
-      expect(find.text('Choose a whole number from 1 to 180.'), findsOneWidget);
+      await tester.ensureVisible(find.text('Start now'));
+      await tester.tap(find.text('Start now'));
+      await tester.pumpAndSettle();
+      expect(
+        find.text('Choose a whole number from 1 to 180 minutes.'),
+        findsOneWidget,
+      );
       await tester.enterText(
-        find.widgetWithText(TextField, 'Minutes (1–180)'),
+        find.descendant(
+          of: find.byKey(const ValueKey('focus-custom-minutes')),
+          matching: find.byType(TextField),
+        ),
         '10',
       );
       await tester.pump();
@@ -170,11 +182,11 @@ void main() {
       await tester.ensureVisible(find.text('Save session'));
       await tester.tap(find.text('Save session'));
       await tester.pumpAndSettle();
-      expect(find.text('Choose how your session went.'), findsOneWidget);
+      expect(find.text('Choose how the session went.'), findsOneWidget);
       await tester.ensureVisible(find.text('Made progress'));
       await tester.tap(find.text('Made progress'));
       await tester.enterText(
-        find.widgetWithText(TextField, 'Next step for next time (optional)'),
+        find.byKey(const ValueKey('focus-next-step')),
         'Write the description',
       );
       repo.failWrites = true;
@@ -190,9 +202,12 @@ void main() {
       await tester.pumpAndSettle();
       expect(controller.session, isNull);
       expect(repo.sessions.values.single.outcome, 'progress');
+      expect(find.text('Session saved'), findsOneWidget);
+      await tester.tap(find.byTooltip('Close focus'));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Focus on this'));
       await tester.pumpAndSettle();
-      expect(find.text('Last next step'), findsOneWidget);
+      expect(find.text('Next step from last time'), findsOneWidget);
       expect(find.text('Write the description'), findsOneWidget);
       await tester.pumpWidget(const SizedBox.shrink());
       controller.dispose();

@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 
 import '../../core/theme/tokens.g.dart';
 import '../../core/util/quiet_hours.dart';
+import '../focus/focus_controller.dart';
+import '../focus/focus_widgets.dart';
 import 'settings_repository.dart';
 
 class SettingsPage extends StatefulWidget {
@@ -14,8 +16,11 @@ class SettingsPage extends StatefulWidget {
     required this.onSignOut,
     required this.onDeleted,
     required this.onChanged,
+    this.focusController,
   });
 
+  /// Focus planning (migrations 0015/0016). Null or unavailable hides Settings → Focus.
+  final FocusController? focusController;
   final SettingsRepository repository;
   final Future<void> Function() onSignOut;
   final Future<void> Function() onDeleted;
@@ -463,6 +468,41 @@ class _SettingsPageState extends State<SettingsPage>
                       const SizedBox(height: 8),
                       _contextGroup(item, surface, hairline, text, secondary),
                     ],
+                  if (widget.focusController != null)
+                    AnimatedBuilder(
+                      animation: widget.focusController!,
+                      builder: (context, _) {
+                        final focus = widget.focusController!;
+                        if (!focus.planning) return const SizedBox.shrink();
+                        final count = focus.focusTimes.length;
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            const SizedBox(height: 22),
+                            _sectionLabel('FOCUS', secondary),
+                            _group(surface, hairline, [
+                              Material(
+                                type: MaterialType.transparency,
+                                child: ListTile(
+                                  key: const ValueKey('settings-focus-times'),
+                                  minTileHeight: 52,
+                                  title: const Text('Focus times'),
+                                  trailing: Text(
+                                    '${count == 0 ? 'None yet' : '$count set up'} ›',
+                                    style: TextStyle(color: secondary),
+                                  ),
+                                  onTap: () => openFocusTimes(
+                                    context,
+                                    focus,
+                                    fromSettings: true,
+                                  ),
+                                ),
+                              ),
+                            ]),
+                          ],
+                        );
+                      },
+                    ),
                   const SizedBox(height: 22),
                   _sectionLabel('ACCOUNT', secondary),
                   _group(surface, hairline, [

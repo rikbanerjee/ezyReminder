@@ -59,3 +59,13 @@ The final configured unsigned iPhone Release build passes. Reinstall with normal
 The reported missing Flutter module errors were found in Xcode activity logs for `Release-iphonesimulator`. Flutter does not support Release on simulators. Runner now uses Debug for Run (with LLDB); RunnerDevice retains the previous Release Run configuration without the debugger for physical-phone home-screen launches. Both retain Flutter’s framework preparation pre-action and the existing signing/auth configuration.
 
 Verification passed: a fresh direct Xcode Debug simulator build; the normal configured `flutter build ios --simulator --debug --no-codesign`; a configured unsigned Flutter iPhone Release build; and a direct Xcode RunnerDevice Release build. No plugin cache or package sources were edited. Phone installation/signing was not tested in this session. See README.md for scheme selection and clean/rebuild steps.
+
+## Focus one-tap start and Focus times — 2026-10-18
+
+Implements FOCUS_IMPLEMENTATION_PLAN.md §13 (Phase 1 + slim Phase 2) to match `design/prototype.html`: Today's focus card priority (session, highlight, Up next, empty) with one-tap **Start N min** and a length chip, Setup with next step and saved usual length, session/review/after-save flow (Continue 10 min, Choose another focus time, separate Mark reminder done / Mark shipped), missed-recovery card, **Your focus times** with the occurrence sheet, **Work on this** (reminder sheet and review) with deadline warning, and the Focus times list/editor (Today **Manage**, Settings → Focus).
+
+- Schedule rules are ported to `lib/features/focus/focus_schedule.dart` and pass all 42 cases of `design/focus-time-fixtures.json`; math uses the account timezone from the dashboard, never the device zone.
+- Compatibility: if `get_focus_dashboard_v2` is missing (PGRST202/42883) the app falls back to `get_focus_state` (25 min default) and hides Focus times, Work on this and saved-length UI with no error. Planning tables use a separate Realtime channel so missing tables cannot affect the core subscription.
+- Writes use client UUIDs kept across retries of the same intent. Drafts live in each sheet mode's own State, so Realtime refreshes never discard them.
+- `flutter analyze` clean; 239 tests pass (149 before, +90 incl. fixtures, grouping, card priority, missed actions, move/deadline warning, fallback, one-tap start, review follow-ups, 1.5× text and dark mode). `flutter build ios --simulator --debug --no-codesign` passes. No hosted migration or live-account write was made.
+- Preview tour: `flutter run -t tool/focus_preview.dart --dart-define=EZY_PREVIEW=true --dart-define=FOCUS_TOUR=true` (in-memory data only).

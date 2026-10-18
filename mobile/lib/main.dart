@@ -38,10 +38,12 @@ class EzyApp extends StatelessWidget {
     required this.preview,
     this.repository,
     this.textScale,
+    this.focusRepository,
   });
   final bool connected;
   final bool preview;
   final ReminderRepository? repository;
+  final FocusRepository? focusRepository;
   final double? textScale;
 
   @override
@@ -60,7 +62,7 @@ class EzyApp extends StatelessWidget {
       child: child!,
     ),
     home: preview
-        ? TodayPage(repository: repository ?? DemoRepository(), demo: true)
+        ? TodayPage(repository: repository ?? DemoRepository(), demo: true, focusRepository: focusRepository)
         : connected
         ? AuthGate(client: Supabase.instance.client)
         : const SetupPage(),
@@ -1644,8 +1646,18 @@ class _TodayPageState extends State<TodayPage>
         ? SupabaseFocusRepository(repository.client)
         : DemoFocusRepository(loadReminders: () async {
             final rows = repository is BrowseRepository ? await (repository as BrowseRepository).loadAll() : await repository.load();
-            return rows.where((r) => !r.isHomeMaintenance).map((r) => FocusReminder(id: r.id, title: r.title, contextSlug: r.contextSlug, status: r.status, dueAt: r.dueAt)).toList();
+            final shipBy = <String, String?>{};
+            if (repository is ShippingRepository) {
+              try {
+                for (final o in await (repository as ShippingRepository).loadOrders()) { shipBy[o.reminderId] = o.shipBy; }
+              } catch (_) {}
+            }
+            return rows.where((r) => !r.isHomeMaintenance).map((r) => FocusReminder(id: r.id, title: r.title, contextSlug: r.contextSlug, status: r.status, dueAt: r.dueAt, isOrder: r.isOrder, shipBy: shipBy[r.id])).toList();
           })));
+    // Focus never completes or ships anything itself; these hand off to the normal reminder flows.
+    Reminder? reminderFor(String id) => allReminders.where((r) => r.id == id).firstOrNull ?? reminders.where((r) => r.id == id).firstOrNull;
+    focusController.onMarkDone = (id) async { final r = reminderFor(id); if (r != null && mounted) await complete(r); };
+    focusController.onOpenReminder = (id) async { final r = reminderFor(id); if (r != null && mounted) await _openSheet(r); };
     refresh();
     subscription = widget.repository.changes.listen((_) { refresh(); unawaited(focusController.reload()); });
   }
@@ -1694,6 +1706,7 @@ class _TodayPageState extends State<TodayPage>
             onChanged: () {
               if (mounted) unawaited(refresh());
             },
+            focusController: focusController,
           );
         },
       ),
@@ -2386,7 +2399,7 @@ class _TodayPageState extends State<TodayPage>
                             ),
                           ),
                           const SizedBox(height: 22),
-                          FocusCard(controller: focusController, activeOnly: selected != 'all' && !['work', 'sidegig', 'side-gig', 'side_gig'].contains(contexts.where((c) => c.id == selected).firstOrNull?.slug)),
+                          FocusCard(controller: focusController),
                           if (loading) ...[
                             for (var i = 0; i < 3; i++) _skeleton(p),
                           ] else if (loadError != null)
@@ -2947,6 +2960,14 @@ class _TodayPageState extends State<TodayPage>
     }
   }
 
+  /// "Planned: Thursday · 7 PM · 15 min" / "Not planned yet" for the reminder sheet.
+  String _planNote(String reminderId) {
+    final a = focusController.assignmentFor(reminderId);
+    return a == null
+        ? 'Not planned yet'
+        : 'Planned: ${focusOccurrenceName(a.localDate, a.startTime)} · ${a.plannedMinutes} min';
+  }
+
   Future<void> _openSheet(
     Reminder? reminder, {
     bool startWithOrder = false,
@@ -3042,6 +3063,8 @@ class _TodayPageState extends State<TodayPage>
       builder: (ctx) => _ReminderSheet(
         reminder: snapshot,
         onFocus: snapshot != null && (snapshot.contextSlug == 'work' || _isSideGigSlug(snapshot.contextSlug)) && (snapshot.status == 'open' || snapshot.status == 'snoozed') ? () => Navigator.pop(ctx, 'focus') : null,
+        onPlan: snapshot != null && focusController.planning && (snapshot.contextSlug == 'work' || _isSideGigSlug(snapshot.contextSlug)) && (snapshot.status == 'open' || snapshot.status == 'snoozed') ? () => Navigator.pop(ctx, 'plan') : null,
+        planNote: focusController.planning && snapshot != null ? _planNote(snapshot.id) : null,
         contexts: contexts,
         save: widget.repository.save,
         changes: widget.repository.changes,
@@ -3107,8 +3130,15 @@ class _TodayPageState extends State<TodayPage>
       ),
     );
     if (!mounted) return;
-    if (result == 'focus' && snapshot != null) {
-      await openFocus(context, focusController, reminder: FocusReminder(id: snapshot.id, title: snapshot.title, contextSlug: snapshot.contextSlug, status: snapshot.status, dueAt: snapshot.dueAt));
+    if ((result == 'focus' || result == 'plan') && snapshot != null) {
+      // Prefer the loaded Focus reminder: it carries the order's ship-by date.
+      final focusReminder = focusController.reminderById(snapshot.id) ??
+          FocusReminder(id: snapshot.id, title: snapshot.title, contextSlug: snapshot.contextSlug, status: snapshot.status, dueAt: snapshot.dueAt, isOrder: snapshot.isOrder);
+      if (result == 'plan') {
+        await openWorkOnThis(context, focusController, focusReminder);
+      } else {
+        await openFocus(context, focusController, reminder: focusReminder);
+      }
       return;
     }
     if (result is String && widget.repository is ShoppingRepository) {
@@ -3219,6 +3249,8 @@ class _ReminderSheet extends StatefulWidget {
     required this.reload,
     this.startWithOrder = false,
     this.onFocus,
+    this.onPlan,
+    this.planNote,
     this.order,
     this.loadOrder,
     this.markShipped,
@@ -3236,7 +3268,8 @@ class _ReminderSheet extends StatefulWidget {
   final Stream<void> changes;
   final Future<List<Reminder>> Function() reload;
   final bool startWithOrder;
-  final VoidCallback? onFocus;
+  final VoidCallback? onFocus, onPlan;
+  final String? planNote;
   final OrderDetails? order;
   final Future<OrderDetails?> Function()? loadOrder;
   final Future<void> Function({
@@ -4035,7 +4068,22 @@ class _ReminderSheetState extends State<_ReminderSheet>
                 ],
                 if (widget.onFocus != null) ...[
                   const SizedBox(height: 16),
-                  OutlinedButton.icon(onPressed: saving ? null : widget.onFocus, icon: const Icon(CupertinoIcons.scope), label: const Text('Focus on this')),
+                  Text('FOCUS', style: TextStyle(fontSize: EzyDesignTokens.sectionHeaderFontSize, fontWeight: EzyDesignTokens.sectionHeaderFontWeight, letterSpacing: EzyDesignTokens.sectionHeaderLetterSpacing, color: Theme.of(context).brightness == Brightness.dark ? EzyDesignTokens.darkText2 : EzyDesignTokens.lightText2)),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(child: OutlinedButton.icon(onPressed: saving ? null : widget.onFocus, icon: const Icon(CupertinoIcons.scope), label: const Text('Focus on this'))),
+                      if (widget.onPlan != null) ...[
+                        const SizedBox(width: 8),
+                        Expanded(child: OutlinedButton.icon(key: const ValueKey('work-on-this'), onPressed: saving ? null : widget.onPlan, icon: const Icon(CupertinoIcons.calendar_badge_plus), label: const Text('Work on this'))),
+                      ],
+                    ],
+                  ),
+                  if (widget.planNote != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 6),
+                      child: Text(widget.planNote!, key: const ValueKey('plan-note'), style: TextStyle(fontSize: 12, color: Theme.of(context).brightness == Brightness.dark ? EzyDesignTokens.darkText2 : EzyDesignTokens.lightText2)),
+                    ),
                 ],
                 const SizedBox(height: 18),
                 FilledButton(
