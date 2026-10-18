@@ -7,7 +7,7 @@ Implemented on `ios-mvp`, 2026-10-14. Rik requested a local checkpoint commit af
 - Rik reports migration history is synchronized through 0007. Migration 0005 already existed; 0006 and 0007 were rehearsed inside a transaction and rolled back without errors, then applied. Rik also checked live main against the new access rules.
 - This session independently checked the connected Supabase OpenAPI schema and confirmed all five new RPCs are visible. This resolves the earlier missing-function setup issue; it does not replace the signed-in web smoke test.
 - Migration 0007 is now immutable, SHA-256 `55dae2dbbf14d29005e48d4ef4079bf3882b83392db9ded34bd0faeece752c8c`. Future schema fixes require a new migration, starting at 0008.
-- The `delete-account` Edge Function deployment and the order/shipping/follow-up, Shopping, and two-tab smoke tests remain open. This session has not performed hosted migrations, deployments, secret changes, pushes, account deletions, or Apple submissions.
+- The `delete-account` Edge Function was deployed 2026-10-15 with JWT verification on; unauthenticated and malformed-token calls return 401. No account has been deleted through it yet. The order/shipping/follow-up, Shopping, and two-tab smoke tests remain open.
 - Rik reports production main still exposes Slack. A stale client can write unsupported reminder channels and break the global enqueue batch. Deploy the updated web client promptly. The separate, unapplied `0008_guard_notification_channels.sql` repairs invalid channel arrays and adds a constraint rejecting future unsupported/null channel values. A legacy Slack save fails individually, protecting other users' queued notifications. Phase 1 checkpoint: `224d3ee`.
 
 ## Built
@@ -60,4 +60,4 @@ The harness stubs Supabase Auth's user table, `auth.uid()`, roles and standard g
 
 ## Required next gate
 
-Follow `mobile/HUMAN_TODO.md`: migration 0007 is applied; deploy `delete-account`, deploy/smoke-test the updated web client, and approve starting Phase 2. Rik authorized checkpointing Phase 1 locally before those remaining checks. The Flutter spike still waits for the gate.
+Follow `mobile/HUMAN_TODO.md`: migration 0007 is applied and `delete-account` is deployed; deploy/smoke-test the updated web client, and approve starting Phase 2. Rik authorized checkpointing Phase 1 locally before those remaining checks. The Flutter spike still waits for the gate.

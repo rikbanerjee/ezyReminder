@@ -2,7 +2,9 @@
 
 Source priority: `design/prototype.html` wins over current web behavior; `DESIGN.md` is the normative expanded interaction spec, including 2026 revisions. Items marked **WEB GAP** are explicit native follow-ups where current React components omit required behavior. `design/prototype.html` itself is an older interactive mock and visibly diverges from the revised spec; follow-up details are called out below.
 
-Legend: `[ ]` implement/verify in Flutter. References use source file:line or prototype selector/function.
+Shipping implementation and targeted validation are recorded in [SHIPPING.md](SHIPPING.md). The checklist below remains the full release acceptance inventory, including manual account/device checks.
+
+Legend: `[x]` implemented and locally tested; `[ ]` still needs implementation or verification. Checked rows do not imply hosted or physical-device acceptance; see PARITY_PROGRESS.md for limits. References use source file:line or prototype selector/function.
 
 ## App shell and navigation
 
@@ -10,7 +12,7 @@ Legend: `[ ]` implement/verify in Flutter. References use source file:line or pr
 |---|---|---|---|
 | [ ] | Safe-area-aware installed app frame; system font; light/dark surfaces and context colors | DESIGN.md:5-11, 13-48; prototype `#frame`, `.dark` | |
 | [ ] | Bottom dock remains anchored while main content scrolls; quick-add above tab bar | DESIGN.md:50-67; `components/home/home-view.tsx:104-112,238-244`; prototype `.dock` | |
-| [ ] | Today, Ship Queue, All tabs with active state and Ship count badge | `components/bottom-dock.tsx`; prototype `#tabbar .tab`, `#shipCnt` | Inspect source for final details. |
+| [x] | Today, Ship Queue, All tabs with active state and Ship count badge | `components/bottom-dock.tsx`; prototype `#tabbar .tab`, `#shipCnt` | Inspect source for final details. |
 | [ ] | Gear opens Settings; context pills hidden on Ship Queue and Settings | prototype `#gearBtn`, `#pills`; React route navigation in `app/settings/page.tsx` | Prototype interaction reference. |
 | [ ] | Active context pill uses context color; All uses foreground; pills scroll horizontally | `components/home/home-view.tsx:113-128,249-276`; prototype `.pill`, `#pills` | |
 | [ ] | Dark mode follows system and supports manual System/Light/Dark setting | DESIGN.md:36; prototype `matchMedia`, `#darkToggle` | **WEB GAP:** settings component has no appearance control. |
@@ -26,10 +28,10 @@ Legend: `[ ]` implement/verify in Flutter. References use source file:line or pr
 | [ ] | Ship soon appears only for unshipped orders with ship-by within 3 days; link opens Ship Queue | `components/home/home-view.tsx:68-74,161-179`; DESIGN.md:73; prototype fixture rows only | |
 | [ ] | Context filtering includes All and every context; filters both open and done-today rows | `components/home/home-view.tsx:62-66,96-100,113-128`; prototype `#pills` | |
 | [ ] | Empty state “Nothing here yet. Add your first reminder above.” | `components/home/home-view.tsx:142-145`; prototype `.empty` says “Nothing here. Add one below 👇” | **WEB DIVERGENCE:** web empty copy differs from prototype. Prototype wins for exact copy, but DESIGN.md can supersede where expanded spec says otherwise. |
-| [ ] | Done today collapsed by default; tap header expands list and chevron rotates | `components/home/home-view.tsx:186-208`; prototype `renderToday()` currently static header | **WEB GAP:** prototype's Done section is not interactive/list-backed. |
-| [ ] | Search appears in All only; filters title as user types | `components/home/home-view.tsx:130-140`; prototype `renderAll()` | |
+| [x] | Done today collapsed by default; tap header expands list and chevron rotates | `components/home/home-view.tsx:186-208`; prototype `renderToday()` currently static header | **WEB GAP:** prototype's Done section is not interactive/list-backed. |
+| [x] | Search appears in All only; filters title as user types | `components/home/home-view.tsx:130-140`; prototype `renderAll()` | |
 | [ ] | Reminder row anatomy: context ring, one-line title, due/context second line, order and channel glyphs | `components/home/reminder-row.tsx:84-165`; DESIGN.md:80-90; prototype `rowHTML()` | **WEB GAP:** verify exact title typography/opacity against DESIGN. |
-| [ ] | Shopping row shows remaining item count instead of due chip | `components/home/reminder-row.tsx:45-47,122-133`; DESIGN.md §4.2.1 | |
+| [x] | Shopping row shows remaining item count instead of due chip | `components/home/reminder-row.tsx:45-47,122-133`; DESIGN.md §4.2.1 | |
 | [ ] | Due text relative; overdue due text danger; explicit context name | `components/home/reminder-row.tsx:122-133`; prototype `.due` | |
 | [ ] | Failed delivery marker and retry action; success/error feedback | `components/home/reminder-row.tsx:134-150`; prototype `rowHTML()` warning sample | **WEB DIVERGENCE:** prototype only labels retry and has no functional retry flow. iOS should expose error and retry only if an iOS-safe endpoint exists. |
 | [ ] | Tap row opens reminder detail sheet | `components/home/home-view.tsx:155-157,201-204`; `components/home/reminder-row.tsx:105-112`; prototype `bindRows()` | |
@@ -59,8 +61,8 @@ Legend: `[ ]` implement/verify in Flutter. References use source file:line or pr
 | [ ] | Hide WhatsApp in iOS; no Slack/Firebase/Web Push options | FLUTTER_IOS_PROMPT.md §2; `components/home/reminder-sheet.tsx:27-32` | Required invariant. |
 | [ ] | Order toggle reveals Order ref, recipient, ship-by, carrier/tracking, Mark shipped; panel expands/collapses | `components/home/reminder-sheet.tsx:103-110,425+`; DESIGN.md:110-122; prototype `#orderSwitch`, `#orderPanel` | Prototype includes basic order panel; UI implementation must use prototype interactions, expanded fields follow DESIGN. |
 | [ ] | Mark shipped exposes inline tracking input and paste affordance; success completes order and offers +3d follow-up | `components/home/reminder-sheet.tsx:264-286`; DESIGN.md:120-122; prototype `#shipFromSheet` | **WEB GAP:** sheet code captures tracking but prototype's sheet only toast; make native flow match DESIGN. |
-| [ ] | Work toggle-reveal: Manager, Department resource, Project fields | `components/home/reminder-sheet.tsx:112-116,236-247`; DESIGN.md:124-127 | |
-| [ ] | Side Gig non-order toggle-reveal: Initiative and Client/buyer fields; hidden for order reminders | `components/home/reminder-sheet.tsx:118-121,248-257`; DESIGN.md:124-127 | |
+| [x] | Work toggle-reveal: Manager, Department resource, Project fields | `components/home/reminder-sheet.tsx:112-116,236-247`; DESIGN.md:124-127 | |
+| [x] | Side Gig non-order toggle-reveal: Initiative and Client/buyer fields; hidden for order reminders | `components/home/reminder-sheet.tsx:118-121,248-257`; DESIGN.md:124-127 | |
 | [ ] | Shopping context replaces standard details with list name + checklist; no required due date; optional delivery hidden under More options | `components/home/reminder-sheet.tsx:394-421`; DESIGN.md §4.2.1 | **WEB GAP:** current web still renders context/date controls before checklist, no More options channel control. |
 | [ ] | Save success toast “Added ✓” / “Saved”; backend and partial detail save errors surfaced | `components/home/reminder-sheet.tsx:155-260` | |
 | [ ] | Delete reminder; complete/reopen from sheet; close after successful action | `components/home/reminder-sheet.tsx:289-307,560+` | |
@@ -72,11 +74,11 @@ Legend: `[ ]` implement/verify in Flutter. References use source file:line or pr
 | Check | State / interaction | Source | Parity note |
 |---|---|---|---|
 | [ ] | Create shopping list first; explanatory empty panel until it has an id | `components/home/reminder-sheet.tsx:394-409` | |
-| [ ] | Add item input, Enter or + button adds; blank labels ignored; input clears and remains focused | `components/home/shopping-checklist.tsx:20-35,68-95`; DESIGN.md §4.2.1 | Prototype has no Shopping context/list yet. |
-| [ ] | Items render unchecked/checked; checked text struck through | `components/home/shopping-checklist.tsx:97-113`; DESIGN.md §4.2.1 | |
-| [ ] | Check/uncheck and delete are immediate optimistic writes; rollback and error toast on failure | `components/home/shopping-checklist.tsx:38-56` | |
-| [ ] | Remove item button; empty list state has add field and no save step | same source; DESIGN.md §4.2.1 | |
-| [ ] | Shopping row shows N items left and defaults to Someday if no due date | `components/home/reminder-row.tsx:122-133`; DESIGN.md §4.2.1 | |
+| [x] | Add item input, Enter or + button adds; blank labels ignored; input clears and remains focused | `components/home/shopping-checklist.tsx:20-35,68-95`; DESIGN.md §4.2.1 | Prototype has no Shopping context/list yet. |
+| [x] | Items render unchecked/checked; checked text struck through | `components/home/shopping-checklist.tsx:97-113`; DESIGN.md §4.2.1 | |
+| [x] | Check/uncheck and delete are immediate optimistic writes; rollback and error toast on failure | `components/home/shopping-checklist.tsx:38-56` | |
+| [x] | Remove item button; empty list state has add field and no save step | same source; DESIGN.md §4.2.1 | |
+| [x] | Shopping row shows N items left and defaults to Someday if no due date | `components/home/reminder-row.tsx:122-133`; DESIGN.md §4.2.1 | |
 
 ## Ship Queue
 
@@ -100,8 +102,9 @@ Legend: `[ ]` implement/verify in Flutter. References use source file:line or pr
 | [ ] | API & Agents group: API keys/scopes, MCP setup snippet, per-agent activity | DESIGN.md §4.5; prototype `renderSettings()` | UI/API is broader than current implementation; may be roadmap parity. |
 | [ ] | Appearance supports System/Light/Dark | DESIGN.md:36, §4.5; prototype `#darkToggle` | **WEB GAP:** absent in React Settings. |
 | [ ] | Account email and sign out | DESIGN.md §4.5 | **WEB GAP:** absent from `SettingsView`. |
-| [ ] | Timezone input saves; blank timezone rejected; saved/error toast; helper shows IANA example | `components/settings/settings-view.tsx:41-70` | Prototype has no timezone editor. |
-| [ ] | Per-context quiet-hours start/end time inputs; save only when dirty; success/error toast | `components/settings/settings-view.tsx:73-120` | Prototype only displays context summary, not edit flow. |
+| [ ] | Timezone input saves; blank timezone rejected; saved/error toast; helper shows IANA example | `components/settings/settings-view.tsx:41-70` | Saving/validation are implemented and tested; native errors are inline. Exact toast parity remains open. |
+| [ ] | Per-context quiet-hours start/end time inputs; save only when dirty; success/error toast | `components/settings/settings-view.tsx:73-120` | Native editing/clearing/failure handling are implemented and tested; exact toast parity and physical-device review remain open. |
+| [x] | In-app account deletion requires typed DELETE, checks server success, then signs out | `mobile/lib/features/settings/settings_page.dart`; `settings_repository.dart` | Local widget/protocol tests; real-account deletion untested. |
 
 ## Onboarding
 
