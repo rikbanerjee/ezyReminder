@@ -91,3 +91,9 @@ Slack was removed 2026-10. Channels are now **iOS notifications** plus **email**
 ## 8. Web app (stays)
 
 The Next.js PWA remains the browser client: manifest, serwist, share_target and the install nudge all stay. Web Push (`WEB_PUSH_PROMPT.md`) is **on hold**: its Slack-related instructions are obsolete, so revisit it only if browser-only users need push. For now, browser users get email and iPhone users get the native app.
+
+## 9. Home tab (2026-10)
+
+Home provides optional Home care, Groceries, Bill pay, and Study & kids section pills. Car, HVAC & air filters, Dryer, Smart-home batteries and Other home care are the maintenance cards. Forms, placeholders, repeat options and completion labels come from `design/home-templates.json`, generated into `features/home/home_templates.g.dart`. Car make/model and other category fields persist and appear in history snapshots. The legacy Filter category renders under HVAC.
+
+`features/home/` uses the shared atomic RPCs: new task saves call `save_home_task` (migration 0014); completion retains `record_home_service`. Care repeats from actual completion, while bills and study advance their planned date. Day intervals support daily/weekly study and weekly battery care. Existing RLS, Realtime, foreground refresh, quiet hours and delivery apply. Today/All task rows open the right Home section. Hosted schema and client release status are tracked separately in `supabase/MIGRATION_STATUS.md` and `mobile/HUMAN_TODO.md`.

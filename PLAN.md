@@ -119,6 +119,7 @@ Setup: create one OAuth 2.0 **Web application** Client ID in Google Cloud Consol
 - `pg_cron` fires an Edge Function every minute: `SELECT reminders due AND status='open'` → enqueue a `notifications` row per channel → dispatch.
 - Each channel is a small adapter behind one interface: `send(reminder, channel) → {ok, providerMessageId | error}`. Adding a channel later = one new adapter file.
 - Retries: 3 attempts with backoff; failures visible in UI ("⚠ Email delivery failed").
+- Overdue email repeats (2026-10-18): after each successful email, automatically snooze the reminder for **6 hours** while retaining its original due date. Repeat until completion/cancellation or an explicit reschedule. Failed provider attempts keep their bounded retry policy; quiet hours still delay actual delivery.
 - Quiet hours per context: work reminders don't ping WhatsApp at 11pm; they defer to next allowed window (user-overridable per reminder).
 
 **Email (Resend)** — v1, week 1. Reply-to-complete stretch goal: replying "done" marks the reminder done (inbound webhook).
@@ -195,3 +196,24 @@ Email-in address (`todo@…`); iOS Share Sheet via the Flutter app's Share Exten
 - WhatsApp is the highest-friction channel (template approval, cost) — that's why it's phase 5, not phase 2.
 - iOS notifications come from the native Flutter app, not Web Push; email is the reliable fallback for web-only users.
 - Keep Supabase Edge Function sweep idempotent (claim rows with `FOR UPDATE SKIP LOCKED`) so double-fires can't double-notify.
+
+
+## 8. Focus — approved first slice (2026-10)
+
+The Focus MVP adds one daily highlight from an existing open Work or Side Gig reminder, a start-now timer (1–180 minutes) with pause/resume, and an explicit session outcome with an optional next step. Sessions persist in Supabase so refreshes and the second client can recover the same timer; reaching zero waits for the user to finish the session. Focus does not change reminder deadlines, completion, shipment state, or notification delivery.
+
+See [FOCUS_PLAN.md](FOCUS_PLAN.md) for the scope, interaction rules, database contract, and follow-on work. This slice implements the shared backend, web client, and Flutter client. Future scheduling and focus notifications are deferred.
+
+The next proposed iteration is documented in [FOCUS_IMPLEMENTATION_PLAN.md](FOCUS_IMPLEMENTATION_PLAN.md): reusable weekly Focus times (for example Thursday evening or Saturday at 9 AM), explicit task assignment independent of deadlines, simpler starts/returns, and phased notification support. This is planned work; scheduled Focus delivery is not yet shipped.
+
+## 9. Home — contextual household tasks (2026-10)
+
+Home has four independent sections: **Home care**, **Groceries**, **Bill pay**, and **Study & kids**. Section pills keep optional needs out of each other's way; choosing a section does not require setup in the others. Home is a view, so every reminder still belongs to one of the four contexts. Grocery lists use Shopping; all other Home tasks use Social/Personal and its quiet hours.
+
+Home care includes Car service & maintenance, HVAC & air filters, Dryer maintenance, Smart-home batteries, and Other home care. HVAC includes air-filter tasks; legacy Filter changes reminders/history remain intact and appear under HVAC. Smart-home batteries replaces the separate Filter card.
+
+Every template controls task, item/person, due date, repeat, instructions, completion, and history labels. Cars have Car name plus separate make/model fields. HVAC has System or room and optional Air-filter size. Dryer uses Dryer location. Battery tasks use Device & location plus Battery or charger type. Bills use Bill name, Biller or provider, optional Amount due/Currency, Payment due, Billing schedule, and payment records. Study uses Study task or follow-up, Student or family member, Subject or course, Teacher or school contact, and progress/next-step records. Optional fields never block a simple reminder.
+
+Repeat presets suit the task: care is generally monthly; batteries and study also offer weekly intervals, and study supports daily. Care repeats from actual completion. Bill and study repeats advance from the planned due date, so early payments or late sessions do not move the schedule. One-time completion closes the reminder. History snapshots the template details and survives deletion of the reminder.
+
+`design/home-templates.json` is the shared copy/field source for web, generated Flutter templates, and the prototype (`node scripts/gen-home-templates.mjs`). Additive migration `0014_contextual_home_tasks.sql` extends 0011 with category-specific details and day intervals. New clients use atomic `save_home_task`; the old save RPC remains compatible. `record_home_service` retains its signature and now snapshots contextual fields and follows the correct repeat anchor. RLS, completion-version checks, existing delivery channels, and quiet hours continue to apply.

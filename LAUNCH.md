@@ -14,12 +14,16 @@ Companion to `PLAN.md` (product), `DESIGN.md` (UI), `MOBILE.md` (native strategy
 |---|---|
 | 0 — Scaffold, auth, RLS | ✅ done |
 | 1 — Core loop, contexts, sheet-based create | ✅ done |
-| 2 — Delivery (Resend email, Slack DM + actions, sweep) | ✅ done |
+| 2 — Delivery (Resend email, sweep; Slack removed 2026-10) | ✅ done (sweep on 5-min cron; email auto-snooze 0013) |
 | 3 — Orders / Ship Queue | ✅ done |
 | 4 — PWA (manifest, serwist, share_target) | ✅ done |
 | 5 — WhatsApp (Twilio) | ⬜ not started |
 | 6 — Agents (REST API keys + MCP) | ⬜ not started (`api_keys` table exists) |
 | 7 — Shippo | ⬜ not started |
+| Flutter iOS app (`mobile/`) | 🟡 built locally on `ios-mvp`; APNs transport proof + TestFlight pending |
+| Home view (household sections, 0011/0014) | 🟡 migrations hosted; web + Flutter client release pending |
+| Focus MVP (highlight + sessions, 0012) | 🟡 migration hosted; client release + signed-in web↔iPhone handoff pending |
+| Focus times (FOCUS_IMPLEMENTATION_PLAN.md) | ⬜ planned — Phase 0/1 next, then slim Phase 2 |
 
 **The architecture is already multi-user.** RLS on every table, per-user Slack OAuth (`slack_integrations`), new-user seeding triggers for contexts and settings. There is no "make it multi-tenant" project. What's missing is the *operational* layer strangers need: deliverability, onboarding, quotas, legal pages, analytics.
 

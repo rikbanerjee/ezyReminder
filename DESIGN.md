@@ -213,3 +213,37 @@ Reminders created by agents show a tiny ✦ before the context name ("✦ via cl
 1. Recurrence UI depth — v1 ships presets (daily / weekdays / weekly / monthly); custom rrule editor later.
 2. Whether "Done today" should auto-clear at midnight or persist a 7-day history view (leaning: history lives in All tab).
 3. Snooze "Tonight" definition (leaning: 6pm same day, configurable later).
+
+## 9. Focus sessions — additive MVP (2026-10)
+
+Focus supports existing **Work / Side Gig** reminders, including orders. It adds no context or navigation tab. Shared behavior and RPC details live in `FOCUS_PLAN.md`.
+
+**Today's focus:** place one compact `surface` card before the dated sections on Today, after the context pills. Use the existing 12px radius, hairline border and `shadow-card`, with a small context dot and no full-card tint. Label 13px uppercase `text-2`; reminder title 17/600; due/context metadata 13px. Empty copy: “What matters most today?” with **Choose a reminder**. Selected state: title, independent due metadata, primary **Start focus**, secondary **Change**. The picker lists eligible existing open/snoozed Work and Side Gig reminders. The highlight belongs to the user's local date; do not silently carry yesterday's choice forward. Completed/deleted/ineligible highlights offer a replacement instead of a new session on that reminder.
+
+**Work/Side Gig entry:** an existing eligible reminder's detail sheet offers **Focus on this**. It opens the same focus setup, without replacing today's highlight. Keep Order, follow-up and initiative panels intact.
+
+**Setup sheet:** title “Focus on this”, reminder title and context, duration chips **10 min · 25 min · 50 min · Custom** (25 selected), optional labeled field “What would you like to finish?”, and primary **Start focus**. Custom reveals a whole-minute field; 1–180 minutes. Missing/invalid input gets a visible inline message on submit: “Choose a whole number from 1 to 180 minutes.” Show the selected reminder's latest saved next step as a quiet inset, labeled “Next step from last time”; omit when blank. No due-date picker here.
+
+**Running / paused:** title, intended outcome if present, large tabular-digit countdown, primary **Pause** or **Resume**, secondary **End session**. Closing the sheet keeps the session alive. An ongoing-session card remains reachable from Today and reminder browsing, regardless of the current filter; it opens the current session rather than offering a second start. At zero show **Time is up** and **How did it go?**, with **Review session**; never automatically complete a reminder or claim a session outcome. Expired sessions retain a visible review action even after reload.
+
+**Ending:** the same bottom sheet asks “How did it go?” with three mutually exclusive choices: **Finished what I planned**, **Made progress**, **Got interrupted**. No preselected outcome. Optional field “Next step for next time” and primary **Save session**. Helper copy: “This saves your session. Your reminder stays as it is.” Missing choice: “Choose how the session went.” Preserve form values on save failure; keep a Retry action. Save success: “Session saved”. Existing reminder completion and Mark shipped actions are separate.
+
+All focus sheets reuse the established 20px top corners, drag handle, `shadow-sheet`, 40% scrim and 300ms `cubic-bezier(0.32, 0.72, 0, 1)` slide-up. Use existing Work/Side Gig colors only for dots, selected controls and small accents. Minimum touch targets 44×44; fields remain visible above the keyboard. Dark mode uses existing tokens, and reduced motion disables transitions. Provide accessible names for timer and controls; announce state changes, not every second.
+
+### 4.7 Home tab (revised 2026-10)
+
+The app tab bar reads **Today · Ship · Home · All**. Home uses existing backgrounds, surface cards, hairlines, shadows, 16px gutters, dark tokens, and bottom dock. Inside Home, a scrollable row of section pills reads **Home care · Groceries · Bill pay · Study & kids**. Open Home care by default; deep links select the task's section. These are optional sections, not new reminder contexts. Only the selected section's forms/history are shown.
+
+Home care cards: **Car service & maintenance**, **HVAC & air filters**, **Dryer maintenance**, **Smart-home batteries**, **Other home care**. The old Filter changes card is consolidated into HVAC; existing filter reminders and history stay visible there. Other sections are peers: Groceries uses existing instant checklists, Bill pay uses bill reminders and Payment history, Study & kids uses education reminders and Study & follow-up history.
+
+All task sheets reuse 20px top corners, drag handle, 40% scrim, `shadow-sheet`, 300ms Apple slide-up curve, compact date/time picker with OK, reduced motion, and 44px touch targets. Field labels, placeholders, validation, repeat presets, completion controls and records come from `design/home-templates.json` for both clients and the prototype. No generic “Car or appliance” field remains.
+
+- Car: Service or task · Car name · Car make · Car model · Next service due · Repeat after service · Service instructions.
+- HVAC: HVAC task · System or room · Air-filter size · Next service or filter change · Repeat after HVAC care · HVAC instructions.
+- Dryer: Dryer task · Dryer location · Next dryer maintenance · Repeat after dryer care · Dryer care instructions.
+- Batteries: Battery task · Device & location · Battery or charger type · Next charge or battery change · Repeat after charging or replacing · Battery instructions.
+- Other care: Home-care task · Area or item · Next due · Repeat after completing · Task instructions.
+- Bills: Bill name · Biller or provider · Amount due · Currency · Payment due · Billing schedule · Payment notes. **Mark bill paid** opens Paid on and Payment confirmation notes, then **Save payment record**.
+- Study: Study task or follow-up · Student or family member · Subject or course · Teacher or school contact · Session or follow-up due · Study or follow-up schedule · Study or follow-up plan. **Record study or follow-up** opens Completed on and Progress & next steps.
+
+Extra metadata is optional. An amount requires a valid decimal and three-letter currency. Missing task/date errors identify the current task's field. Saving errors preserve drafts. Completion explains whether the task closes or advances, and whether its schedule follows the due date (bills/study) or completion (care). Records retain the original make/model, bill amount/currency, or study details after later edits. Deleting a reminder confirms that saved records remain. Each section has its own history and empty copy; Home care also filters by category.

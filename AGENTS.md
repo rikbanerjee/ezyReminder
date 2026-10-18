@@ -12,7 +12,7 @@ Reminder app (Next.js web + Flutter iOS) for people balancing a corporate job wi
 - **Two clients, one backend (2026-10):** Next.js web app + Flutter iOS app both talk to Supabase directly under RLS. A reminder created on one is visible/editable on the other; both subscribe to Supabase Realtime. Conflicts: **last edit wins** for now. Multi-step writes live in Postgres RPCs so both clients behave identically. See MOBILE.md §2.
 - **UI must match `design/prototype.html` and DESIGN.md exactly** (both clients) — card shadows, borders, context-colored active states, and the sheet slide-up motion are not optional polish, they're the spec. If implementation and prototype disagree, the prototype wins; fix the code, not the doc.
 - Shipping is behind a provider interface (`lib/shipping/provider.ts`); manual now, **Shippo** later. Don't hardcode any carrier API.
-- Agent-ready: REST API (`/api/v1/*`, scoped API keys) + MCP server so Codex Cowork / OpenClaw-type agents can create/complete reminders. Agent writes tagged `created_by: 'agent:<name>'`.
+- Agent-ready: REST API (`/api/v1/*`, scoped API keys) + MCP server so Claude Cowork / OpenClaw-type agents can create/complete reminders. Agent writes tagged `created_by: 'agent:<name>'`.
 - Quick-add (revised 2026-07, see DESIGN.md §5.1): the docked bar is a tap-anywhere trigger that opens the full create sheet — not an inline shorthand-parse text field. Same sheet as editing (context select, compact `DateTimePicker` with OK, Order/Work/Side Gig panels). `lib/parse/quick-add.ts`'s token parser is unused but kept for possible reuse.
 
 ## Stack (decided — don't relitigate)
@@ -25,15 +25,19 @@ Reminder app (Next.js web + Flutter iOS) for people balancing a corporate job wi
 
 ## Conventions
 - Schema lives in `supabase/migrations/`; RLS by `user_id` on every table (single-user today, multi-user-safe always)
-- Migrations **0001–0007 are applied to hosted Supabase** (2026-10-14). They are immutable: never edit or reapply them. Add database changes in the next unused migration number, starting with 0008.
+- Migrations **0001–0014 are applied to hosted Supabase** (verified 2026-10-18). They are immutable: never edit or reapply them. Add database changes in the next unused migration number, starting with 0015.
 - Integrations under `lib/integrations/<channel>/`, shipping under `lib/shipping/`; Flutter app under `mobile/`
 - Notification sweep must be idempotent (`FOR UPDATE SKIP LOCKED`)
 - Quiet hours per context are respected by every channel
 - Mobile-first UI; dark mode required; context colors: Work=blue, Side Gig=amber, Social=green, Shopping=purple
 
 ## Roadmap position
-Phases in PLAN.md §6; current status in LAUNCH.md §0. Web app phases 0–4 are shipped. Next: the Flutter iOS app (MOBILE.md §6 build order).
+Phases in PLAN.md §6; current status in LAUNCH.md §0. Web app phases 0–4 are shipped. Built locally on `ios-mvp` and backed by hosted migrations, client release pending: **Home** view (PLAN.md §9), **Focus MVP** (PLAN.md §8, contract in `FOCUS_PLAN.md`), and the Flutter iOS app (MOBILE.md §6 build order).
 
-## Imported Claude Cowork project instructions
+Next for Focus, in order (decided 2026-10-18): ship the current Focus MVP + Home; then Phase 0/1 of `FOCUS_IMPLEMENTATION_PLAN.md` (prototype, one-tap start, remembered duration); then a slim Phase 2 — in-app weekly **Focus times** with derived occurrences. Focus invitations, end alerts and alert protection wait for the Flutter notification phase.
 
-Build a simple reminder app personalized for user weak memomories
+## Agent instruction files
+`AGENTS.md` is the canonical instructions file (Codex reads it; most work happens there). `CLAUDE.md` only imports it via `@AGENTS.md` — edit this file, not CLAUDE.md.
+
+## Original brief (Claude Cowork project)
+Build a simple reminder app personalized for users with weak memories.
