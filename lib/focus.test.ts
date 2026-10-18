@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { test } from "node:test";
-import { focusLocalDate, getFocusTimer } from "./focus.ts";
+import {
+  focusLocalDate, focusOccurrenceStart, getFocusTimer, isOccurrenceMissed, nextFocusOccurrences, nextWeekdayAfter,
+} from "./focus.ts";
 
 const running = {
   duration_minutes: 25, elapsed_seconds: 60.5,
@@ -44,4 +47,38 @@ test("highlight date follows account timezone across midnight, DST and year roll
   assert.equal(focusLocalDate(new Date("2026-11-01T05:30:00Z"), "America/New_York"), "2026-11-01");
   assert.equal(focusLocalDate(new Date("2026-11-01T06:30:00Z"), "America/New_York"), "2026-11-01");
   assert.equal(focusLocalDate(new Date("2027-01-01T01:00:00Z"), "America/Los_Angeles"), "2026-12-31");
+});
+
+// ---- Focus time occurrences: shared with the Dart port via design/focus-time-fixtures.json ----
+const fixtures = JSON.parse(readFileSync(new URL("../design/focus-time-fixtures.json", import.meta.url), "utf8"));
+const iso = (date: Date) => date.toISOString().replace(".000Z", "Z");
+
+for (const c of fixtures.occurrenceStart) {
+  test(`occurrence start: ${c.name}`, () => {
+    assert.equal(iso(focusOccurrenceStart(c.localDate, c.startTime, c.timeZone)), c.expected, c.description);
+  });
+}
+for (const c of fixtures.nextOccurrences) {
+  test(`next occurrences: ${c.name}`, () => {
+    const actual = nextFocusOccurrences(c.time, new Date(c.now), c.timeZone, c.count)
+      .map((o) => ({ localDate: o.localDate, startsAt: iso(o.startsAt), endsAt: iso(o.endsAt) }));
+    assert.deepEqual(actual, c.expected, c.description);
+  });
+}
+for (const c of fixtures.missed) {
+  test(`missed: ${c.name}`, () => {
+    assert.equal(isOccurrenceMissed(c.occurrence, c.plannedMinutes, new Date(c.now), c.timeZone), c.expected, c.description);
+  });
+}
+for (const c of fixtures.nextWeekdayAfter) {
+  test(`next weekday after: ${c.name}`, () => {
+    assert.equal(nextWeekdayAfter(c.localDate, c.isoWeekday), c.expected, c.description);
+  });
+}
+test("fixture file is self-describing", () => {
+  assert.equal(fixtures.version, 1);
+  for (const group of ["occurrenceStart", "nextOccurrences", "missed", "nextWeekdayAfter"]) {
+    assert.ok(fixtures.groups[group] && fixtures[group].length > 0, group);
+    for (const c of fixtures[group]) assert.ok(c.name && c.description, `${group} case needs name + description`);
+  }
 });

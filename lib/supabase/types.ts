@@ -43,6 +43,8 @@ export type FocusSession = {
   outcome: FocusOutcome | null;
   next_step: string | null;
   updated_at: string;
+  /** Set when started from a Focus time assignment (migration 0016). */
+  assignment_id?: string | null;
 };
 export type FocusState = {
   server_now: string;
@@ -50,6 +52,57 @@ export type FocusState = {
   local_date: string;
   highlight: FocusHighlight | null;
   active_session: FocusSession | null;
+};
+
+export type FocusContextSlug = "work" | "sidegig";
+export type FocusPreferences = {
+  user_id: string;
+  preferred_minutes: number;
+  updated_at: string;
+};
+/** Weekly availability. `weekdays` is ISO (1=Mon .. 7=Sun); `start_time` is account-local "HH:MM:SS". */
+export type FocusTime = {
+  id: string;
+  label: string | null;
+  context_slug: FocusContextSlug;
+  weekdays: number[];
+  start_time: string;
+  budget_minutes: number;
+  enabled: boolean;
+  updated_at: string;
+};
+export type FocusAssignmentState = "planned" | "in_progress" | "reviewed" | "skipped" | "moved" | "cancelled";
+/** Row shape inside get_focus_dashboard_v2().assignments (only planned/in_progress are returned). */
+export type FocusAssignment = {
+  id: string;
+  reminder_id: string | null;
+  reminder_title: string;
+  context_slug: FocusContextSlug;
+  focus_time_id: string | null;
+  focus_time_label: string | null;
+  local_date: string;
+  start_time: string;
+  planned_minutes: number;
+  position: number;
+  state: FocusAssignmentState;
+  moved_to: string | null;
+  updated_at: string;
+  /** Live reminder deadline for the "starts after it is due" warning. */
+  due_at: string | null;
+  /** Order ship-by date (YYYY-MM-DD) when the reminder is an order. */
+  ship_by: string | null;
+};
+export type FocusDashboard = FocusState & {
+  preferred_minutes: number;
+  highlight_next_step: string | null;
+  session_next_step: string | null;
+  focus_times: FocusTime[];
+  assignments: FocusAssignment[];
+};
+/** Table rows (read-only for clients; writes go through RPCs). */
+export type FocusTimeRow = FocusTime & { user_id: string; archived_at: string | null; created_at: string };
+export type FocusAssignmentRow = Omit<FocusAssignment, "due_at" | "ship_by" | "focus_time_label"> & {
+  user_id: string; created_at: string;
 };
 
 export interface Database {
@@ -355,6 +408,24 @@ export interface Database {
         Update: Partial<FocusSession>;
         Relationships: [];
       };
+      focus_preferences: {
+        Row: FocusPreferences;
+        Insert: FocusPreferences;
+        Update: Partial<FocusPreferences>;
+        Relationships: [];
+      };
+      focus_times: {
+        Row: FocusTimeRow;
+        Insert: FocusTimeRow;
+        Update: Partial<FocusTimeRow>;
+        Relationships: [];
+      };
+      focus_assignments: {
+        Row: FocusAssignmentRow;
+        Insert: FocusAssignmentRow;
+        Update: Partial<FocusAssignmentRow>;
+        Relationships: [];
+      };
       home_maintenance: {
         Row: { reminder_id: string; user_id: string; category: string; asset: string; repeat_months: number | null; repeat_days: number | null; details: Record<string,string> };
         Insert: { reminder_id: string; user_id: string; category: string; asset?: string; repeat_months?: number | null; repeat_days?: number | null; details?: Record<string,string> };
@@ -451,6 +522,40 @@ export interface Database {
       };
       finish_focus_session: {
         Args: { p_id: string; p_expected_updated_at: string; p_outcome: FocusOutcome; p_next_step?: string | null };
+        Returns: string;
+      };
+      get_focus_dashboard_v2: {
+        Args: Record<string, never>;
+        Returns: FocusDashboard;
+      };
+      save_focus_preferences: {
+        Args: { p_preferred_minutes: number };
+        Returns: number;
+      };
+      save_focus_time: {
+        Args: {
+          p_id: string; p_label: string | null; p_context_slug: FocusContextSlug; p_weekdays: number[];
+          p_start_time: string; p_budget_minutes?: number; p_enabled?: boolean;
+        };
+        Returns: string;
+      };
+      archive_focus_time: {
+        Args: { p_id: string };
+        Returns: string;
+      };
+      assign_focus_work: {
+        Args: {
+          p_id: string; p_reminder_id: string; p_focus_time_id: string | null; p_local_date: string;
+          p_start_time: string | null; p_planned_minutes: number;
+        };
+        Returns: string;
+      };
+      skip_focus_work: {
+        Args: { p_id: string };
+        Returns: string;
+      };
+      start_assigned_focus: {
+        Args: { p_session_id: string; p_assignment_id: string; p_duration_minutes?: number | null };
         Returns: string;
       };
       save_home_task: {

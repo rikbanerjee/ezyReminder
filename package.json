@@ -15,6 +15,7 @@
     "test:auth": "node --test lib/auth-redirect.test.ts",
     "test:focus": "node --test lib/focus.test.ts",
     "test:focus:db": "node scripts/test-focus.mjs",
+    "test:focus-times:db": "node scripts/test-focus-times.mjs",
     "test:home:db": "node scripts/test-home-maintenance.mjs",
     "home:templates": "node scripts/gen-home-templates.mjs",
     "test:home:templates": "node scripts/gen-home-templates.mjs --check"
