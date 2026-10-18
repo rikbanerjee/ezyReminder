@@ -17,6 +17,41 @@ export type ReminderStatus = "open" | "done" | "snoozed" | "cancelled";
 export type NotificationStatus = "pending" | "sending" | "sent" | "failed" | "retrying";
 export type CreatedBy = "ui" | "api" | `agent:${string}`;
 
+export type FocusOutcome = "finished" | "progress" | "interrupted";
+export type FocusHighlight = {
+  user_id: string;
+  local_date: string;
+  reminder_id: string | null;
+  reminder_title: string;
+  context_slug: "work" | "sidegig";
+  created_at: string;
+  updated_at: string;
+};
+export type FocusSession = {
+  id: string;
+  user_id: string;
+  reminder_id: string | null;
+  reminder_title: string;
+  context_slug: "work" | "sidegig";
+  duration_minutes: number;
+  intended_outcome: string | null;
+  started_at: string;
+  last_resumed_at: string | null;
+  paused_at: string | null;
+  elapsed_seconds: number;
+  finished_at: string | null;
+  outcome: FocusOutcome | null;
+  next_step: string | null;
+  updated_at: string;
+};
+export type FocusState = {
+  server_now: string;
+  timezone: string;
+  local_date: string;
+  highlight: FocusHighlight | null;
+  active_session: FocusSession | null;
+};
+
 export interface Database {
   public: {
     Tables: {
@@ -139,6 +174,9 @@ export interface Database {
           reminder_id: string;
           channel: DeliveryChannel;
           scheduled_for: string;
+          occurrence_at: string;
+          superseded_at: string | null;
+          delivery_started_at: string | null;
           sent_at: string | null;
           status: NotificationStatus;
           attempt_count: number;
@@ -153,6 +191,9 @@ export interface Database {
           reminder_id: string;
           channel: DeliveryChannel;
           scheduled_for: string;
+          occurrence_at?: string;
+          superseded_at?: string | null;
+          delivery_started_at?: string | null;
           sent_at?: string | null;
           status?: NotificationStatus;
           attempt_count?: number;
@@ -302,6 +343,30 @@ export interface Database {
           }
         ];
       };
+      focus_highlights: {
+        Row: FocusHighlight;
+        Insert: FocusHighlight;
+        Update: Partial<FocusHighlight>;
+        Relationships: [];
+      };
+      focus_sessions: {
+        Row: FocusSession;
+        Insert: FocusSession;
+        Update: Partial<FocusSession>;
+        Relationships: [];
+      };
+      home_maintenance: {
+        Row: { reminder_id: string; user_id: string; category: string; asset: string; repeat_months: number | null; repeat_days: number | null; details: Record<string,string> };
+        Insert: { reminder_id: string; user_id: string; category: string; asset?: string; repeat_months?: number | null; repeat_days?: number | null; details?: Record<string,string> };
+        Update: Partial<Database["public"]["Tables"]["home_maintenance"]["Insert"]>;
+        Relationships: [];
+      };
+      home_service_records: {
+        Row: { id: string; user_id: string; reminder_id: string | null; title: string; category: string; asset: string; serviced_at: string; notes: string; created_at: string; details: Record<string,string> };
+        Insert: { user_id: string; reminder_id?: string | null; title: string; category: string; asset: string; serviced_at: string; notes?: string; details?: Record<string,string> };
+        Update: Partial<Database["public"]["Tables"]["home_service_records"]["Insert"]>;
+        Relationships: [];
+      };
       device_tokens: {
         Row: {
           id: string;
@@ -364,6 +429,42 @@ export interface Database {
     };
     Views: Record<string, never>;
     Functions: {
+      get_focus_state: {
+        Args: Record<string, never>;
+        Returns: FocusState;
+      };
+      set_focus_highlight: {
+        Args: { p_reminder_id: string | null };
+        Returns: string;
+      };
+      start_focus_session: {
+        Args: { p_id: string; p_reminder_id: string; p_duration_minutes: number; p_intended_outcome?: string | null };
+        Returns: string;
+      };
+      pause_focus_session: {
+        Args: { p_id: string; p_expected_updated_at: string };
+        Returns: string;
+      };
+      resume_focus_session: {
+        Args: { p_id: string; p_expected_updated_at: string };
+        Returns: string;
+      };
+      finish_focus_session: {
+        Args: { p_id: string; p_expected_updated_at: string; p_outcome: FocusOutcome; p_next_step?: string | null };
+        Returns: string;
+      };
+      save_home_task: {
+        Args: { p_id: string | null; p_title: string; p_notes: string; p_due_at: string; p_category: string; p_asset: string; p_repeat_months: number | null; p_channels: Channel[]; p_details?: Record<string,string>; p_repeat_days?: number | null };
+        Returns: string;
+      };
+      save_home_maintenance: {
+        Args: { p_id: string | null; p_title: string; p_notes: string; p_due_at: string; p_category: string; p_asset: string; p_repeat_months: number | null; p_channels: Channel[] };
+        Returns: string;
+      };
+      record_home_service: {
+        Args: { p_id: string; p_expected_updated_at: string; p_serviced_at: string; p_notes: string };
+        Returns: string;
+      };
       claim_due_notifications: {
         Args: { p_limit?: number };
         Returns: Database["public"]["Tables"]["notifications"]["Row"][];
@@ -371,6 +472,10 @@ export interface Database {
       enqueue_due_notifications: {
         Args: Record<string, never>;
         Returns: undefined;
+      };
+      retry_notification: {
+        Args: { p_notification_id: string };
+        Returns: string;
       };
       create_reminder: {
         Args: {

@@ -10,8 +10,14 @@
     "tokens": "node scripts/gen-tokens.mjs",
     "test:shared": "node scripts/test-shared.mjs",
     "test:ios-foundation": "node scripts/test-ios-foundation.mjs",
-    "test:edge": "node --test supabase/functions/delete-account/index.test.mjs",
-    "test:auth": "node --test lib/auth-redirect.test.ts"
+    "test:edge": "node --test supabase/functions/delete-account/index.test.mjs supabase/functions/notification-sweep/index.test.mjs",
+    "test:notifications": "node --test lib/integrations/email/index.test.ts supabase/functions/notification-sweep/index.test.mjs",
+    "test:auth": "node --test lib/auth-redirect.test.ts",
+    "test:focus": "node --test lib/focus.test.ts",
+    "test:focus:db": "node scripts/test-focus.mjs",
+    "test:home:db": "node scripts/test-home-maintenance.mjs",
+    "home:templates": "node scripts/gen-home-templates.mjs",
+    "test:home:templates": "node scripts/gen-home-templates.mjs --check"
   },
   "dependencies": {
     "@serwist/next": "^9.5.12",

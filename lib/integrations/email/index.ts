@@ -11,6 +11,8 @@ export interface SendEmailInput {
   from: string;
   to: string;
   reminder: ReminderForDelivery;
+  /** Stable for every attempt to deliver one queued notification. */
+  idempotencyKey: string;
 }
 
 function renderEmail(reminder: ReminderForDelivery): { subject: string; html: string } {
@@ -33,22 +35,31 @@ function escapeHtml(s: string): string {
 }
 
 export async function sendEmail(input: SendEmailInput): Promise<SendResult> {
+  if (!input.idempotencyKey.trim()) return { ok: false, error: "Email delivery requires an idempotency key." };
   const { subject, html } = renderEmail(input.reminder);
 
-  const res = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${input.apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ from: input.from, to: [input.to], subject, html }),
-  });
+  try {
+    const res = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${input.apiKey}`,
+        "Content-Type": "application/json",
+        "Idempotency-Key": input.idempotencyKey,
+      },
+      signal: AbortSignal.timeout(15_000),
+      body: JSON.stringify({ from: input.from, to: [input.to], subject, html }),
+    });
 
-  if (!res.ok) {
-    const body = await res.text();
-    return { ok: false, error: `Resend ${res.status}: ${body.slice(0, 300)}` };
+    if (!res.ok) {
+      const body = await res.text();
+      return { ok: false, error: `Resend ${res.status}: ${body.slice(0, 300)}` };
+    }
+
+    const data = (await res.json()) as { id?: unknown };
+    if (typeof data.id !== "string" || !data.id) return { ok: false, error: "Resend returned no message ID." };
+    return { ok: true, providerMessageId: data.id };
+  } catch {
+    // Retry ambiguous network failures with the same key within the sweep's bounded window.
+    return { ok: false, error: "Email request failed or timed out." };
   }
-
-  const data = (await res.json()) as { id: string };
-  return { ok: true, providerMessageId: data.id };
 }

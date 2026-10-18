@@ -17,6 +17,8 @@ of the last setup run:
 
 ## Redeploying after code changes
 
+For the 0009 notification-occurrence migration and 0013 six-hour email snoozing, follow [EMAIL_REPEAT.md](EMAIL_REPEAT.md) and [DEDUPLICATION.md](DEDUPLICATION.md) first: pause the existing job, finish in-flight sweeps, apply the migration, redeploy the function, and resume the same job. The code requires the new columns before deployment.
+
 Whenever `supabase/functions/notification-sweep/index.ts` or the shared
 `lib/quiet-hours.ts` / `lib/integrations/*` files change:
 
@@ -72,3 +74,7 @@ select vault.update_secret(
 ```sql
 select cron.unschedule('notification-sweep');
 ```
+
+## Verified rollout — 2026-10-18
+
+With Rik’s explicit authorization, 0008, 0009, and 0013 were applied and the matching sweep deployed. Cron job 1 was paused during rollout and restored active on its existing `*/5 * * * *` schedule. Successful email deliveries now automatically snooze their reminder for six hours; this does not change the global cron cadence. Deployment health and database checks passed without a test email. See [EMAIL_REPEAT.md](EMAIL_REPEAT.md).
