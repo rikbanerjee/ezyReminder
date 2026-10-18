@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { updateTimezone, updateQuietHours } from "@/app/actions";
 import { createClient } from "@/lib/supabase/client";
+import { FocusProvider, FocusSettingsSection } from "@/components/focus/focus-provider";
 
 export interface SettingsContext {
   id: string;
@@ -23,11 +24,15 @@ export interface SettingsViewProps {
 
 export function SettingsView({ timezone, contexts }: SettingsViewProps) {
   return (
-    <div className="flex flex-col gap-6">
-      <TimezoneSection initialTimezone={timezone} />
-      <QuietHoursSection contexts={contexts} />
-      <DeleteAccountSection />
-    </div>
+    // The provider only serves the Focus times sheet here, so it has no reminders to offer.
+    <FocusProvider reminders={[]}>
+      <div className="flex flex-col gap-6">
+        <TimezoneSection initialTimezone={timezone} />
+        <QuietHoursSection contexts={contexts} />
+        <FocusSettingsSection />
+        <DeleteAccountSection />
+      </div>
+    </FocusProvider>
   );
 }
 

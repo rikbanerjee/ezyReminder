@@ -135,11 +135,11 @@ export function HomeView({
     // stay normal, non-scrolling siblings after it (DESIGN.md §3). This is
     // what makes the dock "frozen" at the bottom of the frame instead of
     // sitting wherever short content happens to end.
-    <FocusProvider reminders={reminders}>
+    <FocusProvider reminders={reminders} onOpenReminder={(reminder) => { setSelected(reminder); setScrollToOrderPanel(reminder.is_order); }}>
     <div className="flex h-full min-h-0 flex-col">
       <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-1 pb-4 pt-1">
         {/* Context filter pills */}
-        <div className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-0.5">
+        <div className="-mx-1 flex shrink-0 gap-1.5 overflow-x-auto px-1 pb-0.5">
           <FilterPill
             active={activeSlug === null}
             onClick={() => setActiveSlug(null)}
@@ -157,7 +157,7 @@ export function HomeView({
         </div>
 
         {showSearch && (
-        <div className="flex h-10 items-center gap-2 rounded-xl border border-hairline bg-surface px-3 shadow-card">
+        <div className="flex h-10 shrink-0 items-center gap-2 rounded-xl border border-hairline bg-surface px-3 shadow-card">
           <Search className="size-4 shrink-0 text-text-2" />
           <input
             value={query}
@@ -168,7 +168,8 @@ export function HomeView({
         </div>
       )}
 
-      <FocusCard activeOnly={activeTab !== "today" || (activeSlug !== null && !["work", "sidegig"].includes(activeSlug))} />
+      {/* Not filtered by the context pills (DESIGN.md §9); other tabs only show a running session. */}
+      <FocusCard activeOnly={activeTab !== "today"} />
 
       {totalVisible === 0 && visibleDone.length === 0 ? (
         <p className="px-1 py-8 text-center text-[15px] text-text-2">
