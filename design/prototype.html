@@ -177,6 +177,117 @@
   .toast button{border:none; background:none; color:var(--gig); font-weight:700; cursor:pointer; font-size:14px; font-family:inherit;}
   .empty{text-align:center; color:var(--text2); font-size:14px; padding:40px 20px;}
   @media (prefers-reduced-motion: reduce){ *{transition:none!important; animation:none!important;} }
+
+  /* ---------- Focus (DESIGN.md §9) ---------- */
+  .c-work{--fc:var(--work)} .c-gig{--fc:var(--gig)} .c-social{--fc:var(--social)}
+  .fcard{background:var(--surface); border:1px solid var(--hairline); border-radius:12px; padding:14px; box-shadow:0 1px 3px rgba(0,0,0,.05); margin-bottom:10px;}
+  .dark .fcard{box-shadow:0 1px 3px rgba(0,0,0,.4);}
+  .f-ctxline{display:flex; align-items:center; gap:6px; flex-wrap:wrap; font-size:13px; font-weight:600; color:var(--text2);}
+  .f-title{font-size:17px; font-weight:600; margin-top:6px; overflow-wrap:anywhere;}
+  .f-meta{font-size:13px; color:var(--text2); margin-top:3px; overflow-wrap:anywhere;}
+  .f-note{font-size:12px; color:var(--text2); margin:8px 0 0;}
+  .f-inset{background:var(--bg); border-radius:10px; padding:10px 12px; margin-top:10px;}
+  .f-inset .k{font-size:12px; font-weight:600; color:var(--text2);}
+  .f-inset .v{font-size:14px; margin-top:2px; white-space:pre-wrap; overflow-wrap:anywhere;}
+  .f-actions{display:flex; flex-wrap:wrap; gap:8px; margin-top:12px;}
+  .f-cardrow{display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; margin-top:8px;}
+  .f-count{font-size:26px; font-weight:600; font-variant-numeric:tabular-nums; letter-spacing:.5px;}
+  .f-count.dim{color:var(--text2);}
+  .f-err{font-size:13px; color:var(--danger); margin:6px 0 0;}
+  .f-link{border:none; background:none; color:var(--text2); font:inherit; font-size:13px; font-weight:600; letter-spacing:.2px; text-transform:none; cursor:pointer; min-height:44px; padding:0 4px; margin:-12px -4px;}
+  .fb{min-height:44px; min-width:44px; border:1.5px solid transparent; border-radius:12px; padding:0 16px; font-family:inherit; font-size:15px; font-weight:600; line-height:1.2;
+    cursor:pointer; display:inline-flex; align-items:center; justify-content:center; gap:6px; text-align:center; color:var(--text); background:none;}
+  .fb.primary{background:var(--text); color:var(--bg);}
+  .fb.outline{border-color:var(--hairline); background:var(--surface);}
+  .fb.ghost{color:var(--text2); padding:0 10px;}
+  .fb.block{width:100%;} .fb.grow{flex:1 1 150px;}
+  .fb:disabled{opacity:.45; cursor:default;}
+  .fb.dur{border-color:var(--hairline); background:var(--surface); color:var(--text2); font-size:13px; padding:0 14px; box-shadow:0 1px 3px rgba(0,0,0,.05);}
+  .fb:focus-visible,.fchip2:focus-visible,.f-choice:focus-visible,.f-icon:focus-visible,.f-link:focus-visible,.f-occ:focus-visible,.f-day:focus-visible,.f-trow:focus-visible,button.set-row:focus-visible{outline:2px solid var(--work); outline-offset:2px;}
+  .fchip2{min-height:44px; min-width:44px; padding:0 14px; border-radius:999px; border:1.5px solid var(--hairline); background:var(--surface); color:var(--text2);
+    font-family:inherit; font-size:13px; font-weight:600; cursor:pointer; box-shadow:0 1px 3px rgba(0,0,0,.05); display:inline-flex; align-items:center; justify-content:center; gap:6px;}
+  .fchip2.on{color:var(--text); border-color:var(--fc,var(--text)); background:color-mix(in srgb, var(--fc,var(--text)) 10%, var(--surface));}
+  .f-chips{display:flex; flex-wrap:wrap; gap:8px;}
+  .f-grid2{display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:8px; margin-top:12px;}
+  .f-missed .f-mh{display:flex; justify-content:space-between; align-items:baseline; gap:8px;}
+  .f-missed .f-mt{font-size:15px; font-weight:600;}
+  .f-more{font-size:13px; color:var(--text2); font-weight:600;}
+  /* focus-time rows */
+  .f-occ,.f-trow{display:flex; align-items:center; gap:12px; width:100%; min-height:52px; text-align:left; border:none; background:var(--surface); color:var(--text); font-family:inherit; padding:12px 14px; cursor:pointer; border-bottom:.5px solid var(--hairline);}
+  .f-occ:last-child,.f-trow:last-child{border-bottom:none;}
+  .f-occ .b,.f-trow .b{flex:1; min-width:0;}
+  .f-occ .t,.f-trow .t{font-size:16px; font-weight:600;}
+  .f-occ .s{font-size:13px; color:var(--text2); margin-top:2px; overflow-wrap:anywhere;}
+  .f-occ .s.hint{font-size:12px;}
+  .f-occ .r,.f-trow .r{font-size:13px; color:var(--text2); white-space:nowrap;}
+  button.set-row{width:100%; background:none; border:none; color:inherit; font:inherit; font-size:15px; text-align:left; min-height:44px;}
+  /* sheets */
+  #fSheet{z-index:55;}
+  .f-hz{padding:2px 0 0; touch-action:none; cursor:grab;}
+  .f-top{display:flex; align-items:center; gap:2px; margin-bottom:6px;}
+  .f-h2{flex:1; font-size:20px; font-weight:600; margin:0; overflow-wrap:anywhere;}
+  .f-icon{width:44px; height:44px; flex:none; border:none; background:none; color:var(--text2); font-size:20px; cursor:pointer; border-radius:12px; margin-right:-10px;}
+  .f-icon.back{margin:0 0 0 -10px; font-size:26px;}
+  label.f-sub{display:block;}
+  .frame.f-open .toast{bottom:auto; top:64px; transform:translate(-50%,-20px);} .frame.f-open .toast.show{transform:translate(-50%,0);}
+  .f-sub{font-size:13px; font-weight:600; color:var(--text2); margin:16px 0 8px;}
+  .f-big{display:block; font-size:17px; font-weight:600; margin:20px 0 6px;}
+  .f-help{font-size:12px; color:var(--text2); margin:6px 0 0;}
+  .f-input,.f-ta{width:100%; min-height:44px; border:1px solid var(--hairline); border-radius:12px; background:var(--surface); color:var(--text); padding:10px 12px; font-family:inherit; font-size:15px; outline:none;}
+  .f-ta{background:var(--bg); border-color:transparent; resize:vertical; min-height:72px;}
+  .f-input:focus-visible,.f-ta:focus-visible{outline:2px solid var(--work); outline-offset:1px;}
+  .f-input[aria-invalid="true"],.f-ta[aria-invalid="true"]{border-color:var(--danger);}
+  .f-choice{display:flex; align-items:center; gap:12px; width:100%; min-height:52px; text-align:left; border:1.5px solid var(--hairline); background:var(--surface); color:var(--text);
+    border-radius:12px; padding:10px 14px; font-family:inherit; font-size:15px; cursor:pointer; margin-top:8px;}
+  .f-choice .sec{display:block; font-size:13px; font-weight:400; color:var(--text2); margin-top:1px;}
+  .f-choice .radio{width:20px; height:20px; border-radius:50%; border:2px solid var(--text2); flex:none;}
+  .f-choice.on{border-color:var(--fc,var(--text)); background:color-mix(in srgb, var(--fc,var(--text)) 8%, var(--surface));}
+  .f-choice.on .radio{border-color:var(--fc,var(--text)); background:radial-gradient(var(--fc,var(--text)) 45%, transparent 50%);}
+  .f-choice.plain{justify-content:flex-start;}
+  .f-big-count{font-size:56px; font-weight:300; text-align:center; font-variant-numeric:tabular-nums; color:var(--text2); letter-spacing:1px; line-height:1.1; margin-top:22px;}
+  .f-big-count.up{color:var(--text); font-weight:600;}
+  .f-big-count.paused{opacity:.55;}
+  .f-state{text-align:center; font-size:14px; color:var(--text2); margin:4px 0 18px;}
+  .f-focus{border-left:3px solid var(--fc,var(--text)); background:var(--bg); border-radius:4px 12px 12px 4px; padding:12px 14px; margin-top:14px;}
+  .f-focus .k{font-size:12px; font-weight:600; color:var(--text2);}
+  .f-focus .v{font-size:17px; font-weight:600; margin-top:3px; white-space:pre-wrap; overflow-wrap:anywhere;}
+  .f-session-title{font-size:22px; font-weight:700; letter-spacing:-.2px; margin-top:6px; overflow-wrap:anywhere;}
+  .f-ok{width:56px; height:56px; border-radius:50%; background:color-mix(in srgb, var(--social) 16%, var(--surface)); color:var(--social); font-size:28px; display:flex; align-items:center; justify-content:center; margin:6px auto 8px;}
+  .f-center{text-align:center;}
+  .f-stack{display:flex; flex-direction:column; gap:8px; margin-top:16px;}
+  .f-div{border-top:.5px solid var(--hairline); margin:18px 0 0; padding-top:14px;}
+  .f-warn{border:1px solid var(--hairline); border-left:3px solid var(--danger); border-radius:4px 12px 12px 4px; padding:12px 14px; margin-top:14px; background:var(--bg);}
+  .f-warn b{font-size:14px; color:var(--danger);} .f-warn p{font-size:13px; margin:4px 0 0; color:var(--text);}
+  .f-tasklist{list-style:none; margin:14px 0 0; padding:0; border:1px solid var(--hairline); border-radius:12px; overflow:hidden;}
+  .f-tasklist li{padding:12px 14px; border-bottom:.5px solid var(--hairline);}
+  .f-tasklist li:last-child{border-bottom:none;}
+  .f-tasklist .n{display:inline-flex; width:22px; height:22px; border-radius:50%; background:var(--bg); color:var(--text2); font-size:12px; font-weight:700; align-items:center; justify-content:center; margin-right:8px; flex:none;}
+  .f-tasklist .tt{display:flex; align-items:flex-start; font-size:16px; font-weight:600; overflow-wrap:anywhere;}
+  .f-tasklist .ts{font-size:13px; color:var(--text2); margin:2px 0 0 30px; overflow-wrap:anywhere;}
+  .f-tasklist .f-actions{margin:8px 0 0 30px;}
+  .f-seg{display:flex; gap:8px;}
+  .f-seg .fchip2{flex:1; border-radius:12px;}
+  .f-days{display:grid; grid-template-columns:repeat(auto-fit,minmax(44px,1fr)); gap:6px;}
+  .f-days .fchip2{padding:0; border-radius:12px;}
+  .f-picker{background:var(--bg); border-radius:14px; padding:10px 12px 12px; margin-top:8px;}
+  .f-pk-h{display:flex; align-items:center; justify-content:space-between;}
+  .f-pk-h button{width:44px; height:44px; border:none; background:none; color:var(--text); font-size:22px; cursor:pointer; border-radius:12px;}
+  .f-pk-h b{font-size:15px;}
+  .f-cal{display:grid; grid-template-columns:repeat(7,1fr); gap:2px;}
+  .f-dow{text-align:center; font-size:11px; font-weight:600; color:var(--text2); padding:4px 0;}
+  .f-day{min-height:44px; border:none; background:none; color:var(--text); border-radius:12px; font-family:inherit; font-size:14px; cursor:pointer; padding:0;}
+  .f-day.on{background:var(--text); color:var(--bg); font-weight:700;}
+  .f-day:disabled{opacity:.3; cursor:default;}
+  .f-time-row{display:flex; align-items:center; gap:10px; margin:10px 0 12px; font-size:13px; font-weight:600; color:var(--text2);}
+  .f-time-row .f-input{flex:1;}
+  .f-tz{font-size:12px; color:var(--text2); margin:6px 0 0;} .f-tz u{cursor:pointer; text-underline-offset:2px;}
+  .f-vh{position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap;}
+  /* prototype-only demo switcher — not part of the product UI */
+  .fdemo{border:1.5px dashed var(--hairline); border-radius:12px; padding:2px 12px; margin-bottom:4px; font-size:12px; color:var(--text2);}
+  .fdemo summary{cursor:pointer; min-height:36px; display:flex; align-items:center; font-weight:600;}
+  .fdemo .g{display:flex; flex-wrap:wrap; gap:6px 14px; align-items:center; padding:4px 0 10px;}
+  .fdemo label{display:flex; align-items:center; gap:6px; min-height:32px;}
+  .fdemo select,.fdemo button{font:inherit; font-size:12px; color:var(--text); background:var(--bg); border:1px solid var(--hairline); border-radius:8px; padding:4px 8px; min-height:32px;}
 </style>
 </head>
 <body>
@@ -246,11 +357,22 @@
         <button class="btn ship" id="shipFromSheet">Mark shipped</button>
       </div>
     </div>
+    <div id="shFocus" style="display:none">
+      <div class="sh-label">FOCUS</div>
+      <div class="f-actions" style="margin-top:0">
+        <button class="fb outline grow" id="shFocusOn">Focus on this</button>
+        <button class="fb outline grow" id="shWorkOn">Work on this</button>
+      </div>
+      <div class="quiet" id="shPlanNote"></div>
+    </div>
     <div class="sheet-foot">
       <button class="btn ghost-danger">Delete</button>
       <button class="btn primary" id="sheetDone">Done</button>
     </div>
   </div>
+
+  <div class="sheet" id="fSheet" role="dialog" aria-modal="true" aria-labelledby="fTitle" tabindex="-1"></div>
+  <div class="f-vh" id="fLive" role="status" aria-live="polite"></div>
 
   <div class="toast" id="toast"><span id="toastMsg"></span><button id="toastAct"></button></div>
 </div>
@@ -267,6 +389,12 @@ let reminders = [
  {id:6, title:"1:1 agenda for Marcus", ctx:"work", due:"Tue 10 AM", ch:"📱", section:"upcoming"},
  {id:7, title:"RSVP to Dana's party", ctx:"social", due:"Wed", ch:"⧉", section:"upcoming"},
  {id:8, title:"Sticker order · Etsy #1038 · Ben K.", ctx:"gig", due:"ship by Fri", ch:"✉", order:true, section:"today"},
+ /* Someday (no due date): used by the Focus samples below; they show in All, not Today */
+ {id:9,  title:"Choose photos for mug listing", ctx:"gig", due:"No date", ch:"✉", section:"someday"},
+ {id:10, title:"Write listing description", ctx:"gig", due:"No date", ch:"✉", section:"someday"},
+ {id:11, title:"Update shipping rates", ctx:"gig", due:"No date", ch:"✉", section:"someday"},
+ {id:12, title:"Reply to buyer questions", ctx:"gig", due:"No date", ch:"✉", section:"someday"},
+ {id:13, title:"Draft Q4 capacity outline", ctx:"work", due:"No date", ch:"📱", section:"someday"},
 ];
 let orders = [
  {id:"o1", ref:"Etsy #1042 · Sarah M.", sub:"USPS · no label yet", by:"SHIP BY FRI", urgent:true},
@@ -319,12 +447,12 @@ function visible(){ return reminders.filter(r => activeCtx==="all" || r.ctx===ac
 /* ---------- screens ---------- */
 function renderToday(){
   const v = visible();
-  main.innerHTML =
+  main.innerHTML = focusTodayHTML() +
     section("Overdue", v.filter(r=>r.section==="overdue"), {danger:true}) +
     section("Today", v.filter(r=>r.section==="today")) +
     section("Upcoming", v.filter(r=>r.section==="upcoming")) +
     `<div class="section-h"><span>Done today</span><span>${doneToday} ›</span></div>`;
-  if(!v.length) main.innerHTML = `<div class="empty">Nothing here. Add one below 👇</div>`;
+  if(!v.length) main.innerHTML = focusTodayHTML() + `<div class="empty">Nothing here. Add one below 👇</div>`;
   bindRows();
 }
 function renderShip(){
@@ -382,6 +510,10 @@ function renderSettings(){
     <div class="set-row"><span>✉ Email</span><span class="v" style="color:var(--social)">Connected ✓</span></div>
     <div class="set-row"><span>📱 iPhone notifications</span><span class="v" style="color:var(--social)">On ✓</span></div>
     <div class="set-row"><span>⧉ WhatsApp</span><span class="v">14 msgs this month ›</span></div>
+  </div>
+  <div class="section-h"><span>Focus</span></div>
+  <div class="card set-group">
+    <button class="set-row" data-fact="times"><span>Focus times</span><span class="v">${focusTimes.filter(f=>!f.archived).length ? focusTimes.filter(f=>!f.archived).length+" set up" : "None yet"} ›</span></button>
   </div>
   <div class="section-h"><span>API &amp; Agents</span></div>
   <div class="card set-group">
@@ -444,6 +576,7 @@ function openSheet(id){
   $("#shDue").textContent = "⏰ " + (r.over ? "9:00 AM (overdue)" : r.due);
   const sw = $("#orderSwitch"), op = $("#orderPanel");
   sw.classList.toggle("on", !!r.order); op.classList.toggle("open", !!r.order);
+  syncSheetFocus(r);
   $("#scrim").classList.add("open"); $("#sheet").classList.add("open");
 }
 function closeSheet(){ $("#scrim").classList.remove("open"); $("#sheet").classList.remove("open"); }
@@ -540,6 +673,503 @@ function openHomeSheet(category,task,recording=false){
 }
 function closeHomeSheet(){$('#homeSheet').classList.remove('open');$('#scrim').classList.remove('open');}
 $('#scrim').addEventListener('click',closeHomeSheet);
+
+
+/* ---------- Focus: Today card, sessions, focus times (DESIGN.md §9 · FOCUS_IMPLEMENTATION_PLAN.md §13.4) ---------- */
+/* Sample data only. Prototype clock is fixed at Fri Oct 23, 2026 1:10 PM so the dates below stay coherent. */
+const F_NOW = new Date(2026,9,23,13,10), F_TZ = "America/New_York";
+const DAYN = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+const MONN = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const MONF = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+const fpad = n => String(n).padStart(2,"0");
+const fiso = d => `${d.getFullYear()}-${fpad(d.getMonth()+1)}-${fpad(d.getDate())}`;
+const fdate = (s,t="00:00") => { const [y,m,d]=s.split("-").map(Number), [h,mi]=t.split(":").map(Number); return new Date(y,m-1,d,h,mi); };
+const ft12 = t => { const [h,m]=t.split(":").map(Number); return `${h%12||12}${m?":"+fpad(m):""} ${h<12?"AM":"PM"}`; };
+const ftd = d => ft12(`${d.getHours()}:${d.getMinutes()}`);
+const fshort = d => `${DAYN[d.getDay()].slice(0,3)}, ${MONN[d.getMonth()]} ${d.getDate()}`;
+const fesc = v => String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const fmmss = s => `${fpad(Math.floor(s/60))}:${fpad(s%60)}`;
+const isoDow = d => d.getDay()||7;                    /* ISO 1=Mon … 7=Sun, as in focus_times.weekdays */
+const remById = id => reminders.find(r=>r.id===id);
+const fEligible = r => !!r && (r.ctx==="work"||r.ctx==="gig");
+const fDot = c => `<span class="dot ${CTX[c].cls}" aria-hidden="true"></span>`;
+
+/* deadlines kept separate from focus times: planning never moves them */
+const F_DUE = {2:{d:new Date(2026,9,23,15,10),order:1}, 3:{d:new Date(2026,9,23,16,0)}, 5:{d:new Date(2026,9,24,17,0)}, 6:{d:new Date(2026,9,27,10,0)}, 8:{d:new Date(2026,9,23,23,59),order:1}};
+const fdueText = rid => { const x=F_DUE[rid]; if(!x) return ""; const day=x.d.getHours()===23&&x.d.getMinutes()===59; return `${x.order?"Ship by":"Due"} ${fshort(x.d)}${day?"":" · "+ftd(x.d)}`; };
+
+const F_STEP0 = {3:"Add the Q4 headcount table, then send a draft to Priya.", 2:"Print the label and pack the box.", 10:"Start with the title and first line.", 13:"List the three headings, then fill in the first.", 9:"Pick the best 4 from the Portland shoot."};
+let fNext = {...F_STEP0};
+const seedTimes = () => [
+  {id:"ft1", label:"Shop time", ctx:"gig", days:[4], time:"19:00", budget:30},
+  {id:"ft2", label:"Saturday mornings", ctx:"gig", days:[6], time:"09:00", budget:60},
+  {id:"ft3", label:"Lunch focus", ctx:"work", days:[1,2,3,4,5], time:"12:30", budget:30},
+];
+const seedPlanned = () => [
+  {id:"a1", rid:10, ftId:"ft2", date:"2026-10-24", time:"09:00", min:20, state:"planned"},
+  {id:"a2", rid:13, ftId:"ft3", date:"2026-10-27", time:"12:30", min:15, state:"planned"},
+  {id:"a3", rid:9,  ftId:"ft1", date:"2026-10-29", time:"19:00", min:15, state:"planned"},
+  {id:"a4", rid:11, ftId:"ft1", date:"2026-10-29", time:"19:00", min:10, state:"planned"},
+  {id:"a5", rid:12, ftId:"ft1", date:"2026-10-29", time:"19:00", min:10, state:"planned"},
+];
+const seedMissed = () => [
+  {id:"m1", rid:5, ftId:"ft2", date:"2026-10-17", time:"09:00", min:20, state:"planned"},
+  {id:"m2", rid:8, ftId:"ft1", date:"2026-10-22", time:"19:00", min:10, state:"planned"},
+];
+const fstate = {pref:25, highlight:null, session:null, lastSaved:null};
+let focusTimes = [], assigns = [], fSeq = 100;
+const demo = {state:"highlight", times:true, missed:false, fail:false, open:false};
+const OUTCOMES = [["finished","Finished what I planned"],["progress","Made progress"],["interrupted","Got interrupted"]];
+
+/* ----- derived data ----- */
+const ftById = id => focusTimes.find(f=>f.id===id);
+function groupOccs(list){
+  const m = new Map();
+  list.filter(a=>a.state==="planned" && remById(a.rid)).forEach(a=>{
+    const key = `${a.ftId||"one"}|${a.date}|${a.time}`;
+    if(!m.has(key)) m.set(key,{key, ft:a.ftId?ftById(a.ftId):null, ftId:a.ftId, date:a.date, time:a.time, start:fdate(a.date,a.time), tasks:[]});
+    m.get(key).tasks.push(a);
+  });
+  const out = [...m.values()];
+  out.forEach(o=>{
+    o.sum = o.tasks.reduce((s,a)=>s+a.min,0);
+    o.budget = o.ft ? o.ft.budget : o.sum;
+    o.end = new Date(o.start.getTime()+Math.max(o.budget,o.sum)*60000);   /* missed = start + max(budget, Σ planned) is past */
+    o.ctx = o.ft ? o.ft.ctx : remById(o.tasks[0].rid).ctx;
+  });
+  return out.sort((a,b)=>a.start-b.start);
+}
+const upcomingOccs = () => groupOccs(assigns).filter(o=>o.end>=F_NOW);
+const missedItems = () => groupOccs(assigns).filter(o=>o.end<F_NOW).flatMap(o=>o.tasks.map(a=>({a,o})));   /* oldest first */
+const occName = o => `${DAYN[o.start.getDay()]} · ${ft12(o.time)}`;
+const assignName = a => `${DAYN[fdate(a.date).getDay()]} · ${ft12(a.time)}`;
+function cardKind(){
+  if(fstate.session) return fstate.session.state;
+  if(fstate.highlight && fEligible(remById(fstate.highlight.rid))) return "highlight";
+  if(upcomingOccs().length) return "upnext";
+  return "empty";
+}
+const fMins = (sel,custom) => { if(sel!=="custom") return +sel; const n=Number(custom); return /^\d+$/.test(String(custom).trim()) && n>=1 && n<=180 ? n : NaN; };
+let fLiveT; function fAnnounce(msg){ const l=$("#fLive"); l.textContent=""; clearTimeout(fLiveT); fLiveT=setTimeout(()=>l.textContent=msg,50); }
+
+/* ----- Today: card, missed recovery, Your focus times ----- */
+function nextStepInset(rid,label="Next step from last time"){ const n=fNext[rid]; return n?`<div class="f-inset"><div class="k">${label}</div><div class="v">${fesc(n)}</div></div>`:""; }
+function startRow(minutes,extra=""){ return `<div class="f-actions"><button class="fb primary grow" data-fact="start" data-min="${minutes}">Start ${minutes} min</button><button class="fb dur" data-fact="dur" data-min="${minutes}" aria-label="Change length, currently ${minutes} minutes">${minutes} min</button>${extra}</div>`; }
+function fCardHTML(){
+  const k = cardKind(); let body = "";
+  if(k==="running"||k==="paused"||k==="timeup"){
+    const s = fstate.session, c = CTX[s.ctx], lab = {running:"In focus",paused:"Paused",timeup:"Time is up"}[k];
+    body = `<div class="f-ctxline">${fDot(s.ctx)}${c.name} · ${lab}</div><div class="f-title">${fesc(s.title)}</div>${k==="timeup"?'<div class="f-meta">How did it go?</div>':""}
+      <div class="f-cardrow"><span class="f-count ${k==="paused"?"dim":""}" role="timer" aria-label="Focus time remaining" data-fcount>${fmmss(s.remaining)}</span>
+      <button class="fb ${k==="timeup"?"primary":"outline"}" data-fact="session">${k==="timeup"?"Review session":"Open session"}</button></div>`;
+  } else if(k==="highlight"){
+    const r = remById(fstate.highlight.rid), c = CTX[r.ctx], due = fdueText(r.id);
+    body = `<div class="f-cardrow" style="margin-top:0"><div class="f-ctxline">${fDot(r.ctx)}${c.name}</div><button class="fb ghost" data-fact="choose" style="margin:-6px -10px -6px 0">Change</button></div>
+      <div class="f-title" style="margin-top:2px">${fesc(r.title)}</div>${due?`<div class="f-meta">${due}</div>`:""}${nextStepInset(r.id)}${startRow(fstate.pref)}`;
+  } else if(k==="upnext"){
+    const o = upcomingOccs()[0], a = o.tasks[0], r = remById(a.rid), c = CTX[r.ctx], due = fdueText(r.id);
+    body = `<div class="f-ctxline">${fDot(r.ctx)}Up next · ${occName(o)}</div><div class="f-title">${fesc(r.title)}</div>
+      <div class="f-meta">${c.name} · ${a.min} min planned · ${fshort(o.start)}</div>${due?`<div class="f-meta">${due}</div>`:""}${nextStepInset(r.id)}${startRow(a.min)}
+      <button class="fb ghost" data-fact="makefocus" style="margin:2px 0 -6px -10px">Make today's focus</button>`;
+  } else {
+    body = `<div class="f-title" style="margin-top:0">What would you like to move forward?</div><div class="f-meta">Choose one Work or Side Gig reminder.</div>
+      <div class="f-actions"><button class="fb primary" data-fact="choose">Choose a reminder</button><button class="fb ghost" data-fact="times">Set my focus times</button></div>`;
+  }
+  return `<div class="section-h" role="heading" aria-level="2" style="margin-top:6px"><span>Today's focus</span></div><div class="fcard" data-kind="${k}">${body}</div>`;
+}
+function fMissedHTML(){
+  const list = missedItems(); if(!list.length) return "";
+  const {a,o} = list[0], r = remById(a.rid), nextWd = DAYN[o.start.getDay()];
+  return `<div class="fcard f-missed" aria-label="Missed focus time"><div class="f-mh"><span class="f-mt">Didn't get to this?</span>${list.length>1?`<span class="f-more">+${list.length-1} more</span>`:""}</div>
+    <div class="f-title">${fesc(r.title)}</div><div class="f-meta">${fDot(r.ctx)} ${occName(o)} · ${fshort(o.start)} · ${a.min} min planned</div>
+    <div class="f-grid2"><button class="fb primary" data-fact="m-start" data-id="${a.id}">Start now</button><button class="fb outline" data-fact="m-next" data-id="${a.id}">Next ${nextWd}</button>
+    <button class="fb outline" data-fact="m-other" data-id="${a.id}">Choose another time</button><button class="fb ghost" data-fact="m-leave" data-id="${a.id}">Leave unscheduled</button></div></div>`;
+}
+function occRow(o){
+  const first = o.tasks[0], r = remById(first.rid), many = o.tasks.length>1;
+  return `<button class="f-occ" data-fact="occ" data-key="${o.key}"><span class="dot ${CTX[o.ctx].cls}" aria-hidden="true"></span><span class="b"><div class="t">${occName(o)}</div>
+    <div class="s">${fesc(r.title)} · ${first.min} min</div>${many?`<div class="s">${o.tasks.length} tasks · ${o.sum} min planned</div>`:""}
+    ${o.sum>o.budget?`<div class="s hint">${o.sum} min planned for ${o.budget} min available</div>`:""}</span><span class="r">${MONN[o.start.getMonth()]} ${o.start.getDate()} ›</span></button>`;
+}
+function fTimesHTML(){
+  const live = focusTimes.filter(f=>!f.archived), occs = upcomingOccs().slice(0,3), k = cardKind();
+  if(!live.length && k==="empty") return "";               /* the empty card already offers “Set my focus times” */
+  const head = `<div class="section-h" role="heading" aria-level="2"><span>Your focus times</span>${live.length?'<button class="f-link" data-fact="times">Manage ›</button>':""}</div>`;
+  if(!live.length) return head + `<div class="card"><button class="set-row" data-fact="times"><span>Set my focus times</span><span class="v">›</span></button></div>`;
+  if(!occs.length) return head + `<div class="card"><button class="set-row" data-fact="times"><span>Nothing planned yet</span><span class="v">Manage ›</span></button></div>`;
+  return head + `<div class="card">${occs.map(occRow).join("")}</div>`;
+}
+function demoStripHTML(){
+  const k = cardKind(), opts = [["empty","Empty"],["highlight","Highlight"],["upnext","Up next"],["running","Running"],["paused","Paused"],["timeup","Time is up"]];
+  return `<details class="fdemo" ${demo.open?"open":""}><summary>Prototype only · Focus demo states</summary><div class="g">
+    <label>Card <select id="fdState" aria-label="Focus card state">${opts.map(([v,l])=>`<option value="${v}" ${v===k?"selected":""}>${l}</option>`).join("")}</select></label>
+    <label><input type="checkbox" id="fdTimes" ${demo.times?"checked":""}> Focus times set up</label>
+    <label><input type="checkbox" id="fdMissed" ${demo.missed?"checked":""}> Missed card</label>
+    <label><input type="checkbox" id="fdFail" ${demo.fail?"checked":""}> Fail next save</label>
+    <button id="fdRush" type="button">Rush timer (5s left)</button></div></details>`;
+}
+const focusTodayHTML = () => demoStripHTML() + fCardHTML() + fMissedHTML() + fTimesHTML();
+
+function syncAll(){ const st = main.scrollTop; render(); main.scrollTop = st; if(fs.open && (fs.mode==="session")) renderF(true); }
+function resetDemoData(){
+  fstate.session = null; fstate.highlight = null; fstate.lastSaved = null; fstate.pref = 25; fNext = {...F_STEP0};
+  focusTimes = demo.times ? seedTimes() : [];
+  assigns = (demo.times && demo.state!=="empty" ? seedPlanned() : []).concat(demo.times && demo.missed ? seedMissed() : []);
+  if(["highlight","running","paused","timeup"].includes(demo.state)) fstate.highlight = {rid:3};
+  if(["running","paused","timeup"].includes(demo.state)){
+    const r = remById(3);
+    fstate.session = {rid:3, title:r.title, ctx:r.ctx, total:1500, remaining:{running:1122,paused:1122,timeup:0}[demo.state], state:demo.state, intended:"Finish the headcount table.", assignId:null, minutes:25};
+  }
+}
+function applyDemo(){ closeF(); resetDemoData(); syncAll(); }
+
+/* ----- sessions ----- */
+function startSession({rid,minutes,intended,assignId}){
+  if(fstate.session){ openF("session"); return; }
+  const r = remById(rid);
+  fstate.session = {rid, title:r.title, ctx:r.ctx, total:minutes*60, remaining:minutes*60, state:"running", intended:(intended||"").trim(), assignId:assignId||null, minutes};
+  if(assignId){ const a = assigns.find(x=>x.id===assignId); if(a) a.state = "in_progress"; }
+  fAnnounce(`Focus started, ${minutes} minutes`); syncAll(); openF("session");
+}
+setInterval(()=>{
+  const s = fstate.session; if(!s || s.state!=="running") return;
+  s.remaining = Math.max(0,s.remaining-1);
+  if(s.remaining===0){ s.state = "timeup"; fAnnounce("Time is up. How did it go?"); syncAll(); return; }
+  document.querySelectorAll("[data-fcount]").forEach(e=>e.textContent = fmmss(s.remaining));
+},1000);
+
+/* ----- bottom sheet shell (same motion/handle/scrim as the reminder sheet) ----- */
+const fs = {open:false, mode:null, data:{}, prior:null};
+const fEl = () => $("#fSheet");
+function fHead(title,back){ return `<div class="f-hz"><div class="handle"></div></div><div class="f-top">${back?`<button class="f-icon back" data-act="back" aria-label="Back">‹</button>`:""}<h2 class="f-h2" id="fTitle">${title}</h2><button class="f-icon" data-act="close" aria-label="Close">✕</button></div>`; }
+function openF(mode,data){
+  fs.prior = document.activeElement; fs.mode = mode; fs.data = data||{}; fs.open = true; $("#frame").classList.add("f-open"); renderF();
+  fEl().scrollTop = 0; fEl().classList.add("open"); $("#scrim").classList.add("open"); setTimeout(()=>fEl().focus({preventScroll:true}),0);
+}
+function goF(mode,data){ fs.mode = mode; fs.data = data||{}; renderF(); fEl().scrollTop = 0; }
+function closeF(){
+  if(!fs.open) return; fs.open = false; fs.mode = null; $("#frame").classList.remove("f-open"); fEl().classList.remove("open");
+  if(!$("#sheet").classList.contains("open") && !$("#homeSheet").classList.contains("open")) $("#scrim").classList.remove("open");
+  if(fs.prior && fs.prior.isConnected) fs.prior.focus({preventScroll:true});
+}
+function renderF(keep){
+  const el = fEl(), top = el.scrollTop, v = {choose:vChoose,setup:vSetup,session:vSession,review:vReview,after:vAfter,occ:vOcc,plan:vPlan,times:vTimes,timeedit:vTimeEdit}[fs.mode];
+  el.innerHTML = v ? v() : ""; el.setAttribute("aria-labelledby","fTitle"); if(keep) el.scrollTop = top;
+}
+$("#scrim").addEventListener("click", closeF);
+document.addEventListener("keydown", e=>{ if(e.key==="Escape" && fs.open){ e.preventDefault(); closeF(); } });
+(function(){   /* drag the handle zone down to dismiss */
+  const el = fEl(); let y0 = null, dy = 0;
+  el.addEventListener("pointerdown", e=>{ if(!e.target.closest(".f-hz")) return; y0 = e.clientY; el.style.transition = "none"; });
+  el.addEventListener("pointermove", e=>{ if(y0===null) return; dy = Math.max(0,e.clientY-y0); el.style.transform = `translateY(${dy}px)`; });
+  const end = ()=>{ if(y0===null) return; el.style.transition = ""; el.style.transform = ""; if(dy>100) closeF(); y0 = null; dy = 0; };
+  el.addEventListener("pointerup", end); el.addEventListener("pointercancel", end);
+})();
+
+/* ----- sheet views ----- */
+function remBlock(r,extra=""){ const due = fdueText(r.id); return `<div class="f-rem"><div class="f-ctxline">${fDot(r.ctx)}${CTX[r.ctx].name}${r.order?" · 🚚 Order":""}</div><div class="f-title">${fesc(r.title)}</div>${due?`<div class="f-meta">${due}</div>`:""}${extra}</div>`; }
+function durChips(vals,sel,c,act){ return `<div class="f-chips" role="group">${vals.map(v=>`<button type="button" class="fchip2 c-${c} ${sel===v?"on":""}" aria-pressed="${sel===v}" data-act="${act}" data-v="${v}">${v==="custom"?"Custom":v+" min"}</button>`).join("")}</div>`; }
+
+/* Choose a reminder (sets today's focus) */
+function vChoose(){
+  const d = fs.data, q = (d.q||"").toLowerCase();
+  return fHead("Today's focus") + `<p class="f-meta" style="margin:0 0 12px;font-size:14px">One reminder for today. Its deadline stays the same.</p>
+    <input class="f-input" id="fSearch" data-bind="q" placeholder="Search reminders…" aria-label="Search Work and Side Gig reminders" value="${fesc(d.q||"")}">
+    <div class="card" id="fChooseList" style="margin-top:12px;border:1px solid var(--hairline);box-shadow:none">${chooseRows(q)}</div>
+    ${fstate.session?'<button class="fb outline block" style="margin-top:12px" data-act="open-session">Open current session</button>':""}`;
+}
+function chooseRows(q){
+  const rows = reminders.filter(r=>fEligible(r) && r.title.toLowerCase().includes(q));
+  return rows.length ? rows.map(r=>`<button class="f-trow" data-act="pick-focus" data-id="${r.id}"><span class="dot ${CTX[r.ctx].cls}" aria-hidden="true"></span><span class="b"><div class="t" style="font-size:15px;font-weight:500">${fesc(r.title)}</div><div class="s" style="font-size:12px;color:var(--text2)">${CTX[r.ctx].name}</div></span><span class="r">›</span></button>`).join("")
+    : `<p class="f-meta" style="padding:16px;margin:0;font-size:14px">${q?"No matching reminders.":"Add a Work or Side Gig reminder to choose your focus."}</p>`;
+}
+
+/* Setup: duration chips, next step, intended outcome */
+function vSetup(){
+  const d = fs.data, r = remById(d.rid), c = CTX[r.ctx].cls, val = fMins(d.mins,d.custom), bad = d.tried && isNaN(val);
+  return fHead("Focus on this") + remBlock(r) + nextStepInset(r.id) + `<div class="f-sub" id="fDurL">How long?</div>${durChips(["10","25","50","custom"],d.mins,c,"setup-dur")}
+    ${d.mins==="custom"?`<label class="f-sub" for="fCustom">Minutes (1–180)</label><input class="f-input" id="fCustom" data-bind="custom" type="number" min="1" max="180" step="1" inputmode="numeric" value="${fesc(d.custom)}" aria-invalid="${bad}">`:""}
+    ${bad?'<p class="f-err" role="alert">Choose a whole number from 1 to 180 minutes.</p>':""}
+    ${!isNaN(val) && val!==fstate.pref?`<p class="f-note">Starting with ${val} min saves it as your usual length.</p>`:""}
+    <label class="f-sub" for="fIntend">What could you finish in 10–15 minutes? <span style="font-weight:400">(optional)</span></label>
+    <textarea class="f-ta" id="fIntend" data-bind="intended" rows="2" maxlength="500" placeholder="A small, clear outcome…">${fesc(d.intended||"")}</textarea>
+    <button class="fb primary block" style="margin-top:16px" data-act="setup-start">Start now</button>`;
+}
+
+/* Session: task + next step emphasized, quiet countdown */
+function vSession(){
+  const s = fstate.session; if(!s) return fHead("Focus session") + '<p class="f-meta">No session in progress.</p>';
+  const k = s.state, c = CTX[s.ctx], aim = s.intended ? ["Your focus", s.intended] : (fNext[s.rid] ? ["Next step", fNext[s.rid]] : null);
+  const stateLine = k==="timeup" ? "Time is up. Ready to review?" : k==="paused" ? "Paused" : "One thing at a time.";
+  return fHead(k==="timeup"?"Time is up":k==="paused"?"Paused":"In focus") + `<div class="f-ctxline">${fDot(s.ctx)}${c.name}</div><div class="f-session-title">${fesc(s.title)}</div>
+    ${aim?`<div class="f-focus c-${c.cls}"><div class="k">${aim[0]}</div><div class="v">${fesc(aim[1])}</div></div>`:""}
+    <div class="f-big-count ${k==="timeup"?"up":k==="paused"?"paused":""}" role="timer" aria-label="Focus time remaining" data-fcount>${fmmss(s.remaining)}</div><div class="f-state">${stateLine}</div>
+    <div class="f-actions" style="margin-top:0">${k==="timeup" ? '<button class="fb primary grow" data-act="review">Review session</button>'
+      : `<button class="fb primary grow" data-act="${k==="paused"?"resume":"pause"}">${k==="paused"?"▶ Resume":"❚❚ Pause"}</button><button class="fb outline grow" data-act="review">End session</button>`}</div>`;
+}
+
+/* Review: outcome + “Where will you start next time?” */
+function vReview(){
+  const d = fs.data, s = fstate.session, c = CTX[s.ctx].cls, mins = Math.max(1,Math.round((s.total-s.remaining)/60));
+  return fHead("How did it go?") + `<div class="f-ctxline">${fDot(s.ctx)}${CTX[s.ctx].name} · ${mins} min</div><div class="f-title">${fesc(s.title)}</div>
+    <fieldset style="border:none;padding:0;margin:0"><legend class="f-vh">How did this session go?</legend><div style="margin-top:12px" role="radiogroup" aria-label="Session outcome">
+    ${OUTCOMES.map(([v,l])=>`<button type="button" class="f-choice c-${c} ${d.outcome===v?"on":""}" role="radio" aria-checked="${d.outcome===v}" data-act="outcome" data-v="${v}"><span class="radio"></span>${l}</button>`).join("")}</div></fieldset>
+    ${d.tried && !d.outcome?'<p class="f-err" role="alert">Choose how the session went.</p>':""}
+    <label class="f-big" for="fNextStep">Where will you start next time?</label>
+    <textarea class="f-ta" id="fNextStep" data-bind="next" rows="3" maxlength="1000" placeholder="A small, clear next action…">${fesc(d.next||"")}</textarea>
+    <p class="f-help">Optional. It appears on your card when you come back.</p>
+    ${d.failed?'<div class="f-warn" role="alert"><b>Couldn\'t save your session</b><p>Your answers are still here.</p><div class="f-actions" style="margin-top:8px"><button class="fb primary" data-act="save-review">Retry</button></div></div>':""}
+    <p class="f-help" style="margin-top:12px">This saves your session. Your reminder stays as it is.</p>
+    <button class="fb primary block" style="margin-top:12px" data-act="save-review">${d.saving?"Saving…":"Save session"}</button>
+    ${s.state!=="timeup"?'<button class="fb ghost block" style="margin-top:4px" data-act="open-session">Back to session</button>':""}`;
+}
+
+/* After save: continue / choose another focus time / done (+ separate Mark reminder done) */
+function vAfter(){
+  const L = fstate.lastSaved, r = remById(L.rid);
+  const oc = OUTCOMES.find(o=>o[0]===L.outcome)[1];
+  return fHead("Session saved") + `<div class="f-ok" aria-hidden="true">✓</div><div class="f-center"><div class="f-title" style="margin-top:0">${fesc(L.title)}</div><div class="f-meta">${oc} · ${L.mins} min</div></div>
+    ${L.next?`<div class="f-inset"><div class="k">Next time</div><div class="v">${fesc(L.next)}</div></div>`:""}
+    <div class="f-stack">${r?'<button class="fb primary block" data-act="continue">Continue for 10 min</button>':""}
+    ${r && focusTimes.some(f=>!f.archived)?'<button class="fb outline block" data-act="another">Choose another focus time</button>':""}
+    <button class="fb ${r?"ghost":"primary"} block" data-act="done-now">I'm done for now</button></div>
+    ${r && L.outcome==="finished"?`<div class="f-div"><p class="f-help" style="margin:0 0 10px">Your reminder is still open. Finishing it is a separate step.</p>
+      <button class="fb outline block" data-act="${r.order?"ship-it":"mark-done"}">${r.order?"Mark shipped":"Mark reminder done"}</button></div>`:""}`;
+}
+
+/* Occurrence sheet: ordered tasks, Start per task, Skip */
+function vOcc(){
+  const o = groupOccs(assigns).find(x=>x.key===fs.data.key);
+  if(!o) return fHead("Focus time") + '<p class="f-meta">Nothing planned here.</p>';
+  const busy = !!fstate.session;
+  return fHead(occName(o)) + `<div class="f-ctxline">${fDot(o.ctx)}${CTX[o.ctx].name} · ${fshort(o.start)}${o.ft&&o.ft.label?" · "+fesc(o.ft.label):""}</div>
+    <div class="f-meta">${o.tasks.length} task${o.tasks.length>1?"s":""} · ${o.sum} min planned</div>${o.sum>o.budget?`<div class="f-meta">${o.sum} min planned for ${o.budget} min available</div>`:""}
+    <ol class="f-tasklist" aria-label="Planned tasks in order">${o.tasks.map((a,i)=>{ const r = remById(a.rid), due = fdueText(a.rid);
+      return `<li><div class="tt"><span class="n">${i+1}</span><span>${fesc(r.title)}</span></div><div class="ts">${a.min} min${due?" · "+due:""}</div>${fNext[r.id]?`<div class="ts">Next: ${fesc(fNext[r.id])}</div>`:""}
+      <div class="f-actions"><button class="fb primary" data-act="occ-start" data-id="${a.id}" ${busy?"disabled":""}>Start ${a.min} min</button><button class="fb ghost" data-act="occ-skip" data-id="${a.id}">Skip</button></div></li>`; }).join("")}</ol>
+    ${busy?'<p class="f-note">A session is already in progress. <u data-act="open-session" style="cursor:pointer">Open it</u> before starting another.</p>':'<p class="f-note">Skip leaves the reminder as it is. Nothing starts on its own.</p>'}`;
+}
+
+/* Work on this: picker with plain choices, minutes, plan note, deadline warning */
+function planInit(rid){ return {rid, sel:null, mins:"15", custom:"", pickOpen:false, otherDate:null, otherTime:"18:30", calY:2026, calM:9, tried:false, anyway:false}; }
+function planOptions(r){
+  const out = [];
+  focusTimes.filter(f=>!f.archived && f.ctx===r.ctx).forEach(f=>{
+    for(let i=0;i<28;i++){
+      const day = new Date(2026,9,23+i); if(!f.days.includes(isoDow(day))) continue;
+      const start = fdate(fiso(day),f.time); if(start.getTime()+f.budget*60000<=F_NOW.getTime()) continue;
+      out.push({key:`${f.id}|${fiso(day)}`, ftId:f.id, ft:f, date:fiso(day), time:f.time, start});
+    }
+  });
+  return out.sort((a,b)=>a.start-b.start).slice(0,4);
+}
+function planTarget(d,opts){
+  if(d.sel==="other") return d.otherDate ? {ftId:null, ft:null, date:d.otherDate, time:d.otherTime, start:fdate(d.otherDate,d.otherTime)} : null;
+  return opts.find(o=>o.key===d.sel) || null;
+}
+function vPlan(){
+  const d = fs.data, r = remById(d.rid), c = CTX[r.ctx].cls, opts = planOptions(r), target = planTarget(d,opts);
+  const cur = assigns.find(a=>a.rid===r.id && a.state==="planned"), due = F_DUE[r.id];
+  const mins = fMins(d.mins,d.custom), warn = !!(target && due && target.start>due.d);
+  const rows = opts.map(o=>`<button type="button" class="f-choice c-${c} ${d.sel===o.key?"on":""}" role="radio" aria-checked="${d.sel===o.key}" data-act="plan-sel" data-v="${o.key}"><span class="radio"></span><span><b>${DAYN[o.start.getDay()]} · ${ft12(o.time)}</b><span class="sec">${fshort(o.start)}${o.ft.label?" · "+fesc(o.ft.label):""}</span></span></button>`).join("");
+  const otherSec = d.otherDate && !d.pickOpen ? `${fshort(fdate(d.otherDate))} · ${ft12(d.otherTime)}` : "Choose a date and time";
+  let detail = "";
+  if(target){
+    let sum = "";
+    if(target.ftId){
+      const others = assigns.filter(a=>a.state==="planned" && a.ftId===target.ftId && a.date===target.date && a.time===target.time && a.rid!==r.id), used = others.reduce((s,a)=>s+a.min,0)+(isNaN(mins)?0:mins), ft = target.ft;
+      sum = `<p class="f-meta">${others.length?`Also planned here: ${others.map(a=>fesc(remById(a.rid).title)+" · "+a.min+" min").join(", ")}.<br>`:""}${others.length+1} task${others.length?"s":""} · ${used} min planned${used>ft.budget?` — ${used} min planned for ${ft.budget} min available`:""}</p>`;
+    }
+    detail = `<div class="f-sub">Planned minutes</div>${durChips(["10","15","25","custom"],d.mins,c,"plan-dur")}
+      ${d.mins==="custom"?`<input class="f-input" style="margin-top:8px" data-bind="custom" type="number" min="1" max="180" step="1" inputmode="numeric" aria-label="Planned minutes, 1 to 180" value="${fesc(d.custom)}" aria-invalid="${d.tried&&isNaN(mins)}">`:""}
+      ${d.tried && isNaN(mins)?'<p class="f-err" role="alert">Choose a whole number from 1 to 180 minutes.</p>':""}${sum}`;
+  }
+  const noTimes = !opts.length;
+  return fHead("Work on this") + remBlock(r) + (cur?`<div class="f-inset"><div class="k">Currently planned</div><div class="v">${assignName(cur)} · ${cur.min} min. Choosing another time moves it.</div></div>`:"")
+    + `<div class="f-sub" id="fWhen">When</div><div role="radiogroup" aria-labelledby="fWhen">${rows}
+    <button type="button" class="f-choice c-${c} ${d.sel==="other"?"on":""}" role="radio" aria-checked="${d.sel==="other"}" data-act="plan-other"><span class="radio"></span><span><b>Pick another day</b><span class="sec">${otherSec}</span></span><span style="margin-left:auto;color:var(--text2)">${d.pickOpen?"⌃":"›"}</span></button>
+    ${d.sel==="other" && d.pickOpen ? vPicker(d) : ""}
+    <button type="button" class="f-choice c-${c} ${d.sel==="none"?"on":""}" role="radio" aria-checked="${d.sel==="none"}" data-act="plan-none"><span class="radio"></span><span><b>Keep unscheduled</b><span class="sec">No focus time for now</span></span></button></div>
+    ${noTimes?`<p class="f-note">You haven't set up a ${CTX[r.ctx].name} focus time yet. <u data-act="goto-times" style="cursor:pointer">Set my focus times</u></p>`:""}
+    ${detail}
+    ${warn?`<div class="f-warn" role="alert"><b>This is after the ${due.order?"ship-by":"due"} time</b><p>${fdueText(r.id)}. Your deadline stays the same.</p>
+      <div class="f-actions"><button class="fb outline" data-act="plan-earlier">Choose an earlier time</button><button class="fb primary" data-act="plan-anyway">Plan it anyway</button></div></div>`
+      : `${d.tried && !target && d.sel!=="none"?`<p class="f-err" role="alert">${d.sel==="other"?"Choose a day and time, then tap OK.":"Choose when you'd like to work on this."}</p>`:""}<button class="fb primary block" style="margin-top:16px" data-act="plan-save">Save plan</button>`}`;
+}
+function vPicker(d){
+  const first = new Date(d.calY,d.calM,1), dim = new Date(d.calY,d.calM+1,0).getDate(); let cells = "";
+  for(let i=0;i<first.getDay();i++) cells += "<span></span>";
+  for(let n=1;n<=dim;n++){ const iso = fiso(new Date(d.calY,d.calM,n)); cells += `<button type="button" class="f-day ${d.otherDate===iso?"on":""}" data-act="pick-day" data-v="${iso}" ${iso<fiso(F_NOW)?"disabled":""} aria-label="${MONF[d.calM]} ${n}" aria-pressed="${d.otherDate===iso}">${n}</button>`; }
+  return `<div class="f-picker" role="group" aria-label="Pick another day"><div class="f-pk-h"><button type="button" data-act="cal-prev" aria-label="Previous month">‹</button><b>${MONF[d.calM]} ${d.calY}</b><button type="button" data-act="cal-next" aria-label="Next month">›</button></div>
+    <div class="f-cal">${["S","M","T","W","T","F","S"].map(x=>`<span class="f-dow" aria-hidden="true">${x}</span>`).join("")}${cells}</div>
+    <div class="f-time-row"><label for="fPickTime">Time</label><input class="f-input" id="fPickTime" type="time" data-bind="otherTime" value="${d.otherTime}"></div>
+    ${d.pickErr?'<p class="f-err" role="alert">Choose a day first.</p>':""}<button type="button" class="fb primary block" data-act="pick-ok">OK</button></div>`;
+}
+
+/* Focus times (manage) */
+const fDays = days => { const s = [...days].sort().join(); return s==="1,2,3,4,5"?"Weekdays":s==="6,7"?"Weekends":days.length===1?DAYN[days[0]%7]:[...days].sort().map(n=>DAYN[n%7].slice(0,3)).join(", "); };
+function vTimes(){
+  const live = focusTimes.filter(f=>!f.archived);
+  return fHead("Your focus times") + (live.length ? `<div class="card" style="border:1px solid var(--hairline);box-shadow:none;margin-top:6px">${live.map(f=>`<button class="f-trow" data-act="edit-time" data-id="${f.id}"><span class="dot ${CTX[f.ctx].cls}" aria-hidden="true"></span><span class="b"><div class="t" style="font-size:15px">${fesc(f.label||fDays(f.days))}</div><div class="s" style="font-size:13px;color:var(--text2)">${fDays(f.days)} · ${ft12(f.time)} · ${f.budget} min</div></span><span class="r">›</span></button>`).join("")}</div>`
+    : '<p class="f-meta" style="font-size:14px;margin:6px 0 0">Pick the weekly times you can focus, then plan reminders into them. Nothing starts on its own.</p>')
+    + `<p class="f-tz">Times use your account timezone, ${F_TZ}. <u data-act="tz">Change in Settings</u></p><button class="fb primary block" style="margin-top:16px" data-act="add-time">Add a focus time</button>`;
+}
+function tdInit(f){
+  return f ? {id:f.id,label:f.label||"",days:[...f.days],time:f.time,mins:[15,30,60].includes(f.budget)?String(f.budget):"custom",custom:String(f.budget),ctx:f.ctx,timeOpen:false,err:{}}
+           : {id:null,label:"",days:[],time:"09:00",mins:"30",custom:"",ctx:null,timeOpen:false,err:{}};
+}
+function vTimeEdit(){
+  const d = fs.data, e = d.err, WD = [[1,"Mon","Monday"],[2,"Tue","Tuesday"],[3,"Wed","Wednesday"],[4,"Thu","Thursday"],[5,"Fri","Friday"],[6,"Sat","Saturday"],[7,"Sun","Sunday"]], c = d.ctx ? CTX[d.ctx].cls : "";
+  return fHead(d.id?"Edit focus time":"New focus time",true)
+    + `<label class="f-sub" for="fLabel">Name <span style="font-weight:400">(optional)</span></label><input class="f-input" id="fLabel" data-bind="label" maxlength="40" placeholder="e.g. Shop time" value="${fesc(d.label)}">
+    <div class="f-sub" id="fDaysL">Days</div><div class="f-days" role="group" aria-labelledby="fDaysL">${WD.map(([n,s,full])=>`<button type="button" class="fchip2 c-${c||"work"} ${d.days.includes(n)?"on":""}" aria-pressed="${d.days.includes(n)}" aria-label="${full}" data-act="td-day" data-v="${n}">${s}</button>`).join("")}</div>
+    ${e.days?`<p class="f-err" role="alert">${e.days}</p>`:""}
+    <div class="f-sub">Time</div><button type="button" class="fchip2" data-act="td-time" aria-expanded="${d.timeOpen}">⏰ ${ft12(d.time)}</button>
+    ${d.timeOpen?`<div class="f-picker"><div class="f-time-row" style="margin-top:2px"><label for="fTdTime">Start time</label><input class="f-input" id="fTdTime" type="time" data-bind="time" value="${d.time}"></div><button type="button" class="fb primary block" data-act="td-time-ok">OK</button></div>`:""}
+    <p class="f-tz">Account timezone: ${F_TZ}. <u data-act="tz">Change in Settings</u></p>
+    <div class="f-sub" id="fHaveL">I usually have</div>${durChips(["15","30","60","custom"],d.mins,c||"work","td-mins")}
+    ${d.mins==="custom"?`<input class="f-input" style="margin-top:8px" data-bind="custom" type="number" min="1" max="180" step="1" inputmode="numeric" aria-label="Minutes available, 1 to 180" value="${fesc(d.custom)}" aria-invalid="${!!e.mins}">`:""}
+    ${e.mins?`<p class="f-err" role="alert">${e.mins}</p>`:""}
+    <div class="f-sub" id="fCtxL">For</div><div class="f-seg" role="radiogroup" aria-labelledby="fCtxL">${["work","gig"].map(k=>`<button type="button" class="fchip2 c-${CTX[k].cls} ${d.ctx===k?"on":""}" role="radio" aria-checked="${d.ctx===k}" data-act="td-ctx" data-v="${k}">${fDot(k)}${CTX[k].name}</button>`).join("")}</div>
+    ${e.ctx?`<p class="f-err" role="alert">${e.ctx}</p>`:""}
+    <p class="f-help">Changes apply to future choices. Work you've already planned keeps its time.</p>
+    <button class="fb primary block" style="margin-top:16px" data-act="td-save">Save focus time</button>
+    ${d.id?'<button class="fb ghost block" style="margin-top:4px;color:var(--danger)" data-act="td-archive">Archive</button>':""}`;
+}
+
+/* ----- sheet event handling ----- */
+fEl().addEventListener("input", e=>{
+  const k = e.target.dataset.bind; if(!k) return; fs.data[k] = e.target.value;
+  if(k==="q") $("#fChooseList").innerHTML = chooseRows(fs.data.q.toLowerCase());
+  if(k==="custom" && fs.mode==="setup") renderFSetupNote();
+});
+function renderFSetupNote(){ /* keep the caret in the custom field: only refresh the “saves as usual length” note */
+  const d = fs.data, val = fMins(d.mins,d.custom), el = fEl().querySelector(".f-note"), msg = !isNaN(val) && val!==fstate.pref ? `Starting with ${val} min saves it as your usual length.` : "";
+  if(el){ el.textContent = msg; el.style.display = msg?"":"none"; }
+}
+fEl().addEventListener("click", e=>{
+  const b = e.target.closest("[data-act]"); if(!b) return; const a = b.dataset.act, v = b.dataset.v, d = fs.data;
+  switch(a){
+    case "close": closeF(); break;
+    case "back": goF("times"); break;
+    case "open-session": goF("session"); break;
+    case "pick-focus": { const r = remById(+b.dataset.id); fstate.highlight = {rid:r.id}; closeF(); syncAll(); toast("Today's focus set"); fAnnounce("Today's focus set"); break; }
+    /* setup */
+    case "setup-dur": d.mins = v; d.tried = false; renderF(true); break;
+    case "setup-start": { const val = fMins(d.mins,d.custom); if(isNaN(val)){ d.tried = true; renderF(true); break; }
+      fstate.pref = val; startSession({rid:d.rid, minutes:val, intended:d.intended, assignId:d.assignId}); break; }
+    /* session */
+    case "pause": fstate.session.state = "paused"; fAnnounce("Session paused"); syncAll(); break;
+    case "resume": fstate.session.state = "running"; fAnnounce("Session resumed"); syncAll(); break;
+    case "review": goF("review",{outcome:null,next:"",tried:false,failed:false}); break;
+    case "outcome": d.outcome = v; renderF(true); break;
+    case "save-review": {
+      if(!d.outcome){ d.tried = true; renderF(true); break; }
+      if(demo.fail){ demo.fail = false; d.failed = true; renderF(true); break; }
+      const s = fstate.session, mins = Math.max(1,Math.round((s.total-s.remaining)/60)), next = (d.next||"").trim();
+      fNext[s.rid] = next;                                         /* latest saved note wins — a blank note clears the old one */
+      if(s.assignId){ const as = assigns.find(x=>x.id===s.assignId); if(as) as.state = "reviewed"; }
+      fstate.lastSaved = {rid:s.rid, title:s.title, outcome:d.outcome, mins, next, ctx:s.ctx};
+      fstate.session = null; fAnnounce("Session saved"); syncAll(); goF("after"); toast("Session saved"); break; }
+    /* after save */
+    case "continue": { const L = fstate.lastSaved; closeF(); startSession({rid:L.rid, minutes:10, intended:L.next}); break; }
+    case "another": goF("plan",planInit(fstate.lastSaved.rid)); break;
+    case "done-now": closeF(); break;
+    case "mark-done": { const L = fstate.lastSaved, r = remById(L.rid); reminders = reminders.filter(x=>x.id!==L.rid); doneToday++;
+      if(fstate.highlight && fstate.highlight.rid===L.rid) fstate.highlight = null; closeF(); syncAll();
+      toast("Reminder marked done ✓","Undo",()=>{ reminders.push(r); doneToday--; syncAll(); $("#toast").classList.remove("show"); }); break; }
+    case "ship-it": { const rid = fstate.lastSaved.rid; closeF(); openSheet(rid); break; }
+    /* occurrence */
+    case "occ-start": { const as = assigns.find(x=>x.id===b.dataset.id); closeF(); startSession({rid:as.rid, minutes:as.min, assignId:as.id}); break; }
+    case "occ-skip": { const as = assigns.find(x=>x.id===b.dataset.id); as.state = "skipped"; syncAll();
+      if(groupOccs(assigns).some(o=>o.key===d.key)) renderF(true); else closeF(); toast("Skipped · your reminder is unchanged"); break; }
+    /* work on this */
+    case "plan-sel": d.sel = v; d.pickOpen = false; d.anyway = false; renderF(true); break;
+    case "plan-other": d.sel = "other"; d.pickOpen = !d.pickOpen; d.pickErr = false; renderF(true); break;
+    case "plan-none": d.sel = "none"; d.pickOpen = false; renderF(true); break;
+    case "plan-dur": d.mins = v; d.tried = false; renderF(true); break;
+    case "cal-prev": case "cal-next": { const n = new Date(d.calY,d.calM+(a==="cal-next"?1:-1),1); if(fiso(new Date(n.getFullYear(),n.getMonth()+1,0))<fiso(F_NOW)) break; d.calY = n.getFullYear(); d.calM = n.getMonth(); renderF(true); break; }
+    case "pick-day": d.otherDate = v; d.pickErr = false; renderF(true); break;
+    case "pick-ok": if(!d.otherDate){ d.pickErr = true; renderF(true); break; } d.pickOpen = false; renderF(true); break;
+    case "plan-earlier": d.sel = null; d.pickOpen = false; renderF(true); fEl().scrollTop = 0; break;
+    case "plan-anyway": case "plan-save": {
+      const r = remById(d.rid);
+      if(d.sel==="none"){ const cur = assigns.find(x=>x.rid===r.id && x.state==="planned"); if(cur) cur.state = "skipped"; closeF(); syncAll(); toast("Left unscheduled"); break; }
+      const target = planTarget(d,planOptions(r)), mins = fMins(d.mins,d.custom);
+      if(!target || isNaN(mins)){ d.tried = true; renderF(true); break; }
+      const old = assigns.find(x=>x.rid===r.id && x.state==="planned"); if(old){ old.state = "moved"; old.movedTo = "n"+fSeq; }   /* one atomic move */
+      assigns.push({id:"n"+(fSeq++), rid:r.id, ftId:target.ftId, date:target.date, time:target.time, min:mins, state:"planned"});
+      closeF(); syncAll(); toast(`Planned for ${DAYN[target.start.getDay()]} · ${ft12(target.time)}${old?" (moved)":""}`); break; }
+    case "goto-times": goF("times"); break;
+    /* focus times */
+    case "tz": toast("Account timezone lives in Settings"); break;
+    case "edit-time": goF("timeedit",tdInit(ftById(b.dataset.id))); break;
+    case "add-time": goF("timeedit",tdInit(null)); break;
+    case "td-day": { const n = +v; d.days = d.days.includes(n) ? d.days.filter(x=>x!==n) : [...d.days,n]; d.err.days = ""; renderF(true); break; }
+    case "td-time": d.timeOpen = !d.timeOpen; renderF(true); break;
+    case "td-time-ok": d.timeOpen = false; renderF(true); break;
+    case "td-mins": d.mins = v; d.err.mins = ""; renderF(true); break;
+    case "td-ctx": d.ctx = v; d.err.ctx = ""; renderF(true); break;
+    case "td-save": {
+      const mins = fMins(d.mins,d.custom), err = {};
+      if(!d.days.length) err.days = "Choose at least one day.";
+      if(isNaN(mins)) err.mins = "Choose a whole number from 1 to 180 minutes.";
+      if(!d.ctx) err.ctx = "Choose Work or Side Gig.";
+      if(Object.keys(err).length){ d.err = err; renderF(true); break; }
+      const rec = {id:d.id||"ft"+(fSeq++), label:d.label.trim(), ctx:d.ctx, days:[...d.days].sort(), time:d.time, budget:mins};
+      const i = focusTimes.findIndex(f=>f.id===rec.id); if(i>=0) focusTimes[i] = rec; else focusTimes.push(rec);
+      syncAll(); goF("times"); toast("Focus time saved"); break; }
+    case "td-archive": { const f = ftById(d.id); f.archived = true; syncAll(); goF("times");
+      toast("Focus time archived · planned work stays","Undo",()=>{ f.archived = false; syncAll(); if(fs.open&&fs.mode==="times") renderF(true); $("#toast").classList.remove("show"); }); break; }
+  }
+});
+
+/* ----- Today + Settings actions ----- */
+main.addEventListener("click", e=>{
+  const b = e.target.closest("[data-fact]"); if(!b) return; const a = b.dataset.fact;
+  if(a==="choose") openF("choose",{q:""});
+  else if(a==="times") openF("times");
+  else if(a==="session") openF(fstate.session.state==="timeup"?"review":"session", {outcome:null,next:"",tried:false,failed:false});
+  else if(a==="start"){ const k = cardKind(); if(k==="highlight") startSession({rid:fstate.highlight.rid, minutes:fstate.pref});
+    else { const o = upcomingOccs()[0], t = o.tasks[0]; startSession({rid:t.rid, minutes:t.min, assignId:t.id}); } }
+  else if(a==="dur"){ const k = cardKind(), rid = k==="highlight" ? fstate.highlight.rid : upcomingOccs()[0].tasks[0].rid, t = k==="highlight" ? null : upcomingOccs()[0].tasks[0], m = String(t?t.min:fstate.pref);
+    openF("setup",{rid, assignId:t&&t.id, mins:["10","25","50"].includes(m)?m:"custom", custom:m, intended:"", tried:false}); }
+  else if(a==="makefocus"){ fstate.highlight = {rid:upcomingOccs()[0].tasks[0].rid}; syncAll(); toast("Today's focus set"); }
+  else if(a==="occ") openF("occ",{key:b.dataset.key});
+  else if(a.startsWith("m-")){
+    const it = missedItems().find(x=>x.a.id===b.dataset.id); if(!it) return; const {a:as,o} = it;
+    if(a==="m-start") startSession({rid:as.rid, minutes:as.min, assignId:as.id});
+    else if(a==="m-next"){ as.date = fiso(new Date(o.start.getFullYear(),o.start.getMonth(),o.start.getDate()+7)); syncAll(); toast(`Planned for ${DAYN[o.start.getDay()]} · ${ft12(o.time)} (${fshort(fdate(as.date))})`); }
+    else if(a==="m-other") openF("plan",planInit(as.rid));
+    else if(a==="m-leave"){ as.state = "skipped"; syncAll(); toast("Left unscheduled"); }
+  }
+});
+main.addEventListener("change", e=>{
+  const t = e.target; if(!t.closest || !t.closest(".fdemo")) return;
+  if(t.id==="fdState") demo.state = t.value; else if(t.id==="fdTimes") demo.times = t.checked; else if(t.id==="fdMissed") demo.missed = t.checked; else if(t.id==="fdFail") { demo.fail = t.checked; return; }
+  applyDemo();
+});
+main.addEventListener("click", e=>{ if(e.target.id==="fdRush" && fstate.session){ fstate.session.remaining = Math.min(fstate.session.remaining,5); syncAll(); } });
+main.addEventListener("toggle", e=>{ if(e.target.classList && e.target.classList.contains("fdemo")) demo.open = e.target.open; }, true);
+
+/* reminder sheet: “Focus on this” and “Work on this” (Work + Side Gig only) */
+function syncSheetFocus(r){
+  const box = $("#shFocus"), ok = fEligible(r); box.style.display = ok ? "" : "none"; if(!ok) return;
+  box.dataset.rid = r.id;
+  const cur = assigns.find(a=>a.rid===r.id && a.state==="planned");
+  $("#shPlanNote").textContent = cur ? `Planned: ${assignName(cur)} · ${cur.min} min` : "Not planned yet";
+}
+$("#shFocusOn").onclick = ()=>{ const rid = +$("#shFocus").dataset.rid, r = remById(rid); closeSheet();
+  if(fstate.session){ openF("session"); return; }
+  const m = String(fstate.pref); openF("setup",{rid, mins:["10","25","50"].includes(m)?m:"custom", custom:m, intended:"", tried:false}); };
+$("#shWorkOn").onclick = ()=>{ const rid = +$("#shFocus").dataset.rid; closeSheet(); openF("plan",planInit(rid)); };
+
+/* prototype hooks: #state=running&times=0&missed=1 (and window.fp for scripted demos) */
+(function(){
+  const q = new URLSearchParams(location.hash.slice(1));
+  if(q.get("state")) demo.state = q.get("state"); if(q.get("times")==="0") demo.times = false; if(q.get("missed")==="1") demo.missed = true; if(q.get("demo")==="1") demo.open = true;
+  resetDemoData(); window.fp = {demo, applyDemo, openF, closeF, fstate, tab:n=>document.querySelector(`.tab[data-tab="${n}"]`).click()};
+})();
 
 /* ---------- nav ---------- */
 function updateShipCnt(){ const c=$("#shipCnt"); c.textContent=orders.length; c.style.display = orders.length?"":"none"; }
