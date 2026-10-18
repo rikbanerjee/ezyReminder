@@ -11,6 +11,8 @@ const TABLES = [
   "work_details",
   "sidegig_details",
   "contexts",
+  "home_maintenance",
+  "home_service_records",
 ] as const;
 
 /** Refresh server-rendered data after this user's Supabase changes or when the tab resumes. */

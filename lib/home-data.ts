@@ -22,7 +22,7 @@ export async function fetchHomeData(supabase: SupabaseClient<Database>): Promise
   const contextById = new Map(contexts.map((c) => [c.id, c]));
 
   const reminderSelect =
-    "id, title, notes, due_at, snoozed_until, status, channels, is_order, context_id";
+    "id, title, notes, due_at, snoozed_until, status, channels, is_order, context_id, tags";
 
   const { data: activeRows } = await supabase
     .from("reminders")
@@ -47,6 +47,7 @@ export async function fetchHomeData(supabase: SupabaseClient<Database>): Promise
     status: HomeReminder["status"];
     channels: HomeReminder["channels"];
     is_order: boolean;
+    tags: string[];
     context_id: string;
   };
 
@@ -75,6 +76,7 @@ export async function fetchHomeData(supabase: SupabaseClient<Database>): Promise
     status: r.status,
     channels: r.channels ?? [],
     is_order: r.is_order,
+    tags: r.tags,
     context: contextById.get(r.context_id) ?? null,
     failedNotificationId: failedByReminder.get(r.id) ?? null,
     order: ordersByReminder.get(r.id) ?? null,

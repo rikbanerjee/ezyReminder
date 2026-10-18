@@ -43,6 +43,7 @@ export interface HomeReminder {
   status: ReminderStatus;
   channels: Channel[];
   is_order: boolean;
+  tags?: string[];
   context: HomeContext | null;
   /** Most recent failed delivery for this reminder, if any — powers the ⚠ + retry. */
   failedNotificationId: string | null;

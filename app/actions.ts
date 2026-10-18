@@ -4,8 +4,6 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import type { Channel } from "@/lib/supabase/types";
-import { sendEmail } from "@/lib/integrations/email";
-import type { ReminderForDelivery } from "@/lib/integrations/types";
 
 export async function signOut() {
   const supabase = await createClient();
@@ -78,6 +76,8 @@ export async function createReminder(input: CreateReminderInput): Promise<Create
   if (!id) return { ok: false, error: "Reminder could not be created." };
 
   revalidatePath("/");
+  revalidatePath("/home");
+  revalidatePath("/all");
   revalidatePath("/ship-queue");
   return { ok: true, id };
 }
@@ -90,6 +90,8 @@ export async function completeReminder(id: string): Promise<ActionResult> {
     .eq("id", id);
   if (error) return { ok: false, error: error.message };
   revalidatePath("/");
+  revalidatePath("/home");
+  revalidatePath("/all");
   return { ok: true };
 }
 
@@ -101,6 +103,8 @@ export async function reopenReminder(id: string): Promise<ActionResult> {
     .eq("id", id);
   if (error) return { ok: false, error: error.message };
   revalidatePath("/");
+  revalidatePath("/home");
+  revalidatePath("/all");
   return { ok: true };
 }
 
@@ -112,6 +116,8 @@ export async function snoozeReminder(id: string, until: string): Promise<ActionR
     .eq("id", id);
   if (error) return { ok: false, error: error.message };
   revalidatePath("/");
+  revalidatePath("/home");
+  revalidatePath("/all");
   return { ok: true };
 }
 
@@ -120,6 +126,8 @@ export async function deleteReminder(id: string): Promise<ActionResult> {
   const { error } = await supabase.from("reminders").delete().eq("id", id);
   if (error) return { ok: false, error: error.message };
   revalidatePath("/");
+  revalidatePath("/home");
+  revalidatePath("/all");
   return { ok: true };
 }
 
@@ -151,6 +159,8 @@ export async function updateReminder(input: UpdateReminderInput): Promise<Action
   if (error) return { ok: false, error: error.message };
 
   revalidatePath("/");
+  revalidatePath("/home");
+  revalidatePath("/all");
   revalidatePath("/ship-queue");
   return { ok: true };
 }
@@ -175,6 +185,8 @@ export async function updateOrderDetails(input: UpdateOrderDetailsInput): Promis
   });
   if (error) return { ok: false, error: error.message };
   revalidatePath("/");
+  revalidatePath("/home");
+  revalidatePath("/all");
   revalidatePath("/ship-queue");
   return { ok: true };
 }
@@ -198,6 +210,8 @@ export async function updateWorkDetails(input: UpdateWorkDetailsInput): Promise<
   });
   if (error) return { ok: false, error: error.message };
   revalidatePath("/");
+  revalidatePath("/home");
+  revalidatePath("/all");
   return { ok: true };
 }
 
@@ -218,6 +232,8 @@ export async function updateSidegigDetails(input: UpdateSidegigDetailsInput): Pr
   });
   if (error) return { ok: false, error: error.message };
   revalidatePath("/");
+  revalidatePath("/home");
+  revalidatePath("/all");
   return { ok: true };
 }
 
@@ -233,6 +249,8 @@ export async function markShipped(reminderId: string, trackingNumber: string, ca
   if (error) return { ok: false, error: error.message };
 
   revalidatePath("/");
+  revalidatePath("/home");
+  revalidatePath("/all");
   revalidatePath("/ship-queue");
   return { ok: true };
 }
@@ -244,6 +262,8 @@ export async function createFollowUp(reminderId: string): Promise<ActionResult> 
   if (error) return { ok: false, error: error.message };
 
   revalidatePath("/");
+  revalidatePath("/home");
+  revalidatePath("/all");
   return { ok: true };
 }
 
@@ -263,6 +283,8 @@ export async function addShoppingItem(reminderId: string, label: string): Promis
   if (!id) return { ok: false, error: "Shopping item could not be added." };
 
   revalidatePath("/");
+  revalidatePath("/home");
+  revalidatePath("/all");
   return { ok: true, id };
 }
 
@@ -271,6 +293,8 @@ export async function toggleShoppingItem(itemId: string, checked: boolean): Prom
   const { error } = await supabase.from("shopping_items").update({ checked }).eq("id", itemId);
   if (error) return { ok: false, error: error.message };
   revalidatePath("/");
+  revalidatePath("/home");
+  revalidatePath("/all");
   return { ok: true };
 }
 
@@ -279,56 +303,20 @@ export async function deleteShoppingItem(itemId: string): Promise<ActionResult> 
   const { error } = await supabase.from("shopping_items").delete().eq("id", itemId);
   if (error) return { ok: false, error: error.message };
   revalidatePath("/");
+  revalidatePath("/home");
+  revalidatePath("/all");
   return { ok: true };
 }
 
-/** Manual re-send from the "delivery failed" indicator on a reminder row. */
+/** Queue a retry through the same claimed, quiet-hours-aware delivery pipeline. */
 export async function retryNotification(id: string): Promise<ActionResult> {
-  const { supabase, user } = await requireUser();
-
-  const { data: notification } = await supabase
-    .from("notifications")
-    .select("id, reminder_id, channel")
-    .eq("id", id)
-    .single();
-  if (!notification) return { ok: false, error: "Notification not found." };
-
-  const { data: reminder } = await supabase
-    .from("reminders")
-    .select("id, title, notes, due_at, snoozed_until, context:contexts(name)")
-    .eq("id", notification.reminder_id)
-    .single();
-  if (!reminder) return { ok: false, error: "Reminder not found." };
-
-  const delivery: ReminderForDelivery = {
-    id: reminder.id,
-    title: reminder.title,
-    notes: reminder.notes,
-    dueAt: reminder.snoozed_until ?? reminder.due_at,
-    contextName: (reminder.context as unknown as { name: string } | null)?.name ?? "",
-  };
-
-  const result = await (async () => {
-    if (notification.channel === "email") {
-      const apiKey = process.env.RESEND_API_KEY;
-      const from = process.env.RESEND_FROM_EMAIL;
-      if (!apiKey || !from || !user.email) return { ok: false as const, error: "Email delivery isn't configured yet." };
-      return sendEmail({ apiKey, from, to: user.email, reminder: delivery });
-    }
-    return { ok: false as const, error: "WhatsApp delivery isn't available yet." };
-  })();
-
-  if (result.ok) {
-    await supabase
-      .from("notifications")
-      .update({ status: "sent", sent_at: new Date().toISOString(), provider_message_id: result.providerMessageId, error: null })
-      .eq("id", id);
-    revalidatePath("/");
-    return { ok: true };
-  }
-
-  await supabase.from("notifications").update({ status: "failed", error: result.error }).eq("id", id);
-  return { ok: false, error: result.error };
+  const { supabase } = await requireUser();
+  const { error } = await supabase.rpc("retry_notification", { p_notification_id: id });
+  if (error) return { ok: false, error: error.message };
+  revalidatePath("/");
+  revalidatePath("/home");
+  revalidatePath("/all");
+  return { ok: true };
 }
 
 export async function updateTimezone(timezone: string): Promise<ActionResult> {

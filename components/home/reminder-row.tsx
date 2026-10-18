@@ -64,6 +64,7 @@ export function ReminderRow({ reminder, onOpen }: { reminder: HomeReminder; onOp
   }
 
   function toggleComplete() {
+    if (reminder.tags?.some((t) => t.startsWith("home:"))) { onOpen(); return; }
     if (done) {
       run(() => reopenReminder(reminder.id), "Couldn't reopen");
     } else {
@@ -80,7 +81,11 @@ export function ReminderRow({ reminder, onOpen }: { reminder: HomeReminder; onOp
 
   function retry() {
     if (!reminder.failedNotificationId) return;
-    run(() => retryNotification(reminder.failedNotificationId!), "Retry failed");
+    startTransition(async () => {
+      const result = await retryNotification(reminder.failedNotificationId!);
+      if (result.ok) toast.success("Retry queued", { description: "Delivery will respect your quiet hours." });
+      else toast.error("Retry failed", { description: result.error });
+    });
   }
 
   return (

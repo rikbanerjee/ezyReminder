@@ -40,7 +40,7 @@ export default async function Home({
     // open an older reminder, so fetch that one under RLS and attach its detail rows for the sheet.
     const { data: row } = await supabase
       .from("reminders")
-      .select("id, title, notes, due_at, snoozed_until, status, channels, is_order, context_id")
+      .select("id, title, notes, due_at, snoozed_until, status, channels, is_order, context_id, tags")
       .eq("id", open)
       .maybeSingle();
     if (row) {
@@ -61,6 +61,7 @@ export default async function Home({
         status: row.status,
         channels: row.channels ?? [],
         is_order: row.is_order,
+        tags: row.tags,
         context,
         failedNotificationId: failedNotifications.data?.[0]?.id ?? null,
         order: orderResult.data ? {

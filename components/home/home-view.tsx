@@ -11,6 +11,7 @@ import { effectiveDue, type HomeContext, type HomeReminder } from "./types";
 import { bucketFor, type Bucket } from "@/lib/dates";
 import { cn } from "@/lib/utils";
 import { BottomDock } from "@/components/bottom-dock";
+import { FocusCard, FocusProvider } from "@/components/focus/focus-provider";
 
 interface HomeViewProps {
   contexts: HomeContext[];
@@ -73,9 +74,10 @@ export function HomeView({
     }
     if (!openReminder || openReminder.id !== openReminderId || openedId.current === openReminderId) return;
     openedId.current = openReminderId;
+    if (openReminder.tags?.some((t) => t.startsWith("home:"))) { router.replace(`/home?open=${openReminder.id}`); return; }
     setSelected(openReminder);
     setScrollToOrderPanel(false);
-  }, [openReminderId, openReminder]);
+  }, [openReminderId, openReminder, router]);
 
   const closeSelected = () => {
     setSelected(null);
@@ -133,6 +135,7 @@ export function HomeView({
     // stay normal, non-scrolling siblings after it (DESIGN.md §3). This is
     // what makes the dock "frozen" at the bottom of the frame instead of
     // sitting wherever short content happens to end.
+    <FocusProvider reminders={reminders}>
     <div className="flex h-full min-h-0 flex-col">
       <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-1 pb-4 pt-1">
         {/* Context filter pills */}
@@ -165,6 +168,8 @@ export function HomeView({
         </div>
       )}
 
+      <FocusCard activeOnly={activeTab !== "today" || (activeSlug !== null && !["work", "sidegig"].includes(activeSlug))} />
+
       {totalVisible === 0 && visibleDone.length === 0 ? (
         <p className="px-1 py-8 text-center text-[15px] text-text-2">
           Nothing here yet. Add your first reminder above.
@@ -179,7 +184,7 @@ export function HomeView({
                   <SectionHeader label={label} count={rows.length} danger={danger} />
                   <div className="divide-y divide-hairline rounded-xl border border-hairline bg-surface px-3 shadow-card">
                     {rows.map((r) => (
-                      <ReminderRow key={r.id} reminder={r} onOpen={() => { setSelected(r); setScrollToOrderPanel(false); }} />
+                      <ReminderRow key={r.id} reminder={r} onOpen={() => { if (r.tags?.some((t) => t.startsWith("home:"))) router.push(`/home?open=${r.id}`); else setSelected(r); setScrollToOrderPanel(false); }} />
                     ))}
                   </div>
                 </section>
@@ -199,7 +204,7 @@ export function HomeView({
                   </div>
                   <div className="divide-y divide-hairline rounded-xl border border-hairline bg-surface px-3 shadow-card">
                     {shipSoon.map((r) => (
-                      <ReminderRow key={r.id} reminder={r} onOpen={() => { setSelected(r); setScrollToOrderPanel(false); }} />
+                      <ReminderRow key={r.id} reminder={r} onOpen={() => { if (r.tags?.some((t) => t.startsWith("home:"))) router.push(`/home?open=${r.id}`); else setSelected(r); setScrollToOrderPanel(false); }} />
                     ))}
                   </div>
                 </section>
@@ -226,7 +231,7 @@ export function HomeView({
           {showDone && (
             <div className="divide-y divide-hairline rounded-xl border border-hairline bg-surface px-3 shadow-card">
               {visibleDone.map((r) => (
-                <ReminderRow key={r.id} reminder={r} onOpen={() => { setSelected(r); setScrollToOrderPanel(false); }} />
+                <ReminderRow key={r.id} reminder={r} onOpen={() => { if (r.tags?.some((t) => t.startsWith("home:"))) router.push(`/home?open=${r.id}`); else setSelected(r); setScrollToOrderPanel(false); }} />
               ))}
             </div>
           )}
@@ -269,6 +274,7 @@ export function HomeView({
         />
       </BottomDock>
     </div>
+    </FocusProvider>
   );
 }
 

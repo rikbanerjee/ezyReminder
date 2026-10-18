@@ -1,18 +1,19 @@
 "use client";
 
 import Link from "next/link";
-import { LayoutGrid, Truck, List } from "lucide-react";
+import { LayoutGrid, Truck, List, House } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-type TabKey = "today" | "ship" | "all";
+type TabKey = "today" | "ship" | "all" | "home";
 
 const TABS: { key: TabKey; href: string; label: string; icon: typeof LayoutGrid }[] = [
   { key: "today", href: "/", label: "Today", icon: LayoutGrid },
   { key: "ship", href: "/ship-queue", label: "Ship", icon: Truck },
+  { key: "home", href: "/home", label: "Home", icon: House },
   { key: "all", href: "/all", label: "All", icon: List },
 ];
 
-/** Persistent 3-tab bottom bar (DESIGN.md §3). Settings stays in the header gear icon. */
+/** Persistent 4-tab bottom bar (DESIGN.md §3). Settings stays in the header gear icon. */
 export function TabBar({ activeTab, shipSoonCount }: { activeTab: TabKey; shipSoonCount: number }) {
   return (
     <nav className="flex items-center border-t border-hairline bg-surface px-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] pt-2">

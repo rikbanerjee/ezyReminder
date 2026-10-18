@@ -23,6 +23,7 @@ import type { HomeContext, HomeReminder } from "./types";
 import { ShoppingChecklist } from "./shopping-checklist";
 import { DateTimePicker } from "./date-time-picker";
 import { cn } from "@/lib/utils";
+import { FocusEntry } from "@/components/focus/focus-provider";
 
 // WhatsApp hidden for now — Twilio/Meta integration not wired up yet
 // (v1.5, see CLAUDE.md); `whatsapp` stays a valid Channel value so any
@@ -534,6 +535,8 @@ export function ReminderSheet({
             )}
           </div>
         )}
+
+        {reminder && <FocusEntry reminder={reminder} onOpen={onClose} />}
 
         <div className={cn("mt-5 flex items-center border-t border-hairline pt-3", isNew ? "justify-end" : "justify-between")}>
           {!isNew && (
