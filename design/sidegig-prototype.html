@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="light dark">
+  <title>Side Gig — ezyReminder experience proposal</title>
+  <link rel="stylesheet" href="sidegig-prototype.css">
+  <script defer src="sidegig-prototype.js"></script>
+</head>
+<body>
+  <aside class="review-panel" aria-label="Prototype controls">
+    <a class="wordmark" href="prototype.html">ezy<span>Reminder</span></a>
+    <p class="eyebrow">EXPERIENCE PROPOSAL / 01</p>
+    <h1>A place for your<br>other work.</h1>
+    <p class="intro">Keep client work, orders, follow-ups and payments moving in the time you have.</p>
+    <div class="review-controls">
+      <label for="scenario">Explore an example</label>
+      <select id="scenario">
+        <option value="mixed">Client work + a small shop</option>
+        <option value="seller">An evening seller</option>
+        <option value="freelancer">A freelance consultant</option>
+        <option value="empty">Starting fresh</option>
+        <option value="busy">A week with too much planned</option>
+      </select>
+      <div class="review-actions"><button id="theme">Dark appearance</button><button id="reset">Reset example</button></div>
+    </div>
+    <ol class="review-notes">
+      <li><b>A useful next action.</b><span>Urgent commitments and a place to restart.</span></li>
+      <li><b>Shipping has a home.</b><span>A full queue, visible without taking over.</span></li>
+      <li><b>Close the right loop.</b><span>Shipped, followed up and paid stay separate.</span></li>
+    </ol>
+    <p class="prototype-note"><span>Interactive proposal · Sample data only</span><span>Thu, Oct 22, 2026 · America/New_York</span><span>Changes reset on reload. No messages or payments are sent.</span></p>
+    <a class="spec-link" href="../SIDEGIG_EXPERIENCE.md">Read the product design ↗</a>
+  </aside>
+
+  <div class="phone" id="phone">
+    <div class="statusbar" aria-hidden="true"><span>6:30</span><span class="status-icons">▮▮▮ &nbsp; ◒ &nbsp; ▰</span></div>
+    <header class="app-header">
+      <div class="heading-row"><div><p class="app-date">THURSDAY, OCTOBER 22</p><h2>Side Gig</h2></div><button class="icon-button" data-action="search" aria-label="Search Side Gig" id="search-button"></button></div>
+      <p class="app-subtitle">Your work. Your own pace.</p>
+      <nav class="section-pills" id="sections" aria-label="Side Gig sections"></nav>
+    </header>
+    <main id="content" tabindex="-1"></main>
+    <footer class="dock">
+      <button class="quick-add" data-action="add"><span class="plus">＋</span><span>Add to Side Gig</span><span class="keyboard-hint" aria-hidden="true">↗</span></button>
+      <nav class="tabbar" aria-label="Main navigation">
+        <a href="prototype.html#tab=today" class="tab" data-icon="today"><span>Today</span></a>
+        <button class="tab active" data-action="section" data-id="overview" aria-current="page" data-icon="gig"><span>Side Gig</span></button>
+        <a href="prototype.html#tab=home" class="tab" data-icon="home"><span>Home</span></a>
+        <a href="prototype.html#tab=all" class="tab" data-icon="all"><span>All</span></a>
+      </nav>
+    </footer>
+    <div class="scrim" id="scrim" hidden></div>
+    <section class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title" hidden></section>
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <div class="sr-only" id="announcer" role="status" aria-live="polite"></div>
+  </div>
+</body>
+</html>

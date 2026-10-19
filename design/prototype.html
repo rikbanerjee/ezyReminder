@@ -456,7 +456,7 @@ function renderToday(){
   bindRows();
 }
 function renderShip(){
-  main.innerHTML = `<div class="section-h"><span>Ship queue</span><span>${orders.length}</span></div>
+  main.innerHTML = `<a href="sidegig-prototype.html" class="fdemo" style="display:flex;align-items:center;min-height:44px;padding:10px 12px;text-decoration:none;color:var(--text2)">Prototype proposal · Explore the Side Gig tab ↗</a><div class="section-h"><span>Ship queue</span><span>${orders.length}</span></div>
    <div class="card">${orders.map(o=>`
      <div class="rowwrap"><div class="sq-row" data-oid="${o.id}">
        <div class="sq-top"><span class="sq-ref">${o.urgent?"⚠ ":""}${o.ref}</span><span class="sq-by ${o.urgent?"urgent":""}">${o.by}</span></div>
@@ -1205,7 +1205,9 @@ document.addEventListener("keydown", e=>{
 /* system dark mode */
 if(matchMedia("(prefers-color-scheme: dark)").matches){ $("#frame").classList.add("dark"); document.body.classList.add("dark-page"); }
 
-render();
+const initialTab = new URLSearchParams(location.hash.slice(1)).get("tab");
+if (["today", "ship", "home", "all"].includes(initialTab)) document.querySelector(`.tab[data-tab="${initialTab}"]`).click();
+else render();
 </script>
 </body>
 </html>
