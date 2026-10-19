@@ -39,7 +39,7 @@ There is no separate Clients tab, project hierarchy, accounting dashboard or Foc
 ## 3. Overview hierarchy
 
 1. **Needs attention** — at most three specific actions. Rank overdue obligations before today's obligations, then near shipping deadlines. Mix task deadlines, shipping, follow-ups and expected payments; each row states its reason. Avoid a revenue leaderboard or a wall of counters. If nothing needs attention, show a quiet single line.
-2. **Pick up where you left off** — the user's eligible Side Gig highlight or next planned item, including latest next step and Start N min. A running Work session takes precedence over suggestions and can always be reopened; never offer a second simultaneous session. Starting an order session means working on fulfillment, not shipping it.
+2. **Pick up where you left off** — resume the most recently worked eligible Side Gig item; otherwise use the user's eligible Side Gig highlight or next planned item. Include the latest next step and Start N min. This view's restart suggestion does not silently change Today's explicit highlight. A running Work session takes precedence over suggestions and can always be reopened; never offer a second simultaneous session. Starting an order session means working on fulfillment, not shipping it.
 3. **Your next focus time** — next populated Side Gig occurrence, its task and planned minutes versus budget. Show a calm capacity message when over budget. Do not equate a free calendar slot with available energy or imply family/calendar integration exists.
 4. **Ship Queue** — always discoverable; open count and up to two earliest orders, each with ship-by and recipient. With no orders, a single compact entry says “Orders, when you need them.” Seller users see operational content here; freelancers do not see an empty shipping dashboard.
 5. **Follow-ups and payments** — compact actionable entries with counts, not redundant full lists. Payment totals group by currency; never sum unlike currencies or label expected payments as revenue.
@@ -156,3 +156,21 @@ Do not advertise Follow-ups or Payments as live when only their prototype exists
 Test with employed sellers and freelancers who have family responsibilities. Observe: time to find next action, shipping completion without confusion, whether freelancers understand optional shipping, restart-note reuse, whether users can explain shipped versus paid, and whether they return the next week. Ask about actual missed commitments before asking which feature they like. Treat favorable comments as research input, not purchase evidence.
 
 The monetization hypothesis is reduced follow-through effort and fewer consequential misses. Do not charge merely for moving Ship Queue into a new tab. Test actual paid continuation after users experience the connected workflow.
+
+## 13. Prototype review and verification
+
+The standalone proposal includes working local interactions for creation and editing, search, section filters, full shipping confirmation/history and carrier/tracking edits, waiting/follow-up transitions, expected/received payments, compact date selection, explicit late-plan warnings, planning/unscheduling, local Focus start/pause/review/restart, and unsaved-edit protection. No backend or app code was changed for these behaviors.
+
+Observed in the in-app browser during this design pass:
+
+- Empty-task validation, then creation with only a title and optional next step.
+- Existing task edits retained client, initiative, deadline and planned time; saving updated the existing row. Closing a dirty form offered Keep editing / Discard.
+- Mark shipped removed the order from the pending queue; its expected payment remained present. Recording a different payment reduced the expected total independently.
+- Recording client contact moved its next check-in and retained the parent deliverable. Resolving a response removed Waiting while keeping the task open.
+- A paused/interrupted Focus session saved a new restart note and left the reminder open; the note appeared on return.
+- Planning after a deadline required Plan it anyway; the work date changed while the deadline remained tomorrow.
+- Light and dark appearances and the narrow browser layout were visually inspected. The bottom dock remains visible when prototype controls are above the app.
+
+Static JavaScript syntax and the canonical prototype's inline script were checked. These checks are for the prototype, not production, database, notification or Flutter verification.
+
+Prototype boundaries: Today, Home and All link back to the existing canonical prototype and use its separate demo data. This does not demonstrate cross-page persistence or real web↔phone synchronization. Focus preferences, full Focus-time management, remote failures, notification delivery, permission recovery, deletion, partial payments and backend concurrency remain implementation requirements or explicitly deferred scope. The standalone page resets on reload; its fixed sample date is shown in the controls. The product spec covers the complete proposed experience and release slices; the prototype demonstrates the core paths without simulating infrastructure success.

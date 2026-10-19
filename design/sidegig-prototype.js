@@ -48,7 +48,8 @@ const source = {
   ],
 };
 let data, section="overview", filters={work:"open",orders:"open",followups:"open",payments:"open"};
-let session=null, modal=null, returnFocus=null, initialForm="", closeTimer, toastTimer, draggingFrom=null;
+let session=null, lastWorked=null, modal=null, returnFocus=null, initialForm="", closeTimer, toastTimer, draggingFrom=null;
+let scrollPositions={};
 const content=$("#content"), sheet=$("#sheet");
 const plural=(n,s)=>`${n} ${s}${n===1?"":"s"}`;
 const collection=kind=>data[{task:"tasks",order:"orders",followup:"followups",payment:"payments"}[kind]];
@@ -67,7 +68,7 @@ function moneyTotals(rows){
   return {totals:Object.entries(totals).map(([currency,cents])=>`${currency} ${(cents/100n).toLocaleString("en-US")}.${String(cents%100n).padStart(2,"0")}`),unknown};
 }
 function reset(){
-  closeSheet(true);data=structuredClone(source);session=null;section="overview";
+  closeSheet(true);data=structuredClone(source);session=null;lastWorked=null;section="overview";scrollPositions={};
   const scenario=$("#scenario").value;
   if(scenario==="seller"){
     data.tasks=data.tasks.filter(t=>t.initiative==="Sunday Ceramics");data.followups=[];
@@ -84,10 +85,10 @@ function reset(){
 }
 function toast(message){clearTimeout(toastTimer);$("#toast").textContent=message;$("#toast").classList.add("show");toastTimer=setTimeout(()=>$("#toast").classList.remove("show"),3800);}
 function announce(message){$("#announcer").textContent=message;}
-function navigate(next){section=next;render();content.scrollTop=0;const current=$(`[data-section="${section}"]`);current?.scrollIntoView({block:"nearest",inline:"nearest"});}
+function navigate(next){scrollPositions[section]=content.scrollTop;section=next;render();content.scrollTop=scrollPositions[next]||0;const current=$(`[data-section="${section}"]`);current?.scrollIntoView({block:"nearest",inline:"nearest"});}
 function render(){
   $("#sections").innerHTML=secs.map(([key,label])=>`<button class="pill" data-action="section" data-id="${key}" data-section="${key}" ${key===section?'aria-current="page"':""}>${label}</button>`).join("");
-  content.innerHTML=({overview:overview,work:workView,orders:ordersView,followups:followupsView,payments:paymentsView}[section])();
+  content.innerHTML=(session&&section!=="overview"?heading("Your focus")+focusCard():"")+({overview:overview,work:workView,orders:ordersView,followups:followupsView,payments:paymentsView}[section])();
 }
 function heading(title,target,label="View all"){return `<div class="section-heading"><span>${title}</span>${target?action("section",`${label} ${icon("chevron")}`,target,"link"):""}</div>`;}
 function listRow(kind,r,meta,extra=""){
@@ -103,7 +104,7 @@ function attention(){
   ].sort((a,b)=>byDate(a.r,b.r));
 }
 const allWork=()=>[...data.tasks.map(r=>({kind:"task",r})),...data.orders.map(r=>({kind:"order",r}))];
-function nextWork(){return allWork().filter(({r})=>isOpen(r)&&!r.waiting).sort((a,b)=>Number(!a.r.planned)-Number(!b.r.planned)||byDate(a.r,b.r))[0];}
+function nextWork(){const recent=lastWorked&&get(lastWorked.kind,lastWorked.id);if(recent&&isOpen(recent)&&!recent.waiting)return {kind:lastWorked.kind,r:recent};return allWork().filter(({r})=>isOpen(r)&&!r.waiting).sort((a,b)=>Number(!a.r.planned)-Number(!b.r.planned)||byDate(a.r,b.r))[0];}
 function overview(){
   if(!Object.values(data).some(a=>a.length))return `<div class="card empty-state" style="margin-top:12px">${icon("gig")}<h3>Make room for your next step.</h3><p>Add something you want to move forward.<br>Clients, orders and payments can come later.</p>${action("create","Add your first task","task","btn primary")}</div>${heading("Your side gig")}<div class="card">${sectionEntry("orders","Ship Queue","Orders, when you need them.","ship")}${sectionEntry("followups","Follow-ups","Remember who you’re waiting for.","followup")}${sectionEntry("payments","Payments","Keep track of money you expect.","payment")}</div>`;
   const needs=attention();const orders=data.orders.filter(isOpen).sort(byDate);const followups=data.followups.filter(isOpen);const payments=data.payments.filter(isOpen);
@@ -229,11 +230,15 @@ function detail(kind,id){
     }else if(kind==="followup")body+=`<div class="stack">${action("contact","Record follow-up",id,"btn primary")}${action("resolve","Response received",id,"btn")}</div><p class="hint">Record contact after you reach out elsewhere. No message is sent.</p>`;
     else body+=`<div class="stack">${action("receive","Record received",id,"btn primary")}${action("related-followup","Add / view follow-up",id,"btn",'data-kind="payment"')}</div><p class="hint">Recording payment won’t complete related work or ship an order.</p>`;
   }
+  if(kind==="task"&&isOpen(r)&&!r.waiting)body+=action("wait","Waiting for someone",id,"link");
+  if(kind==="order"&&r.shipped)body+=`<div class="stack">${action("shipping-edit","Edit carrier / tracking",id,"btn")}${action("related-followup","Add / view buyer follow-up",id,"btn ghost",'data-kind="order"')}</div>`;
   if(isOpen(r))body+=action("edit","Edit details",id,"link",`data-kind="${kind}"`);
   openSheet({task:"Task",order:"Order details",followup:"Follow-up",payment:"Payment details"}[kind],body,{type:"detail",kind,id});
 }
 function shipment(id){const r=get("order",id);if(!r||r.shipped)return;openSheet("Mark shipped",`<p class="feature-title">${esc(r.ref||r.title)} · ${esc(r.client)}</p><p class="meta">Record the shipment after you hand it to the carrier.</p><form data-form="ship" novalidate>${textField("carrier","Carrier (optional)",r.carrier,"e.g. USPS")}${textField("tracking","Tracking number (optional)",r.tracking,"Paste tracking number")}<div class="inset"><p>Shipping completes this order’s reminder. Its payment stays separate.</p></div>${formEnd("Confirm shipped")}</form>`,{type:"ship",id});}
-function receive(id){const r=get("payment",id);if(!r||!isOpen(r))return;openSheet("Record payment received",`<p class="feature-title">${esc(r.title)}</p><p class="money-total">${esc(amount(r))}</p><form data-form="receive" novalidate>${dateField("received","Received on",TODAY)}${textField("note","Receipt note (optional)","","e.g. Bank transfer confirmed")}<p class="hint">Record the full payment after it arrives. No money is moved by this app.</p>${formEnd("Confirm received")}</form>`,{type:"receive",id});}
+function receive(id){const r=get("payment",id);if(!r||!isOpen(r))return;const followup=data.followups.find(f=>isOpen(f)&&f.related?.kind==="payment"&&f.related.id===id);openSheet("Record payment received",`<p class="feature-title">${esc(r.title)}</p><p class="money-total">${esc(amount(r))}</p><form data-form="receive" novalidate>${dateField("received","Received on",TODAY)}${textField("note","Receipt note (optional)","","e.g. Bank transfer confirmed")}${followup?`<label class="radio-choice"><input type="checkbox" name="resolveFollowup">Also resolve this payment’s follow-up</label>`:""}<p class="hint">Record the full payment after it arrives. No money is moved by this app.</p>${formEnd("Confirm received")}</form>`,{type:"receive",id,followupId:followup?.id});}
+function shippingEdit(id){const r=get("order",id);openSheet("Shipping details",`<p class="feature-title">${esc(r.ref||r.title)}</p><p class="meta">Shipped ${dateLabel(r.shipped)}</p><form data-form="shipping-edit">${textField("carrier","Carrier (optional)",r.carrier,"e.g. USPS")}${textField("tracking","Tracking number (optional)",r.tracking,"Paste tracking number")}${formEnd("Save shipping details")}</form>`,{type:"shipping-edit",id});}
+function waitForSomeone(id){const r=get("task",id);const existing=data.followups.find(f=>isOpen(f)&&f.related?.kind==="task"&&f.related.id===id);if(existing){r.waiting=true;render();detail("followup",existing.id);return;}create("followup",{title:`Follow up: ${r.title}`,client:r.client,due:"2026-10-26",related:{kind:"task",id},blockWork:true});$("#sheet-title").textContent="Waiting for someone";$('button[type="submit"]',sheet).textContent="Save waiting & follow-up";}
 function contact(id){const r=get("followup",id);openSheet("Record follow-up",`<p class="feature-title">${esc(r.title)}</p><p class="meta">${esc(r.client)}</p><form data-form="contact" novalidate>${textArea("note","What happened? (optional)","","e.g. Sent a check-in; expecting a reply Monday")}${dateField("due","Next check-in","2026-10-26")}<p class="hint">This records that you contacted them today. It sends no message.</p>${formEnd("Save follow-up")}</form>`,{type:"contact",id});}
 function resolve(id){const r=get("followup",id);const parent=r.related&&get(r.related.kind,r.related.id);openSheet("Response received",`<p class="feature-title">${esc(r.title)}</p><form data-form="resolve"><p class="meta">Resolve this follow-up. The related commitment stays open.</p>${parent?.waiting?`<label class="radio-choice"><input type="checkbox" name="unblock" checked>Make the related work ready to start</label>`:""}${formEnd("Resolve follow-up")}</form>`,{type:"resolve",id});}
 function relatedFollowup(kind,id){const existing=data.followups.find(f=>isOpen(f)&&f.related?.kind===kind&&f.related.id===id);if(existing){detail("followup",existing.id);return;}const r=get(kind,id);create("followup",{title:kind==="payment"?`Check on payment: ${r.title}`:kind==="order"?`Follow up with ${r.client||"the buyer"}`:`Follow up: ${r.title}`,client:r.client,due:"2026-10-26",related:{kind,id}});}
@@ -277,6 +282,8 @@ document.addEventListener("click",e=>{
   else if(a==="discard")closeSheet(true);
   else if(a==="keep"){$("#discard",sheet)?.remove();$("input,textarea,.close",sheet)?.focus();}
   else if(a==="ship")shipment(id);
+  else if(a==="shipping-edit")shippingEdit(id);
+  else if(a==="wait")waitForSomeone(id);
   else if(a==="receive")receive(id);
   else if(a==="contact")contact(id);
   else if(a==="resolve")resolve(id);
@@ -309,6 +316,8 @@ document.addEventListener("change",e=>{
     const due=$('[name="due"]',sheet).parentElement;
     due.firstChild.textContent=e.target.checked?"Ship by":"Deadline (optional)";
     const trigger=$('[data-action="date"]',due);trigger.dataset.optional=String(!e.target.checked);
+    $("#sheet-title").textContent=e.target.checked?"New order":"New task";
+    $('button[type="submit"]',sheet).textContent=e.target.checked?"Save order":"Save task";
   }
   if(modal?.type==="plan")$("#late-warning",sheet)?.remove();
 });
@@ -336,19 +345,22 @@ document.addEventListener("submit",e=>{
     if(kind==="order")Object.assign(r,{ref:v.ref||"",carrier:existing?.carrier||"",tracking:existing?.tracking||"",shipped:null});
     if(kind==="payment")Object.assign(r,{amount:v.amount||null,currency:v.currency,reference:v.reference||""});
     if(existing)Object.assign(existing,r);else collection(kind).push(r);
+    if(modal.seed.blockWork&&modal.seed.related){const parent=get(modal.seed.related.kind,modal.seed.related.id);if(parent)parent.waiting=true;}
     navigate({task:"work",order:"orders",followup:"followups",payment:"payments"}[kind]);filters[section]="open";render();closeSheet(true);toast(`${{task:"Task",order:"Order",followup:"Follow-up",payment:"Payment"}[kind]} saved to Side Gig.`);
   }else if(type==="ship"){
     const r=get("order",modal.id);if(r.shipped)return;r.carrier=v.carrier;r.tracking=v.tracking;r.shipped=TODAY;r.status="done";delete r.planned;render();
     openSheet("Shipment recorded",`${icon("task")}<p class="detail-title">${esc(r.ref||r.title)} is shipped.</p><p class="meta">Its payment remains separate.</p><div class="stack">${action("related-followup","Add buyer follow-up",r.id,"btn primary",'data-kind="order"')}${action("close","Done","","btn")}</div>`,{type:"saved"});announce("Shipment recorded");
+  }else if(type==="shipping-edit"){
+    const r=get("order",modal.id);r.carrier=v.carrier;r.tracking=v.tracking;render();closeSheet(true);toast("Shipping details updated. Shipment date unchanged.");
   }else if(type==="receive"){
-    if(!v.received||v.received>TODAY){error("Choose today or an earlier received date.");return;}const r=get("payment",modal.id);r.status="received";r.received=v.received;r.note=v.note;render();closeSheet(true);toast("Payment recorded. Work and shipping are unchanged.");
+    if(!v.received||v.received>TODAY){error("Choose today or an earlier received date.");return;}const r=get("payment",modal.id);r.status="received";r.received=v.received;r.note=v.note;if(v.resolveFollowup&&modal.followupId)get("followup",modal.followupId).status="resolved";render();closeSheet(true);toast("Payment recorded. Work and shipping are unchanged.");
   }else if(type==="contact"){
     if(!v.due||v.due<TODAY){error("Choose today or a future check-in date.");return;}const r=get("followup",modal.id);r.lastContact=TODAY;r.due=v.due;r.note=v.note||r.note;render();closeSheet(true);toast("Follow-up recorded. No message was sent.");
   }else if(type==="resolve"){
     const r=get("followup",modal.id);r.status="resolved";const parent=r.related&&get(r.related.kind,r.related.id);if(v.unblock&&parent)parent.waiting=false;render();closeSheet(true);toast("Follow-up resolved. Related work stays open.");
   }else if(type==="plan")savePlan();
   else if(type==="review"){
-    if(!v.outcome){error("Choose how the session went.");return;}const {kind,id}=session;const r=get(kind,id);r.next=v.next||"";delete r.planned;session=null;render();
+    if(!v.outcome){error("Choose how the session went.");return;}const {kind,id}=session;const r=get(kind,id);r.next=v.next||"";delete r.planned;lastWorked={kind,id};session=null;render();
     openSheet("Session saved",`<p class="detail-title">${esc(r.title)}</p><p class="meta">${{finished:"Finished what I planned",progress:"Made progress",interrupted:"Got interrupted"}[v.outcome]}</p>${r.next?`<div class="inset"><small>Next time</small><p>${esc(r.next)}</p></div>`:""}<p class="hint">Your reminder is still open.</p><div class="stack">${action("plan","Choose another focus time",id,"btn primary",`data-kind="${kind}"`)}${action("close","I’m done for now","","btn")}${v.outcome==="finished"?(kind==="order"?action("ship","Mark shipped",id,"btn ghost"):action("complete","Mark task done",id,"btn ghost")):""}</div>`,{type:"saved"});announce("Session saved. Reminder remains open.");
   }
 });
@@ -366,6 +378,7 @@ document.addEventListener("keydown",e=>{
 $("#scenario").addEventListener("change",reset);$("#reset").addEventListener("click",()=>{reset();toast("Sample data restored.");});
 function setTheme(dark){document.documentElement.classList.toggle("dark",dark);$("#theme").textContent=dark?"Light appearance":"Dark appearance";}
 $("#theme").addEventListener("click",()=>setTheme(!document.documentElement.classList.contains("dark")));
+$("#controls-toggle").addEventListener("click",()=>{const expanded=$(".review-panel").classList.toggle("expanded");$("#controls-toggle").setAttribute("aria-expanded",String(expanded));});
 setTheme(matchMedia("(prefers-color-scheme: dark)").matches);
 new ResizeObserver(([entry])=>document.documentElement.style.setProperty("--review-height",`${entry.target.getBoundingClientRect().height}px`)).observe($(".review-panel"));
 $("#search-button").innerHTML=icon("search");$$('[data-icon]').forEach(el=>el.insertAdjacentHTML("afterbegin",icon(el.dataset.icon)));
