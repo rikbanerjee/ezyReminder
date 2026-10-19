@@ -25,7 +25,7 @@ Reminder app (Next.js web + Flutter iOS) for people balancing a corporate job wi
 
 ## Conventions
 - Schema lives in `supabase/migrations/`; RLS by `user_id` on every table (single-user today, multi-user-safe always)
-- Migrations **0001–0014 are applied to hosted Supabase** (verified 2026-10-18). They are immutable: never edit or reapply them. Add database changes in the next unused migration number. 0015–0017 exist locally (not hosted), so the next is 0018.
+- Migrations **0001–0017 are applied to hosted Supabase** (verified 2026-10-18). They are immutable: never edit or reapply them. Add database changes in the next unused migration number, starting with 0018.
 - Integrations under `lib/integrations/<channel>/`, shipping under `lib/shipping/`; Flutter app under `mobile/`
 - Notification sweep must be idempotent (`FOR UPDATE SKIP LOCKED`)
 - Quiet hours per context are respected by every channel

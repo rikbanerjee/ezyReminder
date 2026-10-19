@@ -38,3 +38,25 @@ Applied 0014 SHA-256: `04ef5573c81b9e2fbbff69881b79a6f58bbdd0813250078756ef91b0d
 `0015_focus_preferences.sql` (remembered duration, `get_focus_dashboard_v2`) and `0016_focus_times.sql` (Focus times, assignments, `focus_sessions.assignment_id`, review/cancel triggers, dashboard v2 replacement) are written and tested only against isolated PGlite (`npm run test:focus-times:db`). They have **not** been applied to hosted Supabase; hosted history still ends at 0014. Applying them is a separate step that needs Rik's explicit authorization. Do not edit 0001–0014.
 
 `0017_focus_intent_restore.sql` (optional intended outcome on `start_assigned_focus`, `restore_focus_time`, dashboard `focus_api: 17`) is also local only and covered by the same suite. Apply 0015–0017 together, in order.
+
+## Focus preferences, Focus times, planned intents and restore — applied 2026-10-18
+
+Rik explicitly authorized applying 0015–0017 in this chat. Before the push, `migration list --linked` showed hosted history ending at 0014 with only 0015–0017 pending, and the focus-times, Focus, Home, edit-order, email auto-snooze and iOS foundation SQL suites passed on isolated PGlite. `supabase db push --linked --dry-run` listed exactly 0015, 0016 and 0017; `supabase db push --linked --yes` applied them in order with no errors. Hosted history now contains every version 0001–0017. Next unused number: 0018.
+
+Verified after application:
+
+- `save_focus_preferences`, `get_focus_dashboard_v2`, `save_focus_time`, `archive_focus_time`, `restore_focus_time`, `assign_focus_work`, `skip_focus_work` and `start_assigned_focus(uuid,uuid,integer,text)` allow authenticated execution and deny anonymous execution; the three-argument `start_assigned_focus` is gone and three-argument REST calls resolve to the new one. Trigger and helper functions are not executable by clients.
+- `focus_preferences`, `focus_times` and `focus_assignments` have RLS enabled, no anonymous SELECT, and are in `supabase_realtime`. `focus_sessions.assignment_id` exists; the review and cancel triggers are enabled.
+- PostgREST sees the new RPCs (signed-out calls return 42501, not PGRST202).
+- `notification-sweep` cron is still active on `*/5 * * * *`; this rollout did not touch the scheduler.
+- The new tables were empty after the push. No sample data, sessions or provider emails were created.
+
+Applied file SHA-256 values:
+
+| Migration | SHA-256 |
+|---|---|
+| `0015_focus_preferences.sql` | `730518f36db0d4d6fb3293bf034a13b5494b4f8ea6bee7946567882e1872b776` |
+| `0016_focus_times.sql` | `47dc09c7c751df222c0416035256429c3a9096d4c132b391863852e1f67fed90` |
+| `0017_focus_intent_restore.sql` | `3e04f283e2611b2b6280f345d5b6666b2aee50c1129cfb64eb385fd7f9fa9dc2` |
+
+Web/iOS release and the signed-in web↔phone handoff remain separate steps.

@@ -16,7 +16,7 @@ This plan includes simpler starts and endings, persistent next steps, Focus time
 
 - Next.js web and Flutter already have a daily highlight, start-now sessions, timestamp timers, pause/resume, explicit outcomes, and a saved next step.
 - One unfinished session per user is enforced in Postgres. Sessions do not complete reminders or shipments.
-- Migrations 0001–0014 are hosted and immutable (0014 `contextual_home_tasks` applied 2026-10-18; see `supabase/MIGRATION_STATUS.md`). Allocate new numbers from the next unused number **at implementation time**, currently 0015. Never assume consecutive numbers are reserved by this plan.
+- Migrations 0001–0017 are hosted and immutable (0015–0017, the §13 Focus build, applied 2026-10-18; see `supabase/MIGRATION_STATUS.md`). Allocate new numbers from the next unused number **at implementation time**, currently 0018. Never assume consecutive numbers are reserved by this plan.
 - The last Focus verification had a passing production web build, TypeScript/scoped lint, 5 timer tests, isolated SQL tests, clean Flutter analysis, and 145 passing Flutter tests. These are a historical baseline, not proof that future revisions pass.
 - Release of the current clients and a real signed-in web/iPhone Focus handoff remain checks to complete.
 - Hosted notification cron was verified on a five-minute schedule. Native local/APNs delivery is still gated by the hosted APNs transport proof and the mobile notification phase. Schema readiness does not mean push delivery exists.
