@@ -21,9 +21,10 @@ export const isSessionBlocked = (error: unknown) => (error as { code?: string } 
 /**
  * Dashboard plus which migrations the hosted database has. Without 0015 (`preferences: false`) the
  * client behaves like the Focus MVP with a 25 min default; without 0016 (`times: false`) Focus times
- * and plans are hidden.
+ * and plans are hidden; without 0017 (`intents: false`) planned starts skip the intended outcome and
+ * archiving a Focus time offers no Undo.
  */
-export type FocusData = FocusDashboard & { api: { preferences: boolean; times: boolean } };
+export type FocusData = FocusDashboard & { api: { preferences: boolean; times: boolean; intents: boolean } };
 
 /** When v2 was last seen missing: skip the doomed call on every refresh, but look again every 5 minutes. */
 let v2MissingAt = 0;
@@ -42,7 +43,7 @@ export async function fetchFocusDashboard(supabase: SupabaseClient<Database>): P
       session_next_step: data.session_next_step ?? null,
       focus_times: times ? data.focus_times! : [],
       assignments: times && Array.isArray(data.assignments) ? data.assignments : [],
-      api: { preferences: true, times },
+      api: { preferences: true, times, intents: times && (data.focus_api ?? 0) >= 17 },
     };
   }
   if (v2 && !["PGRST202", "42883"].includes(v2.error!.code ?? "")) throw v2.error;
@@ -52,7 +53,7 @@ export async function fetchFocusDashboard(supabase: SupabaseClient<Database>): P
   return {
     ...(data as unknown as FocusState),
     preferred_minutes: 25, highlight_next_step: null, session_next_step: null, focus_times: [], assignments: [],
-    api: { preferences: false, times: false },
+    api: { preferences: false, times: false, intents: false },
   };
 }
 

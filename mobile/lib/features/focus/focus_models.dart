@@ -279,6 +279,7 @@ class FocusState {
     this.assignments = const [],
     this.planning = false,
     this.preferences = false,
+    this.intents = false,
   });
   final DateTime serverNow;
   final String localDate, timezone;
@@ -297,6 +298,10 @@ class FocusState {
 
   /// True when the dashboard reports a saved/default usual length (0015).
   final bool preferences;
+
+  /// True from 0017 (`focus_api` ≥ 17): planned starts take an intended
+  /// outcome and an archived Focus time can be restored under the same id.
+  final bool intents;
 
   List<FocusTimeItem> timesFor(String slug) => [
     for (final t in focusTimes)
@@ -324,6 +329,7 @@ class FocusState {
       sessionNextStep: row['session_next_step'] as String?,
       planning: v2,
       preferences: row.containsKey('preferred_minutes'),
+      intents: v2 && ((row['focus_api'] as num?)?.toInt() ?? 0) >= 17,
       focusTimes: !v2
           ? const []
           : [

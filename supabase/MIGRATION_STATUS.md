@@ -36,3 +36,5 @@ Applied 0014 SHA-256: `04ef5573c81b9e2fbbff69881b79a6f58bbdd0813250078756ef91b0d
 ## Focus preferences and Focus times — written locally, NOT applied (2026-10-18)
 
 `0015_focus_preferences.sql` (remembered duration, `get_focus_dashboard_v2`) and `0016_focus_times.sql` (Focus times, assignments, `focus_sessions.assignment_id`, review/cancel triggers, dashboard v2 replacement) are written and tested only against isolated PGlite (`npm run test:focus-times:db`). They have **not** been applied to hosted Supabase; hosted history still ends at 0014. Applying them is a separate step that needs Rik's explicit authorization. Do not edit 0001–0014.
+
+`0017_focus_intent_restore.sql` (optional intended outcome on `start_assigned_focus`, `restore_focus_time`, dashboard `focus_api: 17`) is also local only and covered by the same suite. Apply 0015–0017 together, in order.

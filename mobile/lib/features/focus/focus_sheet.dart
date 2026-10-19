@@ -479,7 +479,7 @@ class _SetupViewState extends State<_SetupView> {
     final a = widget.assignment;
     final text = intent.text.trim();
     final ok = a != null
-        ? await c.startAssigned(a, minutes: minutes)
+        ? await c.startAssigned(a, minutes: minutes, intent: text.isEmpty ? null : text)
         : await c.startReminder(r, minutes, intent: text.isEmpty ? null : text);
     if (!mounted) return;
     if (ok) {
@@ -533,7 +533,7 @@ class _SetupViewState extends State<_SetupView> {
           ),
         if (c.hasPreferences && minutes != null && minutes != c.preferredMinutes)
           _Note('Starting with $minutes min saves it as your usual length.'),
-        if (widget.assignment == null) ...[
+        if (widget.assignment == null || c.hasIntents) ...[
           const _Sub('What could you finish in 10–15 minutes?', optional: true),
           Semantics(
             label: 'What could you finish in 10–15 minutes? (optional)',

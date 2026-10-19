@@ -13,7 +13,7 @@
     "test:edge": "node --test supabase/functions/delete-account/index.test.mjs supabase/functions/notification-sweep/index.test.mjs",
     "test:notifications": "node --test lib/integrations/email/index.test.ts supabase/functions/notification-sweep/index.test.mjs",
     "test:auth": "node --test lib/auth-redirect.test.ts",
-    "test:focus": "node --test lib/focus.test.ts lib/focus-plan.test.ts",
+    "test:focus": "node --test lib/focus.test.ts lib/focus-plan.test.ts lib/focus-client.test.ts",
     "test:focus:db": "node scripts/test-focus.mjs",
     "test:focus-times:db": "node scripts/test-focus-times.mjs",
     "test:home:db": "node scripts/test-home-maintenance.mjs",

@@ -64,7 +64,7 @@ export function SetupView({ c }: { c: FocusController }) {
     </>}
     {bad && <Err>Choose a whole number from 1 to 180 minutes.</Err>}
     {c.hasPrefs && minutes !== null && minutes !== c.prefMinutes && <Help className="mt-2">Starting with {minutes} min saves it as your usual length.</Help>}
-    {!d.assignmentId && <>
+    {(!d.assignmentId || c.hasIntents) && <>
       <Sub htmlFor="focus-intended" optional>What could you finish in 10–15 minutes?</Sub>
       <textarea id="focus-intended" rows={2} maxLength={500} value={d.intended} onChange={(event) => patch({ intended: event.target.value })} placeholder="A small, clear outcome…" className={fTextarea} />
     </>}

@@ -74,6 +74,7 @@ export function useFocusController({ reminders, onOpenReminder }: { reminders: H
   const timer = session ? getFocusTimer(session, clock) : null;
   const hasTimes = data?.api.times ?? false;
   const hasPrefs = data?.api.preferences ?? false;
+  const hasIntents = data?.api.intents ?? false;
   const prefMinutes = data?.preferred_minutes ?? 25;
   const times = useMemo(() => data?.focus_times ?? [], [data]);
   const assignments = useMemo(() => data?.assignments ?? [], [data]);
@@ -178,10 +179,12 @@ export function useFocusController({ reminders, onOpenReminder }: { reminders: H
       return result;
     }, (fresh) => { intents.current.delete(key); announce(`Focus started, ${minutes} minutes`); if (fresh.active_session) go("session"); });
   }
-  function startPlanned(task: FocusAssignment, minutes: number, after?: () => PromiseLike<unknown>) {
-    const key = `assigned|${task.id}|${minutes}`;
+  function startPlanned(task: FocusAssignment, minutes: number, intended: string | null = null, after?: () => PromiseLike<unknown>) {
+    const key = `assigned|${task.id}|${minutes}|${intended ?? ""}`;
+    // Before 0017 the RPC has no p_intended_outcome; sending the key would miss the function.
+    const outcome = hasIntents && intended ? { p_intended_outcome: intended } : {};
     void mutate(async () => {
-      const result = await supabase.rpc("start_assigned_focus", { p_session_id: intentId(key), p_assignment_id: task.id, p_duration_minutes: minutes });
+      const result = await supabase.rpc("start_assigned_focus", { p_session_id: intentId(key), p_assignment_id: task.id, p_duration_minutes: minutes, ...outcome });
       if (!result.error) await after?.();
       return result;
     }, (fresh) => { intents.current.delete(key); announce(`Focus started, ${minutes} minutes`); if (fresh.active_session) go("session"); });
@@ -211,8 +214,9 @@ export function useFocusController({ reminders, onOpenReminder }: { reminders: H
     const minutes = parseMinutes(setup.mins, setup.custom);
     if (minutes === null) { setSetup({ ...setup, tried: true }); return; }
     const task = setup.assignmentId ? assignments.find((value) => value.id === setup.assignmentId) : undefined;
-    if (setup.assignmentId) startPlanned(task ?? ({ id: setup.assignmentId } as FocusAssignment), minutes, savePreference(minutes));
-    else startFree(setup.subject, minutes, setup.intended.trim() || null, savePreference(minutes));
+    const intended = setup.intended.trim() || null;
+    if (setup.assignmentId) startPlanned(task ?? ({ id: setup.assignmentId } as FocusAssignment), minutes, hasIntents ? intended : null, savePreference(minutes));
+    else startFree(setup.subject, minutes, intended, savePreference(minutes));
   }
   function setHighlight(reminderId: string) {
     void mutate(() => supabase.rpc("set_focus_highlight", { p_reminder_id: reminderId }), () => { go(null); notify("Today's focus set"); announce("Today's focus set"); });
@@ -356,20 +360,18 @@ export function useFocusController({ reminders, onOpenReminder }: { reminders: H
     const original = times.find((time) => time.id === draft.id);
     void mutate(() => supabase.rpc("archive_focus_time", { p_id: draft.id }), () => {
       go("times");
-      // There is no unarchive RPC: Undo restores the time as a fresh one with the same settings.
-      notify("Focus time archived · planned work stays", original ? {
+      // Undo restores the same Focus time, so its planned work stays attached. Without 0017 there is no Undo.
+      notify("Focus time archived · planned work stays", hasIntents ? {
         label: "Undo",
-        onClick: () => void mutate(() => supabase.rpc("save_focus_time", {
-          p_id: crypto.randomUUID(), p_label: original.label, p_context_slug: original.context_slug, p_weekdays: original.weekdays,
-          p_start_time: original.start_time, p_budget_minutes: original.budget_minutes, p_enabled: original.enabled,
-        }), () => notify("Focus time restored")),
+        onClick: () => void mutate(() => supabase.rpc("restore_focus_time", { p_id: draft.id, p_enabled: original?.enabled ?? draft.enabled }),
+          () => { notify("Focus time restored"); announce("Focus time restored"); }),
       } : undefined);
     });
   }
 
   return {
     // data
-    supabase, data, loading, loadError, reload, clock, tz, session, timer, hasTimes, hasPrefs, prefMinutes, times, assignments,
+    supabase, data, loading, loadError, reload, clock, tz, session, timer, hasTimes, hasPrefs, hasIntents, prefMinutes, times, assignments,
     occurrences, upcoming, missed, missedList, candidates, highlight, highlightReminder, cardKind, nextUp, occurrence,
     reminderById, plannedFor, subjectOfTask: (task: FocusAssignment) => subjectOfTask(task, reminders), nextStepOf, nextStepError: (id: string | null) => (id ? nextStepErrors[id] ?? null : null), retryNextStep,
     // sheet state

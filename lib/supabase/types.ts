@@ -98,6 +98,8 @@ export type FocusDashboard = FocusState & {
   session_next_step: string | null;
   focus_times: FocusTime[];
   assignments: FocusAssignment[];
+  /** Highest Focus migration the dashboard knows; 17 adds planned intents and restore_focus_time. */
+  focus_api?: number;
 };
 /** Table rows (read-only for clients; writes go through RPCs). */
 export type FocusTimeRow = FocusTime & { user_id: string; archived_at: string | null; created_at: string };
@@ -543,6 +545,10 @@ export interface Database {
         Args: { p_id: string };
         Returns: string;
       };
+      restore_focus_time: {
+        Args: { p_id: string; p_enabled?: boolean };
+        Returns: string;
+      };
       assign_focus_work: {
         Args: {
           p_id: string; p_reminder_id: string; p_focus_time_id: string | null; p_local_date: string;
@@ -555,7 +561,7 @@ export interface Database {
         Returns: string;
       };
       start_assigned_focus: {
-        Args: { p_session_id: string; p_assignment_id: string; p_duration_minutes?: number | null };
+        Args: { p_session_id: string; p_assignment_id: string; p_duration_minutes?: number | null; p_intended_outcome?: string | null };
         Returns: string;
       };
       save_home_task: {

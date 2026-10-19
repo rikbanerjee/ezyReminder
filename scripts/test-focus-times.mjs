@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 // Run against isolated embedded PostgreSQL (never hosted Supabase):
 // npm install --prefix /tmp/ezy-focus-sql-tests @electric-sql/pglite
 // node scripts/test-focus-times.mjs /tmp/ezy-focus-sql-tests/package.json
-// Covers migrations 0015 (preferences, dashboard v2) and 0016 (focus times, assignments).
+// Covers migrations 0015 (preferences, dashboard v2), 0016 (focus times, assignments) and 0017 (planned intents, restore).
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const require = createRequire(process.argv[2] ?? resolve(root, 'package.json'));
 const { PGlite } = require('@electric-sql/pglite');
@@ -304,6 +304,25 @@ await asUser(a, async () => {
   await db.query('select skip_focus_work($1)', [orderA]);
 });
 
+// ---------------------------------------------------------------- 0017: planned starts keep an intended outcome
+await asUser(a, async () => {
+  assert.equal((await dash()).focus_api, 17);
+  const r = await makeReminder(a, 'work'); const plan = uuid(); await assign(plan, r, null, tomorrow, '09:00', 10);
+  await assert.rejects(() => db.query('select start_assigned_focus($1,$2,$3,$4)', [uuid(), plan, 10, 'x'.repeat(501)]), /500 characters/);
+  assert.equal((await assignmentRow(plan)).state, 'planned', 'a rejected intent leaves the plan planned');
+  const sid = uuid();
+  await db.query('select start_assigned_focus(p_session_id=>$1,p_assignment_id=>$2,p_intended_outcome=>$3)', [sid, plan, '  Draft the intro  ']);
+  let s = (await dash()).active_session;
+  assert.equal(s.id, sid); assert.equal(s.intended_outcome, 'Draft the intro'); assert.equal(s.duration_minutes, 10);
+  await db.query('select start_assigned_focus($1,$2,$3,$4)', [sid, plan, 10, 'Something else']);
+  assert.equal((await dash()).active_session.intended_outcome, 'Draft the intro', 'retry keeps the first intent');
+  await finishActive('progress', null);
+  const blank = uuid(); await assign(blank, r, null, tomorrow, '10:00', 10);
+  await db.query('select start_assigned_focus($1,$2,$3,$4)', [uuid(), blank, null, '   ']);
+  assert.equal((await dash()).active_session.intended_outcome, null, 'a blank intent is stored as none');
+  await finishActive('progress', null);
+});
+
 // ---------------------------------------------------------------- reminder lifecycle triggers
 const lifecycle = { done: await makeReminder(a, 'work'), cancelled: await makeReminder(a, 'sidegig'), social: await makeReminder(a, 'work'),
   deleted: await makeReminder(a, 'work'), snoozed: await makeReminder(a, 'work'), running: await makeReminder(a, 'work'), shopping: await makeReminder(a, 'sidegig') };
@@ -349,12 +368,34 @@ await asUser(a, async () => {
   assert.ok(kept && kept.state === 'planned' && kept.focus_time_id === ftSat, 'planned work stays visible and recoverable');
   await assert.rejects(() => assign(uuid(), wKeep, ftSat, saturday, '09:00'), /removed/);
   await assert.rejects(() => save(ftSat, { days: [6] }), /removed/);
-  await db.query('select skip_focus_work($1)', [keep]); // recoverable: skip still works
   await assert.rejects(() => db.query('select archive_focus_time($1)', [uuid()]), /Focus time not found/);
+});
+// 0017 restore: owner only, same id, planned work still attached
+await asUser(b, () => fail('select restore_focus_time($1,true)', [ftSat], /Focus time not found/));
+assert.ok((await one('select archived_at from focus_times where id=$1', [ftSat])).archived_at, 'another account cannot restore');
+await asUser(a, async () => {
+  const keep = (await dash()).assignments.find((x) => x.focus_time_id === ftSat).id;
+  await fail('select restore_focus_time($1,null)', [ftSat], /on/);
+  await db.query('select restore_focus_time($1,true)', [ftSat]);
+  let row = await one('select archived_at,enabled from focus_times where id=$1', [ftSat]);
+  assert.equal(row.archived_at, null); assert.equal(row.enabled, true);
+  let d = await dash();
+  assert.ok(d.focus_times.some((t) => t.id === ftSat), 'restored time is listed again');
+  assert.equal(d.assignments.find((x) => x.id === keep).focus_time_id, ftSat, 'planned work is still on the same time');
+  await db.query('select restore_focus_time($1,false)', [ftSat]);
+  assert.equal((await one('select enabled from focus_times where id=$1', [ftSat])).enabled, true, 'restoring a live time changes nothing');
+  await db.query('select archive_focus_time($1)', [ftSat]);
+  await db.query('select restore_focus_time($1,false)', [ftSat]);
+  row = await one('select archived_at,enabled from focus_times where id=$1', [ftSat]);
+  assert.equal(row.archived_at, null); assert.equal(row.enabled, false, 'a time that was off comes back off');
+  await save(ftSat, { days: [6], start: '09:00' }); // editable again after restore
+  await db.query('select skip_focus_work($1)', [keep]); // recoverable: skip still works
+  await assert.rejects(() => db.query('select restore_focus_time($1)', [uuid()]), /Focus time not found/);
 });
 const rpcs = ['save_focus_preferences(1)', 'get_focus_dashboard_v2()', "save_focus_time(gen_random_uuid(),null,'work','{1}'::smallint[],'09:00',30,true)",
   'archive_focus_time(gen_random_uuid())', "assign_focus_work(gen_random_uuid(),gen_random_uuid(),null,current_date,'09:00',10)",
-  'skip_focus_work(gen_random_uuid())', 'start_assigned_focus(gen_random_uuid(),gen_random_uuid(),10)'];
+  'skip_focus_work(gen_random_uuid())', 'start_assigned_focus(gen_random_uuid(),gen_random_uuid(),10)',
+  "start_assigned_focus(gen_random_uuid(),gen_random_uuid(),10,'x')", 'restore_focus_time(gen_random_uuid(),true)'];
 for (const call of rpcs) {
   await asUser(a, () => fail(`select ${call}`, [], /permission denied/), 'anon');
   await asUser('', () => fail(`select ${call}`, [], /Sign in required/));
@@ -374,5 +415,5 @@ for (const table of ['focus_preferences', 'focus_times', 'focus_assignments']) {
 await db.query('delete from auth.users where id=$1', [a]);
 for (const table of ['focus_preferences', 'focus_times', 'focus_assignments', 'focus_sessions'])
   assert.equal((await one(`select count(*)::int as n from ${table} where user_id=$1`, [a])).n, 0, `${table} cascade`);
-console.log('PASS focus times SQL: preferences, dashboard v2, validation, cross-user denial, idempotent assign/start, moves, triggers, grants, realtime, cascades');
+console.log('PASS focus times SQL: preferences, dashboard v2, planned intents, restore, validation, cross-user denial, idempotent assign/start, moves, triggers, grants, realtime, cascades');
 await db.close();

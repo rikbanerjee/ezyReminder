@@ -16,10 +16,12 @@ abstract interface class FocusRepository {
     int minutes,
     String? intent,
   );
+  /// [intent] needs 0017; pass null when [FocusState.intents] is false.
   Future<void> startAssigned(
     String sessionId,
     FocusAssignment assignment,
     int minutes,
+    String? intent,
   );
   Future<void> pause(FocusSession session);
   Future<void> resume(FocusSession session);
@@ -27,6 +29,9 @@ abstract interface class FocusRepository {
   Future<void> savePreferredMinutes(int minutes);
   Future<void> saveFocusTime(FocusTimeDraft draft);
   Future<void> archiveFocusTime(String id);
+
+  /// Undo for archive (0017): same id, so its planned work stays attached.
+  Future<void> restoreFocusTime(String id, {required bool enabled});
   Future<void> assign(FocusAssignRequest request);
   Future<void> skip(String assignmentId);
   void dispose();
@@ -243,6 +248,7 @@ class SupabaseFocusRepository implements FocusRepository {
     String sessionId,
     FocusAssignment assignment,
     int minutes,
+    String? intent,
   ) async {
     await client.rpc(
       'start_assigned_focus',
@@ -250,6 +256,8 @@ class SupabaseFocusRepository implements FocusRepository {
         'p_session_id': sessionId,
         'p_assignment_id': assignment.id,
         'p_duration_minutes': minutes,
+        // Before 0017 the RPC has no p_intended_outcome, so only send it when set.
+        'p_intended_outcome': ?intent,
       },
     );
   }
@@ -281,6 +289,14 @@ class SupabaseFocusRepository implements FocusRepository {
   @override
   Future<void> archiveFocusTime(String id) async {
     await client.rpc('archive_focus_time', params: {'p_id': id});
+  }
+
+  @override
+  Future<void> restoreFocusTime(String id, {required bool enabled}) async {
+    await client.rpc(
+      'restore_focus_time',
+      params: {'p_id': id, 'p_enabled': enabled},
+    );
   }
 
   @override
@@ -351,6 +367,7 @@ class DemoFocusRepository implements FocusRepository {
     DateTime Function()? clock,
     this.timezone = 'UTC',
     this.planning = true,
+    this.intents = true,
     List<FocusTimeItem> focusTimes = const [],
     List<FocusAssignment> assignments = const [],
     Map<String, String> nextSteps = const {},
@@ -370,11 +387,15 @@ class DemoFocusRepository implements FocusRepository {
 
   /// False simulates a project where 0015/0016 are not applied yet.
   final bool planning;
+
+  /// False simulates 0016 without 0017 (no planned intents, no restore).
+  final bool intents;
   int preferredMinutes;
   final _changes = StreamController<void>.broadcast();
   final Map<String, FocusHighlight> highlights = {};
   final Map<String, FocusSession> sessions = {};
   final Map<String, FocusTimeItem> times = {};
+  final Map<String, FocusTimeItem> archivedTimes = {};
   final Map<String, FocusAssignment> assignments = {};
   final Map<String, String> sessionAssignment = {};
   final Map<String, String> seededNextSteps = {};
@@ -412,7 +433,7 @@ class DemoFocusRepository implements FocusRepository {
           title: r?.title ?? a.title,
           contextSlug: r?.contextSlug ?? a.contextSlug,
           focusTimeId: a.focusTimeId,
-          focusTimeLabel: times[a.focusTimeId]?.label,
+          focusTimeLabel: (times[a.focusTimeId] ?? archivedTimes[a.focusTimeId])?.label,
           localDate: a.localDate,
           startTime: a.startTime,
           plannedMinutes: a.plannedMinutes,
@@ -439,6 +460,7 @@ class DemoFocusRepository implements FocusRepository {
       preferredMinutes: preferredMinutes,
       preferences: planning,
       planning: planning,
+      intents: planning && intents,
       highlightNextStep: hi?.reminderId == null ? null : _latestStep(hi!.reminderId!),
       sessionNextStep: session?.reminderId == null ? null : _latestStep(session!.reminderId!),
       focusTimes: planning ? (times.values.toList()..sort((a, b) => a.startTime.compareTo(b.startTime))) : const [],
@@ -533,6 +555,7 @@ class DemoFocusRepository implements FocusRepository {
     String sessionId,
     FocusAssignment assignment,
     int minutes,
+    String? intent,
   ) async {
     calls.add('startAssigned:$sessionId');
     _write();
@@ -548,8 +571,12 @@ class DemoFocusRepository implements FocusRepository {
     if (minutes < 1 || minutes > 180) {
       throw ArgumentError('Use a duration of 1–180 minutes');
     }
+    if (intent != null && (!intents || intent.length > 500)) {
+      throw ArgumentError('Keep the outcome to 500 characters');
+    }
     final eligible = await _eligible(stored.reminderId ?? '');
-    sessions[sessionId] = _newSession(sessionId, eligible, minutes, null);
+    final text = intent?.trim();
+    sessions[sessionId] = _newSession(sessionId, eligible, minutes, text == null || text.isEmpty ? null : text);
     sessionAssignment[sessionId] = stored.id;
     assignments[stored.id] = _copy(stored, state: 'in_progress');
     notifyRemoteChange();
@@ -685,7 +712,30 @@ class DemoFocusRepository implements FocusRepository {
   Future<void> archiveFocusTime(String id) async {
     _write();
     calls.add('archive:$id');
-    times.remove(id);
+    final t = times.remove(id);
+    if (t != null) archivedTimes[id] = t;
+    notifyRemoteChange();
+  }
+
+  @override
+  Future<void> restoreFocusTime(String id, {required bool enabled}) async {
+    _write();
+    calls.add('restore:$id');
+    if (!intents) throw StateError('restore_focus_time is not deployed');
+    final t = archivedTimes.remove(id);
+    if (t == null) {
+      if (times.containsKey(id)) return;
+      throw StateError('Focus time not found');
+    }
+    times[id] = FocusTimeItem(
+      id: t.id,
+      label: t.label,
+      contextSlug: t.contextSlug,
+      weekdays: t.weekdays,
+      startTime: t.startTime,
+      budgetMinutes: t.budgetMinutes,
+      enabled: enabled,
+    );
     notifyRemoteChange();
   }
 

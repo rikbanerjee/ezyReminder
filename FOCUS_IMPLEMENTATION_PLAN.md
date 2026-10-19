@@ -319,6 +319,12 @@ This section is the binding contract for the first build. It narrows sections 4�
   - `get_focus_dashboard_v2` is replaced (`create or replace`) to add `focus_times` (non-archived, by start time) and `assignments` (planned/in_progress, by date, time, position) with reminder `due_at` and order `ship_by` for deadline warnings.
 - Realtime: `focus_times`, `focus_assignments`.
 
+### 13.2a Migration 0017 — planned intents and restore (2026-10-18)
+
+- `start_assigned_focus(p_session_id, p_assignment_id, p_duration_minutes default null, p_intended_outcome text default null) → uuid` replaces the three-argument version (drop + create; three-argument calls still resolve). The outcome is trimmed, blank → null, max 500 (22023), and kept on retry with the same session id.
+- `restore_focus_time(p_id, p_enabled bool default true) → uuid`: owner only (P0002 otherwise); clears `archived_at` and sets `enabled` to the value the client saw before archiving. Same id, so planned work linked to it stays linked. A live time is a no-op.
+- `get_focus_dashboard_v2` adds `focus_api: 17`. Clients send `p_intended_outcome` and offer archive Undo only when `focus_api ≥ 17`.
+
 ### 13.3 Shared occurrence rules
 
 `nextFocusOccurrences(time, now, timeZone, count)` lives in `lib/focus.ts` and in Dart `focus_models.dart`, both tested against `design/focus-time-fixtures.json`: weekly dates on or after today's account-local date whose start is not yet past its budget; spring DST gap shifts forward by the gap; autumn repeated hour uses the first instance. An occurrence is **missed** when `start + max(budget, Σ planned)` is past and it still has planned work. "Next {weekday}" resolves strictly after the missed date.
@@ -331,5 +337,6 @@ This section is the binding contract for the first build. It narrows sections 4�
 - **Your focus times** (below the card): next 3 populated occurrences: "Thursday · 7 PM", first task + "3 tasks · 35 min planned", capacity hint when over budget. Tapping one opens the occurrence sheet: ordered tasks, Start per task, Skip.
 - **Missed recovery card:** "Didn't get to this?" → Start now / Next {weekday} / Choose another time / Leave unscheduled. One card, oldest missed first, with a "+N more" count.
 - **Work on this** (eligible reminder's sheet, next to Focus on this): next 4 occurrences of enabled times in the reminder's context ("Thursday · 7 PM", date as secondary text), **Pick another day** (date + time with OK), planned minutes chips 10/15/25/custom. Shows the current plan and says choosing another moves it. If the occurrence starts after `due_at`/`ship_by`, show a warning with **Choose an earlier time** and **Plan it anyway**.
-- **Focus times sheet** (from the card and Settings → Focus): list + edit form: name (optional), weekday chips, time, "I usually have" 15/30/60/custom, Work/Side Gig, account timezone note. Archive to delete.
+- **Focus times sheet** (from the card and Settings → Focus): list + edit form: name (optional), weekday chips, time, "I usually have" 15/30/60/custom, Work/Side Gig, account timezone note. Archive to delete; the toast's **Undo** calls `restore_focus_time` (0017) so the same time, and its planned work, comes back. Without 0017 no Undo is offered.
+- **Planned setup** (0017): starting planned work from the setup sheet shows the same optional "What could you finish in 10–15 minutes?" field and saves it as the session's intended outcome. One-tap starts never ask. Without 0017 the field is hidden for planned work.
 - Deferred from this build: create-sheet "Work on this", notifications/invitations, protection, captures, weekly recap, schedule-edit remapping.

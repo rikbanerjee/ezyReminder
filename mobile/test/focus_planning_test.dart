@@ -78,12 +78,14 @@ DemoFocusRepository _repo({
   bool planned = true,
   bool missed = false,
   bool planning = true,
+  bool intents = true,
   int preferred = 25,
 }) => DemoFocusRepository(
   loadReminders: () async => _reminders,
   clock: () => _clockValue,
   timezone: _tz,
   planning: planning,
+  intents: intents,
   preferredMinutes: preferred,
   focusTimes: times ? _times : const [],
   assignments: [if (planned) ..._planned(), if (missed) ..._missed()],
@@ -285,6 +287,7 @@ void main() {
         FocusDashboardGate(clock: () => _now),
       );
       expect(state.planning && state.preferences, isTrue);
+      expect(state.intents, isFalse, reason: 'no focus_api: 0016 without 0017');
       expect(state.preferredMinutes, 40);
       expect(state.highlightNextStep, 'Write the intro');
       expect(state.focusTimes.single.title, 'Mon, Wed');
@@ -781,6 +784,39 @@ void main() {
       repo.dispose();
     });
 
+    testWidgets('planned setup asks what you could finish and saves it on the session', (tester) async {
+      final repo = _repo();
+      final c = await _controller(repo);
+      await _pump(tester, c);
+      await _tap(tester, _key('focus-card-duration'));
+      expect(find.text('Focus on this'), findsOneWidget);
+      await tester.enterText(_key('focus-intent'), '  Draft the first paragraph  ');
+      await _tap(tester, _key('focus-setup-start'));
+      final session = repo.sessions.values.single;
+      expect(session.intendedOutcome, 'Draft the first paragraph');
+      expect(repo.assignments['a1']!.state, 'in_progress');
+      expect(find.text('Draft the first paragraph'), findsOneWidget, reason: 'session sheet shows Your focus');
+      await tester.tap(find.byTooltip('Close focus'));
+      await tester.pumpAndSettle();
+      await _teardown(tester, c);
+      repo.dispose();
+    });
+
+    testWidgets('without 0017 planned setup hides the outcome field', (tester) async {
+      final repo = _repo(intents: false);
+      final c = await _controller(repo);
+      await _pump(tester, c);
+      await _tap(tester, _key('focus-card-duration'));
+      expect(find.text('Focus on this'), findsOneWidget);
+      expect(_key('focus-intent'), findsNothing);
+      await _tap(tester, _key('focus-setup-start'));
+      expect(repo.sessions.values.single.intendedOutcome, isNull);
+      await tester.tap(find.byTooltip('Close focus'));
+      await tester.pumpAndSettle();
+      await _teardown(tester, c);
+      repo.dispose();
+    });
+
     testWidgets('a failed start keeps the same session id for the retry', (tester) async {
       final repo = _repo(planned: false);
       await repo.highlight('r3');
@@ -940,8 +976,8 @@ void main() {
       repo.dispose();
     });
 
-    testWidgets('custom minutes are validated and Archive offers Undo that recreates it', (tester) async {
-      final repo = _repo(planned: false);
+    testWidgets('custom minutes are validated and Archive offers Undo that restores the same time', (tester) async {
+      final repo = _repo();
       final c = await _controller(repo);
       await _pump(tester, c, actions: {'times': (context) => openFocusTimes(context, c)});
       await _tap(tester, find.text('times'));
@@ -959,7 +995,25 @@ void main() {
       expect(find.text('Focus time archived · planned work stays'), findsOneWidget);
       await _tap(tester, _key('focus-notice-undo'));
       expect(repo.times.values.where((t) => t.label == 'Shop time'), hasLength(1));
+      expect(repo.times['ft1']!.enabled, isTrue, reason: 'same id, same on/off as before');
+      expect(repo.calls.where((x) => x.startsWith('time:')), isEmpty, reason: 'Undo never creates a new time');
+      expect(c.state!.assignments.where((a) => a.focusTimeId == 'ft1'), hasLength(3), reason: 'planned work stays attached');
       expect(find.text('Focus time restored'), findsOneWidget);
+      await tester.tap(find.byTooltip('Close focus'));
+      await tester.pumpAndSettle();
+      await _teardown(tester, c);
+      repo.dispose();
+    });
+
+    testWidgets('without 0017 Archive offers no Undo', (tester) async {
+      final repo = _repo(planned: false, intents: false);
+      final c = await _controller(repo);
+      await _pump(tester, c, actions: {'times': (context) => openFocusTimes(context, c)});
+      await _tap(tester, find.text('times'));
+      await _tap(tester, _key('focus-time-ft1'));
+      await _tap(tester, _key('focus-time-archive'));
+      expect(find.text('Focus time archived · planned work stays'), findsOneWidget);
+      expect(_key('focus-notice-undo'), findsNothing);
       await tester.tap(find.byTooltip('Close focus'));
       await tester.pumpAndSettle();
       await _teardown(tester, c);

@@ -71,6 +71,7 @@ class FocusController extends ChangeNotifier {
   /// saved-length UI stay hidden and the MVP behaviour (25 min) applies.
   bool get planning => state?.planning ?? false;
   bool get hasPreferences => state?.preferences ?? false;
+  bool get hasIntents => planning && (state?.intents ?? false);
   int get preferredMinutes => state?.preferredMinutes ?? 25;
   List<FocusTimeItem> get focusTimes => state?.focusTimes ?? const [];
   bool get hasFocusTimes => planning && focusTimes.isNotEmpty;
@@ -256,10 +257,12 @@ class FocusController extends ChangeNotifier {
   }
 
   /// Start planned work, using its planned minutes unless [minutes] is given.
-  Future<bool> startAssigned(FocusAssignment assignment, {int? minutes}) {
+  /// [intent] is dropped before 0017, where the RPC cannot store it.
+  Future<bool> startAssigned(FocusAssignment assignment, {int? minutes, String? intent}) {
     final m = minutes ?? assignment.plannedMinutes;
-    final key = 'assigned:${assignment.id}:$m';
-    return mutate(() => repository.startAssigned(intentId(key), assignment, m))
+    final text = hasIntents ? intent : null;
+    final key = 'assigned:${assignment.id}:$m:${text ?? ''}';
+    return mutate(() => repository.startAssigned(intentId(key), assignment, m, text))
         .then((ok) {
           if (ok) settle(key);
           return ok;

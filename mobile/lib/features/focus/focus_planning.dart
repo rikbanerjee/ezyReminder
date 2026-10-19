@@ -947,26 +947,24 @@ class _TimeEditViewState extends State<_TimeEditView> {
     final ok = await c.mutate(() => c.repository.archiveFocusTime(existing.id));
     if (!mounted || !ok) return;
     final sheet = widget.sheet;
-    final restore = FocusTimeDraft(
-      // An archived time cannot be revived server-side, so Undo recreates it.
-      id: newFocusId(),
-      label: existing.label,
-      contextSlug: existing.contextSlug,
-      weekdays: existing.weekdays,
-      startTime: existing.startTime,
-      budgetMinutes: existing.budgetMinutes,
-    );
+    // Undo restores the same Focus time, so its planned work stays attached.
+    // Without 0017 there is no restore, so no Undo is offered.
     sheet.go(
       _Route(
         _Mode.times,
         fromSettings: widget.fromSettings,
         notice: 'Focus time archived · planned work stays',
-        undo: () async {
-          final restored = await c.mutate(() => c.repository.saveFocusTime(restore));
-          if (restored && sheet.mounted) {
-            sheet.go(_Route(_Mode.times, fromSettings: widget.fromSettings, notice: 'Focus time restored'));
-          }
-        },
+        undo: !c.hasIntents
+            ? null
+            : () async {
+                final restored = await c.mutate(
+                  () => c.repository.restoreFocusTime(existing.id, enabled: existing.enabled),
+                );
+                if (restored && sheet.mounted) {
+                  _announce(sheet.context, 'Focus time restored');
+                  sheet.go(_Route(_Mode.times, fromSettings: widget.fromSettings, notice: 'Focus time restored'));
+                }
+              },
       ),
     );
   }
