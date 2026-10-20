@@ -17,6 +17,10 @@ import 'features/shopping/shopping_list_sheet.dart';
 import 'features/sidegig/sidegig_page.dart';
 import 'core/util/device_timezone.dart';
 import 'features/add/today_add_flow.dart';
+// Compiled in for its background entry point, which iOS starts by name.
+// ignore: unused_import
+import 'features/notifications/notification_jobs.dart';
+import 'features/notifications/reminder_alerts.dart';
 import 'features/sidegig/sidegig_repository.dart';
 import 'features/shipping/carrier_fields.dart';
 import 'shared/widgets/compact_date_time_picker.dart';
@@ -42,11 +46,13 @@ class EzyApp extends StatelessWidget {
     this.repository,
     this.textScale,
     this.focusRepository,
+    this.alerts,
   });
   final bool connected;
   final bool preview;
   final ReminderRepository? repository;
   final FocusRepository? focusRepository;
+  final ReminderAlerts? alerts;
   final double? textScale;
 
   @override
@@ -65,7 +71,7 @@ class EzyApp extends StatelessWidget {
       child: child!,
     ),
     home: preview
-        ? TodayPage(repository: repository ?? DemoRepository(), demo: true, focusRepository: focusRepository)
+        ? TodayPage(repository: repository ?? DemoRepository(), demo: true, focusRepository: focusRepository, alerts: alerts)
         : connected
         ? AuthGate(client: Supabase.instance.client)
         : const SetupPage(),
@@ -1650,9 +1656,13 @@ class TodayPage extends StatefulWidget {
     this.demo = false,
     this.onSignOut,
     this.focusRepository,
+    this.alerts,
   });
   final ReminderRepository repository;
   final FocusRepository? focusRepository;
+
+  /// iPhone alerts. Defaults to the device for a signed-in account.
+  final ReminderAlerts? alerts;
   final bool demo;
   final Future<void> Function()? onSignOut;
   @override
@@ -1788,6 +1798,14 @@ class _TodayPageState extends State<TodayPage>
   int _refreshGeneration = 0;
   SettingsRepository? _settingsRepository;
   late final FocusController focusController;
+  late final ReminderAlerts? alerts =
+      widget.alerts ??
+      switch (widget.repository) {
+        final SupabaseRepository r => ReminderAlerts(
+          source: SupabaseAlertSource(r.client),
+        ),
+        _ => null,
+      };
   @override
   void initState() {
     super.initState();
@@ -1811,13 +1829,51 @@ class _TodayPageState extends State<TodayPage>
     focusController.onOpenReminder = (id) async { final r = reminderFor(id); if (r != null && mounted) await _openSheet(r); };
     refresh();
     unawaited(_followDeviceTimezone());
+    unawaited(_attachAlerts());
     subscription = widget.repository.changes.listen((_) { refresh(); unawaited(focusController.reload()); });
+  }
+
+  /// iOS hands this page tapped alerts and, while it's attached, lock-screen
+  /// Done / Snooze and background refreshes (otherwise a headless engine does).
+  Future<void> _attachAlerts() async {
+    final alerts = this.alerts;
+    if (alerts == null) return;
+    try {
+      await alerts.platform.attach((method, args) async {
+        if (method == 'opened') await _openTappedAlert();
+        if (method == 'job' && args is Map) {
+          await alerts.run(args);
+          if (mounted) await refresh();
+        }
+        return null;
+      });
+      await _openTappedAlert();
+    } catch (_) {
+      // No native side (tests, other platforms): nothing to schedule.
+    }
+  }
+
+  Future<void> _openTappedAlert() async {
+    final id = await alerts?.platform.takeOpened();
+    if (id == null || !mounted) return;
+    if (loading) await refresh();
+    final reminder =
+        allReminders.where((r) => r.id == id).firstOrNull ??
+        reminders.where((r) => r.id == id).firstOrNull;
+    // Don't hold the native call open for as long as the sheet is.
+    if (reminder != null && mounted) unawaited(_openSheet(reminder));
+  }
+
+  void _syncAlerts() {
+    final alerts = this.alerts;
+    if (alerts != null) unawaited(alerts.sync().catchError((_) {}));
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     subscription?.cancel();
+    unawaited(alerts?.platform.detach().catchError((_) {}));
     _settingsRepository?.dispose();
     focusController.dispose();
     gigRepository.dispose();
@@ -1860,6 +1916,7 @@ class _TodayPageState extends State<TodayPage>
       MaterialPageRoute(
         builder: (settingsContext) {
           Future<void> leaveAccount() async {
+            await alerts?.clear();
             try {
               await widget.onSignOut?.call();
             } catch (_) {
@@ -1882,6 +1939,7 @@ class _TodayPageState extends State<TodayPage>
               if (mounted) unawaited(refresh());
             },
             focusController: focusController,
+            alerts: alerts,
           );
         },
       ),
@@ -1954,6 +2012,7 @@ class _TodayPageState extends State<TodayPage>
         loading = false;
         loadError = null;
       });
+      _syncAlerts();
       // Side Gig stays mounted across tabs, so plain captures/edits must
       // refresh it too (including previews without Supabase Realtime).
       await gigPageKey.currentState?.reload();

@@ -20,7 +20,7 @@ Companion to `PLAN.md` (product), `DESIGN.md` (UI), `MOBILE.md` (native strategy
 | 5 — WhatsApp (Twilio) | ⬜ not started |
 | 6 — Agents (REST API keys + MCP) | ⬜ not started (`api_keys` table exists) |
 | 7 — Shippo | ⬜ not started |
-| Flutter iOS app (`mobile/`) | 🟡 built locally on `ios-mvp`; hosted APNs HTTP/2 transport gate ✅ passed 2026-10-19 (`supabase/functions/apns-transport-probe/README.md`); native notification delivery + TestFlight pending |
+| Flutter iOS app (`mobile/`) | 🟡 built locally on `ios-mvp`; hosted APNs HTTP/2 transport gate ✅ passed 2026-10-19 (`supabase/functions/apns-transport-probe/README.md`); local notifications built 2026-10-19 (on-device check pending); APNs delivery + TestFlight pending |
 | Home view (household sections, 0011/0014) | 🟡 migrations hosted; web + Flutter client release pending |
 | Focus MVP (highlight + sessions, 0012) | 🟡 migration hosted; client release + signed-in web↔iPhone handoff pending |
 | Focus times (FOCUS_IMPLEMENTATION_PLAN.md §13) | 🟡 Phase 0/1 + slim Phase 2 built on web + Flutter (2026-10-18); migrations 0015–0017 hosted 2026-10-18 — web/iOS release and signed-in handoff test pending |
