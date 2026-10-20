@@ -1,12 +1,12 @@
 # ezyReminder — Product & Technical Plan
 
-A reminder app for people juggling a corporate job and side gigs. As simple as Apple Notes, but it *reaches out to you* — via email, Slack, or WhatsApp — and understands that "ship order #42" is different from "prep for Monday's standup."
+A reminder app for people juggling a corporate job and side gigs. As simple as Apple Notes, but it *reaches out to you* — via iPhone notifications or email — and understands that "ship order #42" is different from "prep for Monday's standup."
 
 ## 1. Product principles
 
 1. **Capture in under 5 seconds.** One text box, smart parsing ("ship mug order tue 6pm #sidegig"). No required fields beyond the text.
-2. **Contexts, not folders.** Every reminder lives in exactly one context: **Work**, **Side Gig**, **Social/Personal**, **Shopping**. Contexts drive default channel (Work → Slack, Side Gig → email/WhatsApp, Social → WhatsApp, Shopping → none/in-app), color, and quiet hours. Shopping is the odd one out — it's a running checklist, not a single due-date item (§3.1).
-3. **The app comes to you.** Reminders are useless if you have to open the app. Delivery via email/Slack/WhatsApp is the core feature, not an add-on.
+2. **Contexts, not folders.** Every reminder lives in exactly one context: **Work**, **Side Gig**, **Social/Personal**, **Shopping**. Contexts drive default channel (email for every context until the iOS app adds push; Social → WhatsApp once v1.5 lands; Shopping → none/in-app), color, and quiet hours. Shopping is the odd one out — it's a running checklist, not a single due-date item (§3.1).
+3. **The app comes to you.** Reminders are useless if you have to open the app. Delivery via iPhone notifications and email is the core feature, not an add-on.
 4. **Orders are first-class.** A reminder can be flagged as an **Order** with a tiny bit of structure (recipient, carrier, tracking #, ship-by date) so a "Ship Queue" view and future Shippo integration are trivial.
 5. **Agent-ready.** Everything the UI can do, an API can do — so Claude Cowork, OpenClaw-style agents, or a cron job can create/complete reminders.
 
@@ -14,12 +14,13 @@ A reminder app for people juggling a corporate job and side gigs. As simple as A
 
 | Layer | Choice | Why |
 |---|---|---|
-| Frontend | Next.js 15 (App Router), TypeScript, Tailwind, shadcn/ui | Fast to build, PWA-friendly, huge ecosystem |
+| Web client | Next.js 15 (App Router), TypeScript, Tailwind, shadcn/ui | Fast to build, PWA-friendly, huge ecosystem |
+| iOS client (2026-10) | Flutter (`mobile/`), Android later from the same project | Native feel, pixel-matches the prototype, one codebase for both phones (MOBILE.md) |
 | Backend | Next.js API routes / server actions | One deployable unit |
 | DB + Auth | Supabase (Postgres, Row Level Security, magic-link auth) | Free tier, realtime, built-in auth |
 | Scheduling | Supabase `pg_cron` → Edge Function every minute (fallback: Vercel Cron) | Reliable due-reminder sweep |
 | Email | Resend | Simple API, generous free tier |
-| Slack | Slack app (bot token, `chat.postMessage` DM) | Reliable work-channel delivery |
+| iOS notifications | On-device local notifications + APNs from the sweep (hybrid, deduped) | Works offline *and* for web-created reminders (MOBILE.md §3) |
 | WhatsApp | Twilio WhatsApp API (v2; template messages) | Least Meta-approval friction |
 | Shipping (future) | Shippo API | Labels, rates, tracking webhooks |
 | Hosting | Vercel | Zero-config Next.js deploys |
@@ -38,7 +39,7 @@ reminders (
   notes text,
   due_at timestamptz,
   recurrence text,          -- rrule string, null = one-off
-  channels text[],          -- ['email','slack','whatsapp']
+  channels text[],          -- ['email','whatsapp'] (+ 'apns' with the iOS app)
   status text,              -- open | done | snoozed | cancelled
   snoozed_until timestamptz,
   tags text[],
@@ -117,14 +118,17 @@ Setup: create one OAuth 2.0 **Web application** Client ID in Google Cloud Consol
 ### 4.1 Notification pipeline (v1 core)
 - `pg_cron` fires an Edge Function every minute: `SELECT reminders due AND status='open'` → enqueue a `notifications` row per channel → dispatch.
 - Each channel is a small adapter behind one interface: `send(reminder, channel) → {ok, providerMessageId | error}`. Adding a channel later = one new adapter file.
-- Retries: 3 attempts with backoff; failures visible in UI ("⚠ Slack delivery failed").
+- Retries: 3 attempts with backoff; failures visible in UI ("⚠ Email delivery failed").
+- Overdue email repeats (2026-10-18): after each successful email, automatically snooze the reminder for **6 hours** while retaining its original due date. Repeat until completion/cancellation or an explicit reschedule. Failed provider attempts keep their bounded retry policy; quiet hours still delay actual delivery.
 - Quiet hours per context: work reminders don't ping WhatsApp at 11pm; they defer to next allowed window (user-overridable per reminder).
 
 **Email (Resend)** — v1, week 1. Reply-to-complete stretch goal: replying "done" marks the reminder done (inbound webhook).
 
-**Slack** — v1. Single-workspace Slack app, bot token stored per user, DM via `chat.postMessage` with Block Kit buttons: **Done · Snooze 1h · Snooze 1d**. Interactivity endpoint: `/api/integrations/slack/actions`.
+**iOS notifications** — v1 with the Flutter app. A hybrid of on-device local notifications (scheduled by the app, works offline) and APNs push from the sweep (covers reminders created or edited on the web), deduplicated so each reminder fires once. Actionable: **Done · Snooze 1h**. Full design in MOBILE.md §3.
 
-**WhatsApp (Twilio)** — v1.5 (after email+Slack are solid). Requires a pre-approved message template, e.g. `Reminder: {{1}} is due {{2}}. Reply DONE to complete.` Inbound webhook handles DONE/SNOOZE replies. Costs ~ $0.005–0.05/message; show a monthly count in settings.
+**Slack** — removed 2026-10 (adapter, OAuth routes and `slack_integrations` table deleted in `0006_remove_slack.sql`) to keep delivery simple.
+
+**WhatsApp (Twilio)** — v1.5 (after email + iOS notifications are solid). Requires a pre-approved message template, e.g. `Reminder: {{1}} is due {{2}}. Reply DONE to complete.` Inbound webhook handles DONE/SNOOZE replies. Costs ~ $0.005–0.05/message; show a monthly count in settings.
 
 ### 4.2 Shipping — Shippo (future, designed-for now)
 - v1 ships the **Order** flag + Ship Queue view with manual carrier/tracking entry. No API dependency.
@@ -142,7 +146,7 @@ Two layers, same underlying service functions:
 - All agent writes carry `created_by: 'agent:<name>'` for auditability; a settings toggle can require confirmation for agent-initiated deletes.
 
 ### 4.4 Capture integrations (later, in priority order)
-Slack slash command `/remind-me ship order #42 friday` → creates a Side Gig reminder; email-in address (`todo@…`); iOS Share Sheet via PWA share_target.
+Email-in address (`todo@…`); iOS Share Sheet via the Flutter app's Share Extension (web: PWA share_target).
 
 ## 5. UX / design
 
@@ -151,25 +155,15 @@ Slack slash command `/remind-me ship order #42 friday` → creates a Side Gig re
 - Dark mode from day one (system-follow).
 - Mobile-first layout; desktop is the same column, wider.
 
-### 5.2 Information architecture
-```
-┌──────────────────────────────────────┐
-│  [All] [Work] [Side Gig] [Social]    │  ← context pills (filter)
-│──────────────────────────────────────│
-│  + Quick add: "type anything…"       │  ← smart-parse input, always on top
-│──────────────────────────────────────│
-│  OVERDUE (red)                       │
-│  TODAY                               │
-│  🚚 SHIP QUEUE (n)   ← only if n>0   │
-│  UPCOMING                            │
-│  DONE (collapsed)                    │
-└──────────────────────────────────────┘
-```
-- **Quick add parsing:** natural-ish language → `"ship mug order tue 6pm #sidegig @whatsapp"` sets title, due date, context, channel. Parsed chips render below the input before saving so nothing feels magical/wrong. Library: `chrono-node` for dates.
-- **Reminder row:** checkbox · title · context dot · due chip ("in 2h", red if overdue) · channel icons · 🚚 if order. Tap → detail sheet (notes, recurrence, channels, order fields).
-- **Ship Queue view:** orders sorted by ship-by date; each row has order ref, recipient, ship-by countdown, and a one-tap **Mark shipped** (asks for tracking # inline). This is the "easy way to tag orders" — flag at creation via 🚚 toggle or `#order` in quick add.
-- **Swipe/keyboard:** swipe right = done, swipe left = snooze menu (1h / tonight / tomorrow / next week). Desktop: `n` new, `e` done, `s` snooze.
-- **Empty/error states:** friendly, single-line. Delivery failures show inline with a retry button.
+### 5.2 Information architecture — revised 2026-10-19
+**Today · Side Gig · Home · All.** Today is a single reminder list across the four contexts: Overdue, Today, Upcoming, Someday and collapsed Done today. No context filters or duplicate Ship soon block. Today retains the full Focus card: choose/start a reminder, planned work, and running-session recovery. All provides search, context filters and completed records. Side Gig owns independent work, Ship Queue, follow-ups and payments.
+
+- **Add from Today:** tap the docked bar → "What would you like to add?" (Work · Side Gig · Home · Social · Shopping) → the destination's existing chooser and form, saved through its own atomic RPC, then a toast with View. Home stays a destination over the four contexts (bills/study/care are Social, groceries are Shopping). See DESIGN.md §5.1.
+- **Quick capture (All):** tap the docked bar → title, blank context select, optional compact date/time, Save. Choosing Side Gig does not change the form. Notes, delivery controls and domain fields wait for editing.
+- **Details:** tapping a saved Side Gig task/order from Today or All opens the canonical Side Gig editor on the same reminder ID. Other contexts retain their respective detail/checklist editors. Shopping opens its checklist after capture.
+- **Side Gig creation:** scoped Add offers Task / Order / Follow-up / Expected payment with full forms. Task/Order details share their implementation with editing from Today; atomic writes remain `sidegig_mutate`.
+- **Reminder row:** completion ring, title, context/due metadata, channel/order icons. Shipping and payment actions remain explicit in their domain views.
+- **Swipe/keyboard:** existing completion and snooze behavior. Empty/error states are short and inline.
 
 ### 5.3 Screens (complete list — deliberately short)
 1. **Home** (list above) 2. **Reminder detail** (bottom sheet) 3. **Ship Queue** 4. **Settings** (channels, quiet hours, contexts, API keys, integrations) 5. **Auth** (magic link).
@@ -180,14 +174,41 @@ Slack slash command `/remind-me ship order #42 friday` → creates a Side Gig re
 |---|---|---|
 | **0 — Scaffold** | Next.js + Supabase, auth, schema, RLS | ~1 day |
 | **1 — Core loop** | CRUD, quick-add parsing, contexts, list views, done/snooze | 2–3 days |
-| **2 — Delivery** | Cron sweep, email (Resend), Slack DM + action buttons, notification log | 2–3 days |
+| **2 — Delivery** | Cron sweep, email (Resend), notification log (Slack DM shipped, then removed 2026-10) | 2–3 days |
 | **3 — Orders** | Order flag, Ship Queue, manual tracking | 1–2 days |
 | **4 — PWA/iOS** | Manifest, service worker, share_target, install flow (see MOBILE.md) | 1–2 days |
 | **5 — WhatsApp** | Twilio templates, inbound DONE/SNOOZE | 2 days |
 | **6 — Agents** | REST API keys + MCP server | 2–3 days |
 | **7 — Shippo** | Label purchase, tracking webhooks | 2–3 days |
+| **8 — iOS app (Flutter)** | RPCs + Realtime, Flutter screens, hybrid notifications, Share Extension, TestFlight (MOBILE.md §6) | 3–5 weeks |
 
 ## 7. Risks / notes
 - WhatsApp is the highest-friction channel (template approval, cost) — that's why it's phase 5, not phase 2.
-- Web push on iOS requires the PWA to be installed to Home Screen (iOS 16.4+); email/Slack/WhatsApp are the reliable channels regardless.
+- iOS notifications come from the native Flutter app, not Web Push; email is the reliable fallback for web-only users.
 - Keep Supabase Edge Function sweep idempotent (claim rows with `FOR UPDATE SKIP LOCKED`) so double-fires can't double-notify.
+
+
+## 8. Focus — approved first slice (2026-10)
+
+The Focus MVP adds one daily highlight from an existing open Work or Side Gig reminder, a start-now timer (1–180 minutes) with pause/resume, and an explicit session outcome with an optional next step. Sessions persist in Supabase so refreshes and the second client can recover the same timer; reaching zero waits for the user to finish the session. Focus does not change reminder deadlines, completion, shipment state, or notification delivery.
+
+See [FOCUS_PLAN.md](FOCUS_PLAN.md) for the scope, interaction rules, database contract, and follow-on work. This slice implements the shared backend, web client, and Flutter client. Future scheduling and focus notifications are deferred.
+
+The next proposed iteration is documented in [FOCUS_IMPLEMENTATION_PLAN.md](FOCUS_IMPLEMENTATION_PLAN.md): reusable weekly Focus times (for example Thursday evening or Saturday at 9 AM), explicit task assignment independent of deadlines, simpler starts/returns, and phased notification support. This is planned work; scheduled Focus delivery is not yet shipped.
+
+## 9. Home — contextual household tasks (2026-10)
+
+Home has four independent sections: **Home care**, **Groceries**, **Bill pay**, and **Study & kids**. Section pills keep optional needs out of each other's way; choosing a section does not require setup in the others. Home is a view, so every reminder still belongs to one of the four contexts. Grocery lists use Shopping; all other Home tasks use Social/Personal and its quiet hours.
+
+Home care includes Car service & maintenance, HVAC & air filters, Dryer maintenance, Smart-home batteries, and Other home care. HVAC includes air-filter tasks; legacy Filter changes reminders/history remain intact and appear under HVAC. Smart-home batteries replaces the separate Filter card.
+
+Every template controls task, item/person, due date, repeat, instructions, completion, and history labels. Cars have Car name plus separate make/model fields. HVAC has System or room and optional Air-filter size. Dryer uses Dryer location. Battery tasks use Device & location plus Battery or charger type. Bills use Bill name, Biller or provider, optional Amount due/Currency, Payment due, Billing schedule, and payment records. Study uses Study task or follow-up, Student or family member, Subject or course, Teacher or school contact, and progress/next-step records. Optional fields never block a simple reminder.
+
+Repeat presets suit the task: care is generally monthly; batteries and study also offer weekly intervals, and study supports daily. Care repeats from actual completion. Bill and study repeats advance from the planned due date, so early payments or late sessions do not move the schedule. One-time completion closes the reminder. History snapshots the template details and survives deletion of the reminder.
+
+`design/home-templates.json` is the shared copy/field source for web, generated Flutter templates, and the prototype (`node scripts/gen-home-templates.mjs`). Additive migration `0014_contextual_home_tasks.sql` extends 0011 with category-specific details and day intervals. New clients use atomic `save_home_task`; the old save RPC remains compatible. `record_home_service` retains its signature and now snapshots contextual fields and follows the correct repeat anchor. RLS, completion-version checks, existing delivery channels, and quiet hours continue to apply.
+
+
+## 10. Side Gig destination (approved 2026-10-19)
+
+Side Gig replaces the Ship-only tab with Overview, Work, Ship Queue, Follow-ups and Payments. The complete product contract is `SIDEGIG_EXPERIENCE.md`; visual rules are DESIGN.md §10 and `design/sidegig-prototype.html`. Shared backend changes are additive migration 0018, with owner-only state/history, retry-safe atomic RPCs, ordinary reminder delivery and independent fulfillment/collection semantics. No new context, calendar integration, payment processing or CRM entity is introduced. Both clients share these contracts. Shipping-only legacy links remain valid. Local implementation and hosted release status are recorded separately in LAUNCH.md and supabase/MIGRATION_STATUS.md.

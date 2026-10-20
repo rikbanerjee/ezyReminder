@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Check, Truck, AlarmClock, Trash2, Mail, MessageSquare, MessageCircle, TriangleAlert, RotateCw } from "lucide-react";
+import { Check, Truck, AlarmClock, Trash2, Mail, MessageCircle, Smartphone, TriangleAlert, RotateCw } from "lucide-react";
 import { toast } from "sonner";
 import {
   completeReminder,
@@ -16,8 +16,8 @@ import type { Channel } from "@/lib/supabase/types";
 import { cn } from "@/lib/utils";
 
 const CHANNEL_ICON: Record<Channel, typeof Mail> = {
+  apns: Smartphone,
   email: Mail,
-  slack: MessageSquare,
   whatsapp: MessageCircle,
 };
 
@@ -25,8 +25,8 @@ const CHANNEL_ICON: Record<Channel, typeof Mail> = {
 // icon color, not a flat gray fade) so the row's right-side meta reads at
 // a glance instead of blurring into one muted cluster.
 const CHANNEL_COLOR: Record<Channel, string> = {
+  apns: "text-work",
   email: "text-work",
-  slack: "text-shopping",
   whatsapp: "text-social",
 };
 
@@ -64,6 +64,8 @@ export function ReminderRow({ reminder, onOpen }: { reminder: HomeReminder; onOp
   }
 
   function toggleComplete() {
+    if (reminder.is_order && !done) { onOpen(); return; }
+    if (reminder.tags?.some((t) => t.startsWith("home:") || t.startsWith("sidegig:"))) { onOpen(); return; }
     if (done) {
       run(() => reopenReminder(reminder.id), "Couldn't reopen");
     } else {
@@ -80,7 +82,11 @@ export function ReminderRow({ reminder, onOpen }: { reminder: HomeReminder; onOp
 
   function retry() {
     if (!reminder.failedNotificationId) return;
-    run(() => retryNotification(reminder.failedNotificationId!), "Retry failed");
+    startTransition(async () => {
+      const result = await retryNotification(reminder.failedNotificationId!);
+      if (result.ok) toast.success("Retry queued", { description: "Delivery will respect your quiet hours." });
+      else toast.error("Retry failed", { description: result.error });
+    });
   }
 
   return (

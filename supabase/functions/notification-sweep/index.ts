@@ -13,10 +13,10 @@
 import { createClient } from "npm:@supabase/supabase-js@2.110.7";
 import { isQuietNow, nextAllowedTime, type QuietHours } from "../../../lib/quiet-hours.ts";
 import { sendEmail } from "../../../lib/integrations/email/index.ts";
-import { sendSlackDm } from "../../../lib/integrations/slack/index.ts";
 import type { ReminderForDelivery } from "../../../lib/integrations/types.ts";
 
 const MAX_ATTEMPTS = 3;
+const IDEMPOTENCY_SAFETY_WINDOW_MS = 23 * 60 * 60 * 1000;
 const CLAIM_BATCH = 25;
 const MAX_BATCHES = 5;
 
@@ -31,9 +31,16 @@ interface NotificationRow {
   id: string;
   user_id: string;
   reminder_id: string;
-  channel: "email" | "slack" | "whatsapp";
+  channel: "email" | "whatsapp";
   scheduled_for: string;
   attempt_count: number;
+  occurrence_at: string;
+  superseded_at: string | null;
+  delivery_started_at: string | null;
+}
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message.slice(0, 300) : String(error).slice(0, 300);
 }
 
 function backoffMinutes(attempt: number): number {
@@ -77,34 +84,45 @@ async function dispatch(
     const { data: userRes } = await supabase.auth.admin.getUserById(n.user_id);
     const to = userRes?.user?.email;
     if (!to) return { ok: false, error: "user_email_not_found" };
-    return sendEmail({ apiKey: resendApiKey, from: resendFromEmail, to, reminder: delivery });
-  }
-
-  if (n.channel === "slack") {
-    const { data: integration } = await supabase
-      .from("slack_integrations")
-      .select("bot_token, slack_user_id")
-      .eq("user_id", n.user_id)
-      .maybeSingle();
-    if (!integration) return { ok: false, error: "slack_not_connected" };
-    return sendSlackDm({ botToken: integration.bot_token, slackUserId: integration.slack_user_id, reminder: delivery });
+    if (!n.delivery_started_at) {
+      // Start the safety window only after preflight, immediately before provider I/O.
+      const deliveryStartedAt = new Date().toISOString();
+      await updateNotification(n.id, { delivery_started_at: deliveryStartedAt });
+      n.delivery_started_at = deliveryStartedAt;
+    }
+    return sendEmail({ apiKey: resendApiKey, from: resendFromEmail, to, reminder: delivery, idempotencyKey: `notification:${n.id}` });
   }
 
   return { ok: false, error: "whatsapp_not_implemented" };
 }
 
 async function maybeDeferForQuietHours(n: NotificationRow, reminder: ReminderContext): Promise<boolean> {
-  const { data: settings } = await supabase.from("user_settings").select("timezone").eq("user_id", n.user_id).maybeSingle();
+  const { data: settings, error: settingsError } = await supabase.from("user_settings").select("timezone").eq("user_id", n.user_id).maybeSingle();
+  if (settingsError) throw new Error(`settings_read_failed: ${errorMessage(settingsError)}`);
   const quietHours = reminder.context?.quiet_hours;
   const timezone = settings?.timezone ?? "UTC";
 
   if (!quietHours || !isQuietNow(quietHours, timezone)) return false;
 
   const deferredTo = nextAllowedTime(quietHours, timezone);
-  await supabase
+  const { error } = await supabase
     .from("notifications")
     .update({ status: n.attempt_count > 0 ? "retrying" : "pending", scheduled_for: deferredTo.toISOString() })
     .eq("id", n.id);
+  if (error) throw new Error(`quiet_hours_update_failed: ${errorMessage(error)}`);
+  return true;
+}
+
+async function updateNotification(id: string, values: Record<string, unknown>): Promise<void> {
+  const { error } = await supabase.from("notifications").update(values).eq("id", id);
+  if (error) throw new Error(`notification_update_failed: ${errorMessage(error)}`);
+}
+
+async function isDispatchable(n: NotificationRow): Promise<boolean> {
+  const { data, error } = await supabase.from("notifications").select("status, superseded_at, delivery_started_at").eq("id", n.id).single();
+  if (error) throw new Error(`notification_read_failed: ${errorMessage(error)}`);
+  if (!data || data.status !== "sending" || data.superseded_at != null) return false;
+  n.delivery_started_at = data.delivery_started_at;
   return true;
 }
 
@@ -132,45 +150,76 @@ Deno.serve(async (req) => {
     for (const n of rows) {
       processed++;
 
-      const reminder = await loadReminderContext(n.reminder_id);
-      if (!reminder) {
-        failed++;
-        await supabase
-          .from("notifications")
-          .update({ status: "failed", attempt_count: MAX_ATTEMPTS, error: "reminder_not_found" })
-          .eq("id", n.id);
-        continue;
-      }
+      try {
+        if (!await isDispatchable(n)) continue;
 
-      const wasDeferred = await maybeDeferForQuietHours(n, reminder);
-      if (wasDeferred) {
-        deferred++;
-        continue;
-      }
+        const reminder = await loadReminderContext(n.reminder_id);
+        if (!reminder) {
+          failed++;
+          await updateNotification(n.id, { status: "failed", attempt_count: MAX_ATTEMPTS, error: "reminder_not_found" });
+          continue;
+        }
 
-      const result = await dispatch(n, reminder);
-      if (result.ok) {
-        sent++;
-        await supabase
-          .from("notifications")
-          .update({ status: "sent", sent_at: new Date().toISOString(), provider_message_id: result.providerMessageId, error: null })
-          .eq("id", n.id);
-        continue;
-      }
+        const { data: currentReminder, error: statusError } = await supabase.from("reminders").select("status, due_at, snoozed_until, channels, context:contexts(default_channel)").eq("id", n.reminder_id).single();
+        if (statusError) throw new Error(`reminder_status_read_failed: ${errorMessage(statusError)}`);
+        if (!currentReminder || !["open", "snoozed"].includes(currentReminder.status)) {
+          await updateNotification(n.id, { status: "failed", superseded_at: new Date().toISOString(), error: "reminder_not_open" });
+          continue;
+        }
 
-      const nextAttempt = n.attempt_count + 1;
-      if (nextAttempt >= MAX_ATTEMPTS) {
-        failed++;
-        await supabase
-          .from("notifications")
-          .update({ status: "failed", attempt_count: nextAttempt, error: result.error })
-          .eq("id", n.id);
-      } else {
-        const retryAt = new Date(Date.now() + backoffMinutes(nextAttempt) * 60_000);
-        await supabase
-          .from("notifications")
-          .update({ status: "retrying", attempt_count: nextAttempt, scheduled_for: retryAt.toISOString(), error: result.error })
-          .eq("id", n.id);
+        const effectiveDue = currentReminder.snoozed_until ?? currentReminder.due_at;
+        if (!effectiveDue || new Date(effectiveDue).getTime() !== new Date(n.occurrence_at).getTime()) {
+          await updateNotification(n.id, { status: "failed", superseded_at: new Date().toISOString(), error: "reminder_due_changed" });
+          continue;
+        }
+
+        const routeContext = currentReminder.context as unknown as { default_channel: string } | null;
+        const channels = currentReminder.channels?.length ? currentReminder.channels : [routeContext?.default_channel];
+        if (!channels.includes(n.channel)) {
+          await updateNotification(n.id, { status: "failed", superseded_at: new Date().toISOString(), error: "reminder_channel_changed" });
+          continue;
+        }
+
+        const wasDeferred = await maybeDeferForQuietHours(n, reminder);
+        if (wasDeferred) {
+          deferred++;
+          continue;
+        }
+
+        if (n.delivery_started_at && Date.now() - new Date(n.delivery_started_at).getTime() >= IDEMPOTENCY_SAFETY_WINDOW_MS) {
+          failed++;
+          await updateNotification(n.id, { status: "failed", attempt_count: MAX_ATTEMPTS, error: "delivery_confirmation_required" });
+          continue;
+        }
+        const result = await dispatch(n, reminder);
+        if (result.ok) {
+          // Keep the row sending if persistence fails: retrying it could deliver twice.
+          await updateNotification(n.id, { status: "sent", sent_at: new Date().toISOString(), provider_message_id: result.providerMessageId, error: null });
+          sent++;
+          continue;
+        }
+
+        const nextAttempt = n.attempt_count + 1;
+        if (nextAttempt >= MAX_ATTEMPTS) {
+          failed++;
+          await updateNotification(n.id, { status: "failed", attempt_count: nextAttempt, error: result.error });
+        } else {
+          const retryAt = new Date(Date.now() + backoffMinutes(nextAttempt) * 60_000);
+          await updateNotification(n.id, { status: "retrying", attempt_count: nextAttempt, scheduled_for: retryAt.toISOString(), error: result.error });
+        }
+      } catch (error) {
+        // Network/provider exceptions and persistence failures are contained per row.
+        // If delivery may have succeeded, leave status as sending to avoid duplicate mail.
+        const message = errorMessage(error);
+        if (message.startsWith("notification_update_failed")) throw error;
+        const nextAttempt = n.attempt_count + 1;
+        if (nextAttempt < MAX_ATTEMPTS) {
+          const retryAt = new Date(Date.now() + backoffMinutes(nextAttempt) * 60_000);
+          await updateNotification(n.id, { status: "retrying", attempt_count: nextAttempt, scheduled_for: retryAt.toISOString(), error: message });
+        } else {
+          await updateNotification(n.id, { status: "failed", attempt_count: nextAttempt, error: message });
+          failed++;
+        }
       }
     }
 

@@ -12,7 +12,7 @@ import type { Channel } from "@/lib/supabase/types";
  * Tokens (stripped from the resulting title):
  *   #order                 → is_order = true
  *   #<context>             → context, matched against slugs/names/aliases
- *   @email | @slack | @whatsapp → delivery channel override
+ *   @email | @whatsapp → delivery channel override
  *   natural-language dates → due_at (chrono-node), e.g. "tue 6pm", "in 2h"
  */
 
@@ -52,7 +52,6 @@ const CONTEXT_ALIASES: Record<string, string> = {
 const CHANNEL_ALIASES: Record<string, Channel> = {
   email: "email",
   mail: "email",
-  slack: "slack",
   whatsapp: "whatsapp",
   wa: "whatsapp",
   text: "whatsapp",

@@ -1,0 +1,306 @@
+{
+  "sections": {
+    "care": {
+      "label": "Home care",
+      "hint": "Car, HVAC, dryer, batteries and other care",
+      "heading": "Regular home care",
+      "history": "Maintenance history",
+      "empty": "Completed home care appears here, with dates and notes."
+    },
+    "groceries": {
+      "label": "Groceries",
+      "hint": "A checklist you tick off as you shop",
+      "heading": "Grocery & shopping lists"
+    },
+    "bills": {
+      "label": "Bill pay",
+      "hint": "Bills, due dates and payment records",
+      "heading": "Bills & payments",
+      "history": "Payment history",
+      "empty": "Bills you mark paid appear here, with payment dates and notes."
+    },
+    "study": {
+      "label": "Study & kids",
+      "hint": "Study sessions and school follow-ups",
+      "heading": "Study & kids follow-ups",
+      "history": "Study & follow-up history",
+      "empty": "Completed study sessions and follow-ups appear here."
+    }
+  },
+  "templates": {
+    "car": {
+      "section": "care",
+      "label": "Car service & maintenance",
+      "noun": "Car service",
+      "hint": "Oil changes, tires, inspections",
+      "title": "Car service",
+      "taskLabel": "Service or task",
+      "taskPlaceholder": "Oil change, tire rotation, inspection…",
+      "assetLabel": "Car name",
+      "assetPlaceholder": "Family car, daily driver…",
+      "dueLabel": "Next service due",
+      "repeatLabel": "Repeat after service",
+      "notesLabel": "Service instructions",
+      "notesPlaceholder": "Mileage target, oil type, service provider…",
+      "recordAction": "Record completed service",
+      "recordTitle": "Record car service",
+      "recordDate": "Service date",
+      "recordNotes": "Service record",
+      "recordPlaceholder": "Mileage, work performed, mechanic, cost…",
+      "recordSave": "Save service record",
+      "recordSuccess": "Service recorded",
+      "recordNoun": "service",
+      "repeatOptions": [
+        "off",
+        "m1",
+        "m3",
+        "m6",
+        "m12",
+        "m24"
+      ],
+      "fields": [
+        {
+          "key": "make",
+          "label": "Car make",
+          "placeholder": "Toyota, Honda, Ford…"
+        },
+        {
+          "key": "model",
+          "label": "Car model",
+          "placeholder": "Camry, CR-V, F-150…"
+        }
+      ],
+      "dueError": "Choose the next service date"
+    },
+    "hvac": {
+      "section": "care",
+      "label": "HVAC & air filters",
+      "noun": "HVAC task",
+      "hint": "Heating, cooling, and air-filter care",
+      "title": "HVAC service or filter change",
+      "taskLabel": "HVAC task",
+      "taskPlaceholder": "Service heating, change air filter…",
+      "assetLabel": "System or room",
+      "assetPlaceholder": "Upstairs HVAC, basement furnace…",
+      "dueLabel": "Next service or filter change",
+      "repeatLabel": "Repeat after HVAC care",
+      "notesLabel": "HVAC instructions",
+      "notesPlaceholder": "Filter rating, service provider, system instructions…",
+      "recordAction": "Record HVAC care",
+      "recordTitle": "Record HVAC care",
+      "recordDate": "Service or change date",
+      "recordNotes": "HVAC care record",
+      "recordPlaceholder": "Filter replaced, work performed, provider…",
+      "recordSave": "Save HVAC record",
+      "recordSuccess": "HVAC care recorded",
+      "recordNoun": "HVAC care",
+      "repeatOptions": [
+        "off",
+        "m1",
+        "m2",
+        "m3",
+        "m6",
+        "m12"
+      ],
+      "fields": [
+        {
+          "key": "filter_size",
+          "label": "Air-filter size",
+          "placeholder": "20 × 20 × 1, if applicable"
+        }
+      ],
+      "dueError": "Choose the next HVAC or filter-change date"
+    },
+    "dryer": {
+      "section": "care",
+      "label": "Dryer maintenance",
+      "noun": "Dryer task",
+      "hint": "Vent cleaning and appliance care",
+      "title": "Clean dryer vent",
+      "taskLabel": "Dryer task",
+      "taskPlaceholder": "Clean dryer vent, inspect exhaust…",
+      "assetLabel": "Dryer location",
+      "assetPlaceholder": "Laundry room, upstairs dryer…",
+      "dueLabel": "Next dryer maintenance",
+      "repeatLabel": "Repeat after dryer care",
+      "notesLabel": "Dryer care instructions",
+      "notesPlaceholder": "Vent route, appliance model, cleaning instructions…",
+      "recordAction": "Record dryer care",
+      "recordTitle": "Record dryer care",
+      "recordDate": "Maintenance date",
+      "recordNotes": "Dryer care record",
+      "recordPlaceholder": "Vent cleaned, repairs, provider…",
+      "recordSave": "Save dryer record",
+      "recordSuccess": "Dryer care recorded",
+      "recordNoun": "dryer care",
+      "repeatOptions": [
+        "off",
+        "m1",
+        "m3",
+        "m6",
+        "m12"
+      ],
+      "fields": [],
+      "dueError": "Choose the next dryer maintenance date"
+    },
+    "battery": {
+      "section": "care",
+      "label": "Smart-home batteries",
+      "noun": "Battery task",
+      "hint": "Charge devices and replace batteries",
+      "title": "Charge or replace battery",
+      "taskLabel": "Battery task",
+      "taskPlaceholder": "Charge doorbell, replace sensor batteries…",
+      "assetLabel": "Device & location",
+      "assetPlaceholder": "Front-door camera, hallway sensor…",
+      "dueLabel": "Next charge or battery change",
+      "repeatLabel": "Repeat after charging or replacing",
+      "notesLabel": "Battery instructions",
+      "notesPlaceholder": "Charger location, spare batteries, device instructions…",
+      "recordAction": "Record battery care",
+      "recordTitle": "Record battery care",
+      "recordDate": "Charged or replaced on",
+      "recordNotes": "Battery care record",
+      "recordPlaceholder": "Charged to full, batteries replaced, device status…",
+      "recordSave": "Save battery record",
+      "recordSuccess": "Battery care recorded",
+      "recordNoun": "battery care",
+      "repeatOptions": [
+        "off",
+        "d7",
+        "d14",
+        "m1",
+        "m3",
+        "m6"
+      ],
+      "fields": [
+        {
+          "key": "battery_type",
+          "label": "Battery or charger type",
+          "placeholder": "AA, CR2032, USB-C…"
+        }
+      ],
+      "dueError": "Choose the next charge or battery-change date"
+    },
+    "other": {
+      "section": "care",
+      "label": "Other home care",
+      "noun": "Home-care task",
+      "hint": "Everything else around the house",
+      "title": "",
+      "taskLabel": "Home-care task",
+      "taskPlaceholder": "Test smoke alarm, clean gutters…",
+      "assetLabel": "Area or item",
+      "assetPlaceholder": "Roof, garden, garage…",
+      "dueLabel": "Next due",
+      "repeatLabel": "Repeat after completing",
+      "notesLabel": "Task instructions",
+      "notesPlaceholder": "What to check, supplies, who to contact…",
+      "recordAction": "Record completion",
+      "recordTitle": "Record home care",
+      "recordDate": "Completed on",
+      "recordNotes": "Completion notes",
+      "recordPlaceholder": "What was done, supplies used, next steps…",
+      "recordSave": "Save completion",
+      "recordSuccess": "Home care recorded",
+      "recordNoun": "completion",
+      "repeatOptions": [
+        "off",
+        "m1",
+        "m3",
+        "m6",
+        "m12"
+      ],
+      "fields": [],
+      "dueError": "Choose the next due date"
+    },
+    "bill": {
+      "section": "bills",
+      "label": "Bill reminders",
+      "noun": "Bill",
+      "hint": "Utilities, subscriptions, and household payments",
+      "title": "",
+      "taskLabel": "Bill name",
+      "taskPlaceholder": "Electricity, internet, school fees…",
+      "assetLabel": "Biller or provider",
+      "assetPlaceholder": "Utility company, internet provider…",
+      "dueLabel": "Payment due",
+      "repeatLabel": "Billing schedule",
+      "notesLabel": "Payment notes",
+      "notesPlaceholder": "Autopay status, payment method, reference…",
+      "recordAction": "Mark bill paid",
+      "recordTitle": "Record payment",
+      "recordDate": "Paid on",
+      "recordNotes": "Payment confirmation notes",
+      "recordPlaceholder": "Confirmation number, payment method, receipt reference…",
+      "recordSave": "Save payment record",
+      "recordSuccess": "Payment recorded",
+      "recordNoun": "payment",
+      "repeatOptions": [
+        "off",
+        "m1",
+        "m3",
+        "m6",
+        "m12"
+      ],
+      "fields": [
+        {
+          "key": "amount",
+          "label": "Amount due",
+          "placeholder": "e.g. 85.50",
+          "input": "decimal"
+        },
+        {
+          "key": "currency",
+          "label": "Currency",
+          "placeholder": "USD, CAD, GBP…",
+          "input": "currency"
+        }
+      ],
+      "dueError": "Choose a payment due date"
+    },
+    "study": {
+      "section": "study",
+      "label": "Study & kids",
+      "noun": "Study task",
+      "hint": "Study sessions, schoolwork, and education follow-ups",
+      "title": "",
+      "taskLabel": "Study task or follow-up",
+      "taskPlaceholder": "Math practice, check assignment, contact teacher…",
+      "assetLabel": "Student or family member",
+      "assetPlaceholder": "Child’s name, or your own name…",
+      "dueLabel": "Session or follow-up due",
+      "repeatLabel": "Study or follow-up schedule",
+      "notesLabel": "Study or follow-up plan",
+      "notesPlaceholder": "Assignment, learning goal, questions for the teacher…",
+      "recordAction": "Record study or follow-up",
+      "recordTitle": "Record study or follow-up",
+      "recordDate": "Completed on",
+      "recordNotes": "Progress & next steps",
+      "recordPlaceholder": "What was covered, teacher response, next action…",
+      "recordSave": "Save study record",
+      "recordSuccess": "Study or follow-up recorded",
+      "recordNoun": "study or follow-up",
+      "repeatOptions": [
+        "off",
+        "d1",
+        "d7",
+        "d14",
+        "m1"
+      ],
+      "fields": [
+        {
+          "key": "subject",
+          "label": "Subject or course",
+          "placeholder": "Math, reading, science…"
+        },
+        {
+          "key": "teacher",
+          "label": "Teacher or school contact",
+          "placeholder": "Teacher, tutor, school office…"
+        }
+      ],
+      "dueError": "Choose a session or follow-up date"
+    }
+  }
+}

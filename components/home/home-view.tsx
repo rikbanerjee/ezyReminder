@@ -1,15 +1,21 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import Link from "next/link";
-import { ChevronDown, Truck, ChevronRight, Search } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { ChevronDown, Search } from "lucide-react";
 import { QuickAdd } from "./quick-add";
 import { ReminderRow } from "./reminder-row";
+import { QuickReminderSheet } from "./quick-reminder-sheet";
+import { TodayAddSheet } from "./today-add-sheet";
+import { toast } from "sonner";
+import { addConfirmation } from "@/lib/add-flow";
+import { SideGigEditSheet } from "@/components/sidegig/sidegig-edit-sheet";
 import { ReminderSheet } from "./reminder-sheet";
 import { effectiveDue, type HomeContext, type HomeReminder } from "./types";
 import { bucketFor, type Bucket } from "@/lib/dates";
 import { cn } from "@/lib/utils";
 import { BottomDock } from "@/components/bottom-dock";
+import { FocusCard, FocusProvider } from "@/components/focus/focus-provider";
 
 interface HomeViewProps {
   contexts: HomeContext[];
@@ -22,6 +28,8 @@ interface HomeViewProps {
   showSearch?: boolean;
   /** Small text rendered at the end of the scrollable area, e.g. "Signed in as…". */
   footer?: string;
+  openReminderId?: string;
+  openReminder?: HomeReminder;
 }
 
 type SectionKey = Bucket;
@@ -33,13 +41,6 @@ const SECTION_ORDER: { key: SectionKey; label: string; danger?: boolean }[] = [
   { key: "nodate", label: "Someday" },
 ];
 
-function daysUntil(dateStr: string): number {
-  const target = new Date(`${dateStr}T00:00:00`);
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  return Math.round((target.getTime() - today.getTime()) / 86_400_000);
-}
-
 export function HomeView({
   contexts,
   reminders,
@@ -50,7 +51,11 @@ export function HomeView({
   shipSoonCount,
   showSearch,
   footer,
+  openReminderId,
+  openReminder,
 }: HomeViewProps) {
+  const router = useRouter();
+  const openedId = useRef<string | null>(null);
   const [activeSlug, setActiveSlug] = useState<string | null>(null);
   const [showDone, setShowDone] = useState(false);
   const [selected, setSelected] = useState<HomeReminder | null>(null);
@@ -59,19 +64,32 @@ export function HomeView({
   const [scrollToOrderPanel, setScrollToOrderPanel] = useState(false);
   const [query, setQuery] = useState("");
 
+  useEffect(() => {
+    if (!openReminderId) {
+      openedId.current = null;
+      return;
+    }
+    if (!openReminder || openReminder.id !== openReminderId || openedId.current === openReminderId) return;
+    openedId.current = openReminderId;
+    if (openReminder.tags?.some((t) => t.startsWith("sidegig:"))) { router.replace(`/side-gig?open=${openReminder.id}`); return; }
+    if (openReminder.tags?.some((t) => t.startsWith("home:"))) { router.replace(`/home?open=${openReminder.id}`); return; }
+    setSelected(openReminder);
+    setScrollToOrderPanel(false);
+  }, [openReminderId, openReminder, router]);
+
+  const closeSelected = () => {
+    setSelected(null);
+    if (typeof window !== "undefined" && new URLSearchParams(window.location.search).has("open")) {
+      // Remove the one-shot deep-link parameter so a later refresh cannot reopen a dismissed sheet.
+      router.replace("/", { scroll: false });
+    }
+  };
+
   const visible = useMemo(() => {
-    const bySlug = activeSlug ? reminders.filter((r) => r.context?.slug === activeSlug) : reminders;
+    const bySlug = activeTab === "all" && activeSlug ? reminders.filter((r) => r.context?.slug === activeSlug) : reminders;
     const q = query.trim().toLowerCase();
     return q ? bySlug.filter((r) => r.title.toLowerCase().includes(q)) : bySlug;
-  }, [reminders, activeSlug, query]);
-
-  const shipSoon = useMemo(
-    () =>
-      visible
-        .filter((r) => r.is_order && r.order?.shipBy && !r.order.shippedAt && daysUntil(r.order.shipBy) <= 3)
-        .sort((a, b) => daysUntil(a.order!.shipBy!) - daysUntil(b.order!.shipBy!)),
-    [visible],
-  );
+  }, [reminders, activeTab, activeSlug, query]);
 
   const grouped = useMemo(() => {
     const groups: Record<SectionKey, HomeReminder[]> = {
@@ -94,10 +112,10 @@ export function HomeView({
   }, [visible]);
 
   const visibleDone = useMemo(() => {
-    const bySlug = activeSlug ? doneToday.filter((r) => r.context?.slug === activeSlug) : doneToday;
+    const bySlug = activeTab === "all" && activeSlug ? doneToday.filter((r) => r.context?.slug === activeSlug) : doneToday;
     const q = query.trim().toLowerCase();
     return q ? bySlug.filter((r) => r.title.toLowerCase().includes(q)) : bySlug;
-  }, [doneToday, activeSlug, query]);
+  }, [doneToday, activeTab, activeSlug, query]);
 
   const totalVisible = visible.length;
 
@@ -107,10 +125,11 @@ export function HomeView({
     // stay normal, non-scrolling siblings after it (DESIGN.md §3). This is
     // what makes the dock "frozen" at the bottom of the frame instead of
     // sitting wherever short content happens to end.
+    <FocusProvider reminders={reminders} onOpenReminder={(reminder) => { setSelected(reminder); setScrollToOrderPanel(reminder.is_order); }}>
     <div className="flex h-full min-h-0 flex-col">
       <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-1 pb-4 pt-1">
         {/* Context filter pills */}
-        <div className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-0.5">
+        {activeTab==="all"&&<div className="-mx-1 flex shrink-0 gap-1.5 overflow-x-auto px-1 pb-0.5">
           <FilterPill
             active={activeSlug === null}
             onClick={() => setActiveSlug(null)}
@@ -125,10 +144,10 @@ export function HomeView({
               color={c.color}
             />
           ))}
-        </div>
+        </div>}
 
         {showSearch && (
-        <div className="flex h-10 items-center gap-2 rounded-xl border border-hairline bg-surface px-3 shadow-card">
+        <div className="flex h-10 shrink-0 items-center gap-2 rounded-xl border border-hairline bg-surface px-3 shadow-card">
           <Search className="size-4 shrink-0 text-text-2" />
           <input
             value={query}
@@ -139,9 +158,12 @@ export function HomeView({
         </div>
       )}
 
+      {/* Today keeps Focus available before, during and after a session. */}
+      <FocusCard activeOnly={activeTab !== "today"} />
+
       {totalVisible === 0 && visibleDone.length === 0 ? (
         <p className="px-1 py-8 text-center text-[15px] text-text-2">
-          Nothing here yet. Add your first reminder above.
+          All clear. Add a reminder when something comes to mind.
         </p>
       ) : (
         SECTION_ORDER.map(({ key, label, danger }) => {
@@ -153,31 +175,12 @@ export function HomeView({
                   <SectionHeader label={label} count={rows.length} danger={danger} />
                   <div className="divide-y divide-hairline rounded-xl border border-hairline bg-surface px-3 shadow-card">
                     {rows.map((r) => (
-                      <ReminderRow key={r.id} reminder={r} onOpen={() => { setSelected(r); setScrollToOrderPanel(false); }} />
+                      <ReminderRow key={r.id} reminder={r} onOpen={() => { if (r.tags?.some((t) => t.startsWith("sidegig:"))) router.push(`/side-gig?open=${r.id}`); else if (r.tags?.some((t) => t.startsWith("home:"))) router.push(`/home?open=${r.id}`); else setSelected(r); setScrollToOrderPanel(false); }} />
                     ))}
                   </div>
                 </section>
               )}
-              {key === "today" && shipSoon.length > 0 && (
-                <section>
-                  <div className="flex items-center justify-between px-1 pb-1.5 pt-1">
-                    <span className="flex items-center gap-1.5 text-[13px] font-semibold uppercase tracking-wide text-text-2">
-                      <Truck className="size-3.5 text-sidegig" />
-                      Ship soon
-                      <span className="text-text-2/70">{shipSoon.length}</span>
-                    </span>
-                    <Link href="/ship-queue" className="flex items-center text-[12px] text-text-2 hover:text-foreground">
-                      Ship Queue
-                      <ChevronRight className="size-3.5" />
-                    </Link>
-                  </div>
-                  <div className="divide-y divide-hairline rounded-xl border border-hairline bg-surface px-3 shadow-card">
-                    {shipSoon.map((r) => (
-                      <ReminderRow key={r.id} reminder={r} onOpen={() => { setSelected(r); setScrollToOrderPanel(false); }} />
-                    ))}
-                  </div>
-                </section>
-              )}
+
             </div>
           );
         })
@@ -200,7 +203,7 @@ export function HomeView({
           {showDone && (
             <div className="divide-y divide-hairline rounded-xl border border-hairline bg-surface px-3 shadow-card">
               {visibleDone.map((r) => (
-                <ReminderRow key={r.id} reminder={r} onOpen={() => { setSelected(r); setScrollToOrderPanel(false); }} />
+                <ReminderRow key={r.id} reminder={r} onOpen={() => { if (r.tags?.some((t) => t.startsWith("sidegig:"))) router.push(`/side-gig?open=${r.id}`); else if (r.tags?.some((t) => t.startsWith("home:"))) router.push(`/home?open=${r.id}`); else setSelected(r); setScrollToOrderPanel(false); }} />
               ))}
             </div>
           )}
@@ -210,18 +213,35 @@ export function HomeView({
       {footer && <p className="px-1 pt-2 text-[12px] text-text-2">{footer}</p>}
       </div>
 
-      {selected && (
+      {selected && (selected.context?.slug==="sidegig" ? <SideGigEditSheet reminderId={selected.id} contexts={contexts} onClose={closeSelected}/> :
         <ReminderSheet
           reminder={selected}
           contexts={contexts}
           scrollToOrderPanel={scrollToOrderPanel}
-          onClose={() => setSelected(null)}
+          onClose={closeSelected}
         />
       )}
 
-      {creatingNew !== null && (
-        <ReminderSheet
-          reminder={null}
+      {creatingNew !== null && activeTab === "today" && (
+        <TodayAddSheet
+          contexts={contexts}
+          initialTitle={creatingNew}
+          onClose={() => setCreatingNew(null)}
+          onSaved={(saved) => {
+            const { message, href } = addConfirmation(saved);
+            toast.success(message, { action: { label: "View", onClick: () => router.push(href) } });
+            router.refresh();
+          }}
+          onShoppingCreated={(created) => {
+            // Shopping continues straight into its checklist editor.
+            setSelected(created);
+            router.refresh();
+          }}
+        />
+      )}
+
+      {creatingNew !== null && activeTab === "all" && (
+        <QuickReminderSheet
           initialTitle={creatingNew}
           contexts={contexts}
           onClose={() => setCreatingNew(null)}
@@ -230,7 +250,8 @@ export function HomeView({
             // edit mode for the reminder just created instead of closing,
             // so the checklist is immediately usable.
             setCreatingNew(null);
-            setSelected(created);
+            if(created.context?.slug==="shopping")setSelected(created);
+            router.refresh();
           }}
         />
       )}
@@ -243,6 +264,7 @@ export function HomeView({
         />
       </BottomDock>
     </div>
+    </FocusProvider>
   );
 }
 

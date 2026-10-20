@@ -5,7 +5,14 @@ import { withSerwist } from "@serwist/turbopack";
 // --turbopack` (this repo's scripts) — @serwist/turbopack serves the
 // compiled service worker via a route handler instead (app/[path]/route.ts).
 const nextConfig: NextConfig = {
-  /* config options here */
+  async headers() {
+    return [
+      {
+        source: "/.well-known/apple-app-site-association",
+        headers: [{ key: "Content-Type", value: "application/json" }],
+      },
+    ];
+  },
 };
 
 export default withSerwist(nextConfig);

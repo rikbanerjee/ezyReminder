@@ -9,7 +9,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "ezyReminder",
     short_name: "ezyReminder",
-    description: "Reminders that reach you — email, Slack, or WhatsApp.",
+    description: "Reminders that reach you — on your phone or by email.",
     start_url: "/",
     display: "standalone",
     background_color: "#F7F6F3",

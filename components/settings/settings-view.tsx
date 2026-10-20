@@ -1,13 +1,14 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { MessageSquare, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { updateTimezone, updateQuietHours, disconnectSlack } from "@/app/actions";
+import { updateTimezone, updateQuietHours } from "@/app/actions";
+import { createClient } from "@/lib/supabase/client";
+import { FocusProvider, FocusSettingsSection } from "@/components/focus/focus-provider";
 
 export interface SettingsContext {
   id: string;
@@ -19,17 +20,69 @@ export interface SettingsContext {
 export interface SettingsViewProps {
   timezone: string;
   contexts: SettingsContext[];
-  slackConnected: boolean;
-  slackTeamName: string | null;
 }
 
-export function SettingsView({ timezone, contexts, slackConnected, slackTeamName }: SettingsViewProps) {
+export function SettingsView({ timezone, contexts }: SettingsViewProps) {
   return (
-    <div className="flex flex-col gap-6">
-      <SlackSection connected={slackConnected} teamName={slackTeamName} />
-      <TimezoneSection initialTimezone={timezone} />
-      <QuietHoursSection contexts={contexts} />
-    </div>
+    // The provider only serves the Focus times sheet here, so it has no reminders to offer.
+    <FocusProvider reminders={[]}>
+      <div className="flex flex-col gap-6">
+        <TimezoneSection initialTimezone={timezone} />
+        <QuietHoursSection contexts={contexts} />
+        <FocusSettingsSection />
+        <DeleteAccountSection />
+      </div>
+    </FocusProvider>
+  );
+}
+
+function DeleteAccountSection() {
+  const [confirmation, setConfirmation] = useState("");
+  const [pending, startTransition] = useTransition();
+  const router = useRouter();
+
+  function deleteAccount() {
+    if (confirmation !== "DELETE") return;
+
+    startTransition(async () => {
+      try {
+        const supabase = createClient();
+        const { error } = await supabase.functions.invoke("delete-account", { method: "POST" });
+
+        if (error) {
+          toast.error("Couldn't delete your account", { description: "Please try again." });
+          return;
+        }
+
+        await supabase.auth.signOut().catch(() => undefined);
+        router.replace("/login");
+        router.refresh();
+      } catch {
+        toast.error("Couldn't delete your account", { description: "Please try again." });
+      }
+    });
+  }
+
+  return (
+    <Section title="Delete account" description="Permanently delete your account and all associated reminders and data.">
+      <div className="flex flex-col items-start gap-3">
+        <Label htmlFor="delete-account-confirmation">Type DELETE to confirm</Label>
+        <Input
+          id="delete-account-confirmation"
+          autoComplete="off"
+          value={confirmation}
+          onChange={(event) => setConfirmation(event.target.value)}
+          className="max-w-[240px]"
+          aria-describedby="delete-account-help"
+        />
+        <p id="delete-account-help" className="text-[12px] text-text-2">
+          This action is permanent and cannot be undone.
+        </p>
+        <Button variant="destructive" disabled={pending || confirmation !== "DELETE"} onClick={deleteAccount}>
+          {pending ? "Deleting account…" : "Delete account"}
+        </Button>
+      </div>
+    </Section>
   );
 }
 
@@ -40,42 +93,6 @@ function Section({ title, description, children }: { title: string; description?
       {description && <p className="mt-0.5 text-[13px] text-text-2">{description}</p>}
       <div className="mt-3">{children}</div>
     </section>
-  );
-}
-
-function SlackSection({ connected, teamName }: { connected: boolean; teamName: string | null }) {
-  const [pending, startTransition] = useTransition();
-
-  function disconnect() {
-    startTransition(async () => {
-      const res = await disconnectSlack();
-      if (res.ok) toast.success("Slack disconnected");
-      else toast.error("Couldn't disconnect", { description: res.error });
-    });
-  }
-
-  return (
-    <Section title="Slack" description="Get reminders as a DM with Done / Snooze buttons.">
-      {connected ? (
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2 text-[14px]">
-            <MessageSquare className="size-4 text-text-2" />
-            Connected{teamName ? ` to ${teamName}` : ""}
-          </div>
-          <Button type="button" variant="ghost" size="sm" disabled={pending} onClick={disconnect}>
-            <Trash2 className="size-3.5" />
-            Disconnect
-          </Button>
-        </div>
-      ) : (
-        <Button asChild size="sm">
-          <Link href="/api/integrations/slack/oauth/start">
-            <MessageSquare className="size-4" />
-            Connect Slack
-          </Link>
-        </Button>
-      )}
-    </Section>
   );
 }
 

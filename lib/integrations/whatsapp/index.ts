@@ -2,7 +2,7 @@ import type { ReminderForDelivery, SendResult } from "../types.ts";
 
 /**
  * WhatsApp adapter (Twilio, pre-approved template messages) —
- * PLAN.md §4.1. v1.5 — implemented in Phase 5, after email + Slack.
+ * PLAN.md §4.1. v1.5 — implemented in Phase 5, after email.
  */
 export interface SendWhatsAppInput {
   reminder: ReminderForDelivery;

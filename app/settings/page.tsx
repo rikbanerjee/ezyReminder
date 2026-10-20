@@ -6,10 +6,9 @@ import { SettingsView, type SettingsContext } from "@/components/settings/settin
 export default async function SettingsPage() {
   const supabase = await createClient();
 
-  const [{ data: settings }, { data: contextRows }, { data: slack }] = await Promise.all([
+  const [{ data: settings }, { data: contextRows }] = await Promise.all([
     supabase.from("user_settings").select("timezone").maybeSingle(),
     supabase.from("contexts").select("id, name, color, quiet_hours").order("name"),
-    supabase.from("slack_integrations").select("team_name").maybeSingle(),
   ]);
 
   const contexts: SettingsContext[] = (contextRows ?? []).map((c) => ({
@@ -32,8 +31,6 @@ export default async function SettingsPage() {
         <SettingsView
           timezone={settings?.timezone ?? "UTC"}
           contexts={contexts}
-          slackConnected={!!slack}
-          slackTeamName={slack?.team_name ?? null}
         />
       </div>
     </main>

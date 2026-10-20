@@ -22,7 +22,7 @@ export async function fetchHomeData(supabase: SupabaseClient<Database>): Promise
   const contextById = new Map(contexts.map((c) => [c.id, c]));
 
   const reminderSelect =
-    "id, title, notes, due_at, snoozed_until, status, channels, is_order, context_id";
+    "id, title, notes, due_at, snoozed_until, status, channels, is_order, context_id, tags";
 
   const { data: activeRows } = await supabase
     .from("reminders")
@@ -47,6 +47,7 @@ export async function fetchHomeData(supabase: SupabaseClient<Database>): Promise
     status: HomeReminder["status"];
     channels: HomeReminder["channels"];
     is_order: boolean;
+    tags: string[];
     context_id: string;
   };
 
@@ -66,7 +67,11 @@ export async function fetchHomeData(supabase: SupabaseClient<Database>): Promise
   const sidegigDetailsByReminder = await fetchSidegigDetailsMap(supabase);
   const shoppingItemsByReminder = await fetchShoppingItemsMap(supabase);
 
+  const gig = await supabase.rpc("get_sidegig_dashboard");
+  if (gig.error && !["PGRST202", "42883"].includes(gig.error.code)) throw gig.error;
+  const waitingIds = new Set(gig.data?.items.filter(r => r.waiting).map(r => r.reminder_id));
   const toReminder = (r: Row): HomeReminder => ({
+    focusBlocked: waitingIds.has(r.id),
     id: r.id,
     title: r.title,
     notes: r.notes,
@@ -75,6 +80,7 @@ export async function fetchHomeData(supabase: SupabaseClient<Database>): Promise
     status: r.status,
     channels: r.channels ?? [],
     is_order: r.is_order,
+    tags: r.tags,
     context: contextById.get(r.context_id) ?? null,
     failedNotificationId: failedByReminder.get(r.id) ?? null,
     order: ordersByReminder.get(r.id) ?? null,
