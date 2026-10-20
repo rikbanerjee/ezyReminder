@@ -9,18 +9,8 @@ import 'package:ezyreminder/features/focus/focus_repository.dart';
 import 'package:ezyreminder/features/sidegig/sidegig_repository.dart';
 import 'package:ezyreminder/features/sidegig/sidegig_page.dart';
 
-Future<void> chooseCaptureContext(WidgetTester tester, String name) async {
-  final dropdown = find.byType(DropdownButtonFormField<String>).last;
-  await tester.ensureVisible(dropdown);
-  await tester.pumpAndSettle();
-  await tester.tap(dropdown);
-  await tester.pumpAndSettle();
-  await tester.tap(find.text(name).last);
-  await tester.pumpAndSettle();
-}
-
-/// Today opens the organized Add flow; All keeps the minimal capture sheet.
-Future<void> openQuickCapture(WidgetTester tester) async {
+/// Today and All both open the organized Add flow.
+Future<void> openAllAdd(WidgetTester tester) async {
   await tester.tap(
     find.descendant(
       of: find.byType(BottomNavigationBar),
@@ -57,65 +47,38 @@ void main() {
     );
   });
   testWidgets(
-    'All captures simply then edits the same Side Gig task in its full form',
+    'All opens the Add flow; a plain Side Gig task edits in its full form',
     (tester) async {
       tester.view.physicalSize = const Size(390, 844);
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
+      // A plain Side Gig reminder, as older clients and agents create them.
       final repository = DemoRepository();
+      await repository.save(
+        title: 'Write the client estimate',
+        notes: null,
+        dueAt: null,
+        contextId: 'gig',
+        isOrder: false,
+        channels: const [],
+      );
       await tester.pumpWidget(
         EzyApp(connected: false, preview: true, repository: repository),
       );
       await tester.pumpAndSettle();
-      await openQuickCapture(tester);
-      final title = find.byKey(const ValueKey('capture-title'));
-      await tester.enterText(title, 'Write the client estimate');
-      for (final context in ['Side Gig', 'Work', 'Side Gig']) {
-        await chooseCaptureContext(tester, context);
-        expect(find.byType(GigFormSheet), findsNothing);
-        expect(
-          find.descendant(
-            of: find.byType(BottomSheet),
-            matching: find.byType(TextField),
-          ),
-          findsOneWidget,
-        );
-        expect(
-          tester.widget<TextField>(title).controller!.text,
-          'Write the client estimate',
-        );
-        expect(find.byKey(const ValueKey('gig-field-next_step')), findsNothing);
-        expect(find.text('Order details'), findsNothing);
-      }
-      await tester.tapAt(const Offset(10, 10));
-      await tester.pumpAndSettle();
-      expect(
-        title,
-        findsOneWidget,
-        reason: 'the scrim cannot discard a capture',
-      );
+      // All's bar opens the same Add flow as Today.
+      await openAllAdd(tester);
+      expect(find.text('What would you like to add?'), findsOneWidget);
+      expect(find.byKey(const ValueKey('add-choice-sidegig')), findsOneWidget);
       await tester.tap(find.byTooltip('Close'));
-      await tester.pumpAndSettle();
-      expect(find.text('Discard this reminder?'), findsOneWidget);
-      await tester.tap(find.text('Keep editing'));
-      await tester.pumpAndSettle();
-      expect(
-        tester.widget<TextField>(title).controller!.text,
-        'Write the client estimate',
-      );
-      await revealCapture(tester, find.text('Save reminder'));
-      await tester.tap(find.text('Save reminder'));
       await tester.pumpAndSettle();
       final original = (await repository.loadAll()).singleWhere(
         (r) => r.title == 'Write the client estimate',
       );
       expect(original.isOrder, isFalse);
-      expect(original.dueAt, isNull);
-      expect(original.notes, isNull);
       expect(repository.reminderCreateCalls, 1);
-      // The tab was mounted before capture. It must show the new plain task
-      // without first editing/enriching it in the Side Gig form.
+      // Side Gig lists the plain task before any enrichment.
       await tester.tap(
         find.descendant(
           of: find.byType(BottomNavigationBar),
@@ -123,7 +86,7 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      await tester.tap(find.widgetWithText(OutlinedButton, 'Work'));
+      await tester.tap(find.widgetWithText(OutlinedButton, 'Tasks'));
       await tester.pumpAndSettle();
       await tester.scrollUntilVisible(
         find.text('Write the client estimate'),
@@ -195,7 +158,7 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      await tester.tap(find.widgetWithText(OutlinedButton, 'Work'));
+      await tester.tap(find.widgetWithText(OutlinedButton, 'Tasks'));
       await tester.pumpAndSettle();
       await tester.scrollUntilVisible(
         find.text('Write the client estimate'),

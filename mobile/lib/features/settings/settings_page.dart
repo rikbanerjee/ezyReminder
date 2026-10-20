@@ -8,6 +8,7 @@ import '../../core/util/device_timezone.dart';
 import '../../core/util/quiet_hours.dart';
 import '../focus/focus_controller.dart';
 import '../focus/focus_widgets.dart';
+import '../notifications/reminder_alerts.dart';
 import 'settings_repository.dart';
 
 class SettingsPage extends StatefulWidget {
@@ -18,7 +19,11 @@ class SettingsPage extends StatefulWidget {
     required this.onDeleted,
     required this.onChanged,
     this.focusController,
+    this.alerts,
   });
+
+  /// This iPhone's reminder alerts. Null hides Settings → Channels.
+  final ReminderAlerts? alerts;
 
   /// Focus planning (migrations 0015/0016). Null or unavailable hides Settings → Focus.
   final FocusController? focusController;
@@ -51,6 +56,8 @@ class _SettingsPageState extends State<SettingsPage>
   bool savingTimezone = false;
   String? deviceZone;
   bool followDevice = false;
+  AlertPermission? alertPermission;
+  bool requestingAlerts = false;
   int _timezoneRevision = 0;
   bool signingOut = false;
   bool deleting = false;
@@ -71,6 +78,33 @@ class _SettingsPageState extends State<SettingsPage>
     _changes = widget.repository.changes.listen((_) => _load());
     _load();
     unawaited(_loadDeviceZone());
+    unawaited(_loadAlertPermission());
+  }
+
+  Future<void> _loadAlertPermission() async {
+    final status = await widget.alerts?.permission();
+    if (mounted) setState(() => alertPermission = status);
+  }
+
+  /// The only place the app asks iOS for notification permission.
+  Future<void> _enableAlerts() async {
+    setState(() => requestingAlerts = true);
+    try {
+      final status = await widget.alerts!.enable();
+      if (mounted) setState(() => alertPermission = status);
+    } catch (_) {
+      // The status row still shows the old state; tapping again retries.
+    } finally {
+      if (mounted) setState(() => requestingAlerts = false);
+    }
+  }
+
+  Future<void> _sendTestAlert() async {
+    await widget.alerts!.platform.sendTest();
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('A test alert arrives in about 5 seconds.')),
+    );
   }
 
   Future<void> _loadDeviceZone() async {
@@ -115,7 +149,10 @@ class _SettingsPageState extends State<SettingsPage>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) _load();
+    if (state == AppLifecycleState.resumed) {
+      _load();
+      unawaited(_loadAlertPermission());
+    }
   }
 
   Future<void> _load() async {
@@ -525,6 +562,11 @@ class _SettingsPageState extends State<SettingsPage>
                       const SizedBox(height: 8),
                       _contextGroup(item, surface, hairline, text, secondary),
                     ],
+                  if (widget.alerts != null && alertPermission != null) ...[
+                    const SizedBox(height: 22),
+                    _sectionLabel('CHANNELS', secondary),
+                    _alertsGroup(surface, hairline, secondary),
+                  ],
                   if (widget.focusController != null)
                     AnimatedBuilder(
                       animation: widget.focusController!,
@@ -771,6 +813,62 @@ class _SettingsPageState extends State<SettingsPage>
         dark ? EzyDesignTokens.darkShopping : EzyDesignTokens.lightShopping,
       _ => Theme.of(context).colorScheme.primary,
     };
+  }
+
+  Widget _alertsGroup(Color surface, Color hairline, Color secondary) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final on = dark ? EzyDesignTokens.darkSocial : EzyDesignTokens.lightSocial;
+    final status = alertPermission!;
+    return _group(surface, hairline, [
+      Material(
+        type: MaterialType.transparency,
+        child: ListTile(
+          key: const ValueKey('settings-iphone-notifications'),
+          minTileHeight: 52,
+          leading: Icon(CupertinoIcons.device_phone_portrait, color: secondary),
+          title: const Text('iPhone notifications'),
+          subtitle: Text(switch (status) {
+            AlertPermission.allowed =>
+              "Alerts at each reminder's time, even with the app closed.",
+            AlertPermission.denied =>
+              'Turned off in iOS Settings. Email reminders still arrive.',
+            AlertPermission.notDetermined =>
+              "Get an alert at each reminder's time. Email still arrives too.",
+          }),
+          trailing: switch (status) {
+            AlertPermission.allowed => Text(
+              'On ✓',
+              style: TextStyle(color: on, fontWeight: FontWeight.w600),
+            ),
+            AlertPermission.denied => Text(
+              'Settings ›',
+              style: TextStyle(color: secondary),
+            ),
+            AlertPermission.notDetermined => TextButton(
+              key: const ValueKey('settings-enable-notifications'),
+              onPressed: requestingAlerts ? null : _enableAlerts,
+              child: const Text('Turn on'),
+            ),
+          },
+          onTap: status == AlertPermission.denied
+              ? () => unawaited(widget.alerts!.platform.openSettings())
+              : null,
+        ),
+      ),
+      if (status == AlertPermission.allowed) ...[
+        Divider(height: 1, indent: 16, endIndent: 16, color: hairline),
+        Material(
+          type: MaterialType.transparency,
+          child: ListTile(
+            key: const ValueKey('settings-test-notification'),
+            minTileHeight: 48,
+            title: const Text('Send a test alert'),
+            trailing: Text('›', style: TextStyle(color: secondary)),
+            onTap: _sendTestAlert,
+          ),
+        ),
+      ],
+    ]);
   }
 
   Widget _sectionLabel(String label, Color color) => Padding(

@@ -35,7 +35,7 @@ Slack was removed 2026-10. Channels are now **iOS notifications** plus **email**
 
 | Path | Covers | How |
 |---|---|---|
-| **Local** (on-device) | Reminders the phone knows about, including while offline | `flutter_local_notifications`. The app reschedules on launch, on Realtime changes and on background refresh. iOS allows at most 64 pending, so schedule the soonest 64. |
+| **Local** (on-device) | Reminders the phone knows about, including while offline | A small native bridge, `ios/Runner/ReminderNotifications.swift`, driven by `lib/features/notifications/` (built 2026-10-19). The app reschedules on launch, resume, Realtime changes and background refresh (`BGAppRefreshTask`). iOS allows at most 64 pending, so schedule the soonest 64. Chosen over `flutter_local_notifications` because that plugin uses integer IDs (the identifier must be the reminder id, below) and reports lock-screen actions finished before the write completes. |
 | **APNs** (server push) | Reminders created or edited on the web, or anything the phone hasn't synced yet | A new `apns` channel adapter in `lib/integrations/apns/`, called by the existing minute sweep. ES256 JWT signed with WebCrypto (stays Node-free like the other adapters). A `device_tokens` table, with RLS, stores tokens. |
 | **Email** | Web-only users; fallback when push fails or there's no device | Existing Resend adapter. |
 
@@ -47,8 +47,9 @@ Slack was removed 2026-10. Channels are now **iOS notifications** plus **email**
 
 **Other rules:**
 - Quiet hours are enforced by the server sweep for APNs and email, and by the app when scheduling local notifications (same `lib/quiet-hours.ts` logic, ported to Dart with shared fixtures).
-- Actionable notifications offer **Done** and **Snooze 1h**, using `UNNotificationCategory` via the plugin.
-- Asking for push permission must come from a user gesture, and the app must work fine if it's declined (email still fires).
+- Actionable notifications offer **Done** and **Snooze 1h** (`UNNotificationCategory`). Orders, Side Gig work and Home tasks offer Snooze only, because they finish in their own forms; tapping any alert opens its reminder. With the app closed, actions run in a headless Flutter engine using the saved session, and iOS is told they're done only after the write. An action taken offline is queued and replayed on the next sync; Snooze still schedules the alert an hour later.
+- Local alerts are additive for now: contexts still default to email, so a reminder alerts the phone and also sends its email until the APNs phase adds the `apns` channel and the `local_schedules` dedupe. The device token and `local_schedules` acks come with that phase.
+- Asking for push permission must come from a user gesture, and the app must work fine if it's declined (email still fires). The only prompt is Settings → Channels → iPhone notifications → **Turn on**.
 
 ## 4. On-device AI: Apple Foundation Models (planned)
 
@@ -73,7 +74,7 @@ Slack was removed 2026-10. Channels are now **iOS notifications** plus **email**
 2. **Flutter spike (1–2 days):** Today screen and reminder sheet against real Supabase data, run on device next to the PWA. Go/no-go on feel before committing further.
 3. **Scaffold properly:** `mobile/` project, theme from tokens, auth (magic link via universal link, Google via `signInWithIdToken`, **Sign in with Apple**), demo reviewer account.
 4. **Port the screens:** Today, reminder sheet (Order/Work/Side Gig panels), DateTimePicker, Shopping checklist, Ship Queue, All, Settings (including **Delete account**), Onboarding.
-5. **Notifications:** local scheduling, then `device_tokens` + `local_schedules` + the APNs adapter, then actionable categories.
+5. **Notifications:** local scheduling and actionable categories (built 2026-10-19), then `device_tokens` + `local_schedules` + the APNs adapter.
 6. **Share Extension and widget.**
 7. **TestFlight**, then App Store submission (§7 checklist).
 8. **Later:** Foundation Models bridge (§4); then Android (FCM adapter, Play Store, Gemini Nano parser).
@@ -107,4 +108,4 @@ Home provides optional Home care, Groceries, Bill pay, and Study & kids section 
 
 ## 11. Today Add flow (2026-10-19)
 
-`features/add/today_add_flow.dart` hosts Today's "What would you like to add?" sheet (DESIGN.md §5.1). It reuses `GigFormSheet`, `MaintenanceEditor` and the reminder sheet through a small `AddFlowNav` (Back/Close with the form's unsaved state) and an `onSaved` callback; visited forms stay mounted offstage so Back keeps drafts. Saves use the same repositories and RPCs as Side Gig and Home (`HouseholdRepository.save` now returns the reminder ID). The All tab keeps the minimal capture sheet. Regression coverage: `test/today_add_flow_test.dart`.
+`features/add/today_add_flow.dart` hosts the "What would you like to add?" sheet opened from Today and All (DESIGN.md §5.1). It reuses `GigFormSheet`, `MaintenanceEditor` and the reminder sheet through a small `AddFlowNav` (Back/Close with the form's unsaved state) and an `onSaved` callback; visited forms stay mounted offstage so Back keeps drafts. Saves use the same repositories and RPCs as Side Gig and Home (`HouseholdRepository.save` now returns the reminder ID). The All tab opens the same flow (the minimal capture sheet was retired 2026-10-19). Regression coverage: `test/today_add_flow_test.dart`.

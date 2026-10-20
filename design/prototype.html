@@ -663,8 +663,8 @@ function drawCapture(){
 }
 function openCapture(){captureDraft={title:'',ctx:'',due:null,pick:false,calY:2026,calM:9,otherDate:null,otherTime:'09:00'};drawCapture();$('#captureSheet').classList.add('open');$('#scrim').classList.add('open');$('#captureTitle').focus();}
 /* ---------- Today Add flow (DESIGN.md §5.1, revised 2026-10-19) ----------
-   Today's bar opens "What would you like to add?" and routes into the existing organized forms.
-   All keeps the minimal capture sheet above. Drafts are kept per step, so Back never loses typing. */
+   Today's and All's bar opens "What would you like to add?" and routes into the existing organized forms.
+   The minimal capture sheet above is retired (2026-10-19). Drafts are kept per step, so Back never loses typing. */
 const ADD_DEST=[['work','Work','A work task or follow-up','work'],['sidegig','Side Gig','Tasks, orders, follow-ups and expected payments','gig'],['home','Home','Home care, groceries, bills and study','social'],['social','Social','A personal reminder','social'],['shopping','Shopping','A shopping checklist','shopping']];
 const ADD_GIG=[['work','Task','A client deliverable or a small next step'],['order','Order','A recipient, ship-by date and tracking'],['followup','Follow-up','A reply or update to remember'],['payment','Expected payment','Money to collect and when to check in']];
 const addCats=s=>Object.keys(HOME_CONFIG.templates).filter(k=>HOME_CONFIG.templates[k].section===s);
@@ -768,7 +768,7 @@ function drawAddFlow(){
   $('#addForm').onsubmit=e=>{e.preventDefault();saveAddFlow(f.step);};
 }
 function openAddFlow(){addFlow={step:'root',drafts:{},discard:false};drawAddFlow();$('#captureSheet').classList.add('open');$('#scrim').classList.add('open');}
-$('#qaBar').onclick=()=>activeTab==='today'?openAddFlow():openCapture();
+$('#qaBar').onclick=()=>openAddFlow();
 const previousScrimClick=$('#scrim').onclick;
 $('#scrim').onclick=()=>{if(addFlow)closeAddFlow();else if(captureDraft)closeCapture();else previousScrimClick();};
 document.addEventListener('keydown',e=>{if(e.key!=='Escape')return;if(addFlow){e.preventDefault();closeAddFlow();}else if(captureDraft){e.preventDefault();closeCapture();}});

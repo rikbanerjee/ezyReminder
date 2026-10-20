@@ -20,12 +20,12 @@ Companion to `PLAN.md` (product), `DESIGN.md` (UI), `MOBILE.md` (native strategy
 | 5 — WhatsApp (Twilio) | ⬜ not started |
 | 6 — Agents (REST API keys + MCP) | ⬜ not started (`api_keys` table exists) |
 | 7 — Shippo | ⬜ not started |
-| Flutter iOS app (`mobile/`) | 🟡 built locally on `ios-mvp`; hosted APNs HTTP/2 transport gate ✅ passed 2026-10-19 (`supabase/functions/apns-transport-probe/README.md`); native notification delivery + TestFlight pending |
+| Flutter iOS app (`mobile/`) | 🟡 built locally on `ios-mvp`; hosted APNs HTTP/2 transport gate ✅ passed 2026-10-19 (`supabase/functions/apns-transport-probe/README.md`); local notifications built 2026-10-19 (on-device check pending); APNs delivery + TestFlight pending |
 | Home view (household sections, 0011/0014) | 🟡 migrations hosted; web + Flutter client release pending |
 | Focus MVP (highlight + sessions, 0012) | 🟡 migration hosted; client release + signed-in web↔iPhone handoff pending |
 | Focus times (FOCUS_IMPLEMENTATION_PLAN.md §13) | 🟡 Phase 0/1 + slim Phase 2 built on web + Flutter (2026-10-18); migrations 0015–0017 hosted 2026-10-18 — web/iOS release and signed-in handoff test pending |
-| Side Gig destination (SIDEGIG_EXPERIENCE.md §14) | 🟡 Full web + Flutter iOS experience built and verified locally (2026-10-19): Overview, Work, Ship Queue, Follow-ups, Payments, shared Focus. Migration 0018 applied to hosted 2026-10-19; client releases and authenticated handoff/delivery smoke tests pending |
-| Today Add flow (DESIGN.md §5.1) | 🟡 Built locally on web + Flutter (2026-10-19): Today's Add opens Work / Side Gig / Home / Social / Shopping and their existing forms; All keeps quick capture. Uses hosted RPCs (0001–0018); no migration. Client release and signed-in device check pending |
+| Side Gig destination (SIDEGIG_EXPERIENCE.md §14) | 🟡 Full web + Flutter iOS experience built and verified locally (2026-10-19): Overview, Tasks, Ship Queue, Follow-ups, Payments, shared Focus. Migration 0018 applied to hosted 2026-10-19; client releases and authenticated handoff/delivery smoke tests pending |
+| Today Add flow (DESIGN.md §5.1) | 🟡 Built locally on web + Flutter (2026-10-19): Add on Today and All opens Work / Side Gig / Home / Social / Shopping and their existing forms (All's quick capture retired). Uses hosted RPCs (0001–0018); no migration. Client release and signed-in device check pending |
 
 **The architecture is already multi-user.** RLS on every table, per-user Slack OAuth (`slack_integrations`), new-user seeding triggers for contexts and settings. There is no "make it multi-tenant" project. What's missing is the *operational* layer strangers need: deliverability, onboarding, quotas, legal pages, analytics.
 

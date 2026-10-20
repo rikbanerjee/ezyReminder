@@ -2,7 +2,7 @@ import type { HomeReminder } from "../components/home/types.ts";
 import type { FocusAssignment } from "./supabase/types.ts";
 
 export type GigSection = "overview" | "work" | "orders" | "followups" | "payments";
-export const GIG_SECTIONS: [GigSection, string][] = [["overview","Overview"],["work","Work"],["orders","Ship Queue"],["followups","Follow-ups"],["payments","Payments"]];
+export const GIG_SECTIONS: [GigSection, string][] = [["overview","Overview"],["work","Tasks"],["orders","Ship Queue"],["followups","Follow-ups"],["payments","Payments"]];
 export type GigKind = "work" | "order" | "followup" | "payment";
 export type GigItem = {
   id: string; reminder_id: string | null; kind: GigKind; title: string; notes: string | null;

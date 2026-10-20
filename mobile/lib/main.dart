@@ -17,6 +17,10 @@ import 'features/shopping/shopping_list_sheet.dart';
 import 'features/sidegig/sidegig_page.dart';
 import 'core/util/device_timezone.dart';
 import 'features/add/today_add_flow.dart';
+// Compiled in for its background entry point, which iOS starts by name.
+// ignore: unused_import
+import 'features/notifications/notification_jobs.dart';
+import 'features/notifications/reminder_alerts.dart';
 import 'features/sidegig/sidegig_repository.dart';
 import 'features/shipping/carrier_fields.dart';
 import 'shared/widgets/compact_date_time_picker.dart';
@@ -42,11 +46,13 @@ class EzyApp extends StatelessWidget {
     this.repository,
     this.textScale,
     this.focusRepository,
+    this.alerts,
   });
   final bool connected;
   final bool preview;
   final ReminderRepository? repository;
   final FocusRepository? focusRepository;
+  final ReminderAlerts? alerts;
   final double? textScale;
 
   @override
@@ -65,7 +71,7 @@ class EzyApp extends StatelessWidget {
       child: child!,
     ),
     home: preview
-        ? TodayPage(repository: repository ?? DemoRepository(), demo: true, focusRepository: focusRepository)
+        ? TodayPage(repository: repository ?? DemoRepository(), demo: true, focusRepository: focusRepository, alerts: alerts)
         : connected
         ? AuthGate(client: Supabase.instance.client)
         : const SetupPage(),
@@ -1650,9 +1656,13 @@ class TodayPage extends StatefulWidget {
     this.demo = false,
     this.onSignOut,
     this.focusRepository,
+    this.alerts,
   });
   final ReminderRepository repository;
   final FocusRepository? focusRepository;
+
+  /// iPhone alerts. Defaults to the device for a signed-in account.
+  final ReminderAlerts? alerts;
   final bool demo;
   final Future<void> Function()? onSignOut;
   @override
@@ -1788,6 +1798,14 @@ class _TodayPageState extends State<TodayPage>
   int _refreshGeneration = 0;
   SettingsRepository? _settingsRepository;
   late final FocusController focusController;
+  late final ReminderAlerts? alerts =
+      widget.alerts ??
+      switch (widget.repository) {
+        final SupabaseRepository r => ReminderAlerts(
+          source: SupabaseAlertSource(r.client),
+        ),
+        _ => null,
+      };
   @override
   void initState() {
     super.initState();
@@ -1811,13 +1829,51 @@ class _TodayPageState extends State<TodayPage>
     focusController.onOpenReminder = (id) async { final r = reminderFor(id); if (r != null && mounted) await _openSheet(r); };
     refresh();
     unawaited(_followDeviceTimezone());
+    unawaited(_attachAlerts());
     subscription = widget.repository.changes.listen((_) { refresh(); unawaited(focusController.reload()); });
+  }
+
+  /// iOS hands this page tapped alerts and, while it's attached, lock-screen
+  /// Done / Snooze and background refreshes (otherwise a headless engine does).
+  Future<void> _attachAlerts() async {
+    final alerts = this.alerts;
+    if (alerts == null) return;
+    try {
+      await alerts.platform.attach((method, args) async {
+        if (method == 'opened') await _openTappedAlert();
+        if (method == 'job' && args is Map) {
+          await alerts.run(args);
+          if (mounted) await refresh();
+        }
+        return null;
+      });
+      await _openTappedAlert();
+    } catch (_) {
+      // No native side (tests, other platforms): nothing to schedule.
+    }
+  }
+
+  Future<void> _openTappedAlert() async {
+    final id = await alerts?.platform.takeOpened();
+    if (id == null || !mounted) return;
+    if (loading) await refresh();
+    final reminder =
+        allReminders.where((r) => r.id == id).firstOrNull ??
+        reminders.where((r) => r.id == id).firstOrNull;
+    // Don't hold the native call open for as long as the sheet is.
+    if (reminder != null && mounted) unawaited(_openSheet(reminder));
+  }
+
+  void _syncAlerts() {
+    final alerts = this.alerts;
+    if (alerts != null) unawaited(alerts.sync().catchError((_) {}));
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     subscription?.cancel();
+    unawaited(alerts?.platform.detach().catchError((_) {}));
     _settingsRepository?.dispose();
     focusController.dispose();
     gigRepository.dispose();
@@ -1860,6 +1916,7 @@ class _TodayPageState extends State<TodayPage>
       MaterialPageRoute(
         builder: (settingsContext) {
           Future<void> leaveAccount() async {
+            await alerts?.clear();
             try {
               await widget.onSignOut?.call();
             } catch (_) {
@@ -1882,6 +1939,7 @@ class _TodayPageState extends State<TodayPage>
               if (mounted) unawaited(refresh());
             },
             focusController: focusController,
+            alerts: alerts,
           );
         },
       ),
@@ -1954,6 +2012,7 @@ class _TodayPageState extends State<TodayPage>
         loading = false;
         loadError = null;
       });
+      _syncAlerts();
       // Side Gig stays mounted across tabs, so plain captures/edits must
       // refresh it too (including previews without Supabase Realtime).
       await gigPageKey.currentState?.reload();
@@ -2879,8 +2938,8 @@ class _TodayPageState extends State<TodayPage>
         borderRadius: BorderRadius.circular(16),
         elevation: 0,
         child: InkWell(
-          // Today opens the organized Add flow; All keeps quick capture.
-          onTap: () => tab == 0 ? _openAddFlow() : _openSheet(null),
+          // Today and All both open the organized Add flow (DESIGN.md §5.1).
+          onTap: _openAddFlow,
           borderRadius: BorderRadius.circular(16),
           child: Container(
             height: 54,
@@ -3208,11 +3267,8 @@ class _TodayPageState extends State<TodayPage>
     final gigTimezone = await _accountTimezone();
     if (!mounted) return;
     final reduceMotion = MediaQuery.disableAnimationsOf(context);
-    final basicCapture = reminder == null && !startInSideGig;
     final result = await showModalBottomSheet<Object?>(
       context: context,
-      isDismissible: !basicCapture,
-      enableDrag: !basicCapture,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       barrierColor: (Theme.of(context).brightness == Brightness.dark
@@ -3236,7 +3292,6 @@ class _TodayPageState extends State<TodayPage>
         changes: widget.repository.changes,
         reload: widget.repository.load,
         startWithOrder: startWithOrder,
-        basicCapture: basicCapture,
         initialContextId: startInSideGig
             ? contexts.where((c) => _isSideGigSlug(c.slug)).firstOrNull?.id
             : null,
@@ -3568,7 +3623,6 @@ class _ReminderSheet extends StatefulWidget {
     required this.changes,
     required this.reload,
     this.startWithOrder = false,
-    this.basicCapture = false,
     this.initialContextId,
     this.gigRepository,
     this.gigTimezone = 'UTC',
@@ -3594,7 +3648,6 @@ class _ReminderSheet extends StatefulWidget {
   final Stream<void> changes;
   final Future<List<Reminder>> Function() reload;
   final bool startWithOrder;
-  final bool basicCapture;
   final String? initialContextId;
   final GigRepository? gigRepository;
   final String gigTimezone;
@@ -3680,7 +3733,6 @@ class _ReminderSheetState extends State<_ReminderSheet>
   bool shipmentShipped = false;
   OrderDetails? currentOrder;
   Map<String, dynamic> gigDraft = {};
-  bool discardCapture = false;
   String? captureError;
   @override
   void initState() {
@@ -3915,7 +3967,7 @@ class _ReminderSheetState extends State<_ReminderSheet>
     } catch (e) {
       if (mounted) {
         if (e is ReminderCreationIdMissing) creationResultUnknown = true;
-        if (widget.basicCapture || widget.flow != null) {
+        if (widget.flow != null) {
           setState(() => captureError = e.toString());
         } else {
           ScaffoldMessenger.of(context)
@@ -4100,7 +4152,6 @@ class _ReminderSheetState extends State<_ReminderSheet>
   Widget build(BuildContext context) {
     final p = Theme.of(context).extension<Palette>()!;
     final kb = MediaQuery.viewInsetsOf(context).bottom;
-    if (widget.basicCapture) return _basicCapture(p);
     if (widget.reminder == null && _isSideGig && widget.gigRepository != null) {
       return GigFormSheet(
         key: const ValueKey('shared-sidegig-composer'),
@@ -4547,224 +4598,6 @@ class _ReminderSheetState extends State<_ReminderSheet>
         ),
       ),
     );
-  }
-
-  void _closeCapture() {
-    if (saving) return;
-    if (dirty.isNotEmpty) {
-      setState(() => discardCapture = true);
-    } else {
-      Navigator.pop(context);
-    }
-  }
-
-  Widget _basicCapture(Palette p) => PopScope(
-    canPop: dirty.isEmpty && !saving,
-    onPopInvokedWithResult: (didPop, _) {
-      if (!didPop) _closeCapture();
-    },
-    child: Container(
-      constraints: BoxConstraints(
-        maxHeight: MediaQuery.sizeOf(context).height * .9,
-      ),
-      padding: EdgeInsets.fromLTRB(
-        20,
-        8,
-        20,
-        20 + MediaQuery.viewInsetsOf(context).bottom,
-      ),
-      decoration: BoxDecoration(
-        color: p.surface,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-        boxShadow: [p.sheetShadow],
-      ),
-      child: Material(
-        color: p.surface,
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Center(
-                child: Container(
-                  width: 36,
-                  height: 5,
-                  margin: const EdgeInsets.only(top: 8, bottom: 14),
-                  decoration: BoxDecoration(
-                    color: p.hairline,
-                    borderRadius: BorderRadius.circular(99),
-                  ),
-                ),
-              ),
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      'New reminder',
-                      style: Theme.of(context).textTheme.titleLarge
-                          ?.copyWith(fontWeight: FontWeight.w600),
-                    ),
-                  ),
-                  IconButton(
-                    tooltip: 'Close',
-                    onPressed: _closeCapture,
-                    icon: const Icon(CupertinoIcons.xmark, size: 18),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                key: const ValueKey('capture-title'),
-                enabled: !saving,
-                controller: title,
-                autofocus: true,
-                maxLength: 180,
-                decoration: InputDecoration(
-                  labelText: 'What do you need to remember?',
-                  errorText: titleError,
-                  counterText: '',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: p.hairline),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: p.text),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
-              DropdownButtonFormField<String>(
-                initialValue: contextId,
-                decoration: InputDecoration(
-                  labelText: 'Context',
-                  errorText: contextError,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: p.hairline),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: p.text),
-                  ),
-                ),
-                items: [
-                  for (final c in widget.contexts)
-                    DropdownMenuItem(
-                      key: ValueKey('context-option-${c.id}'),
-                      value: c.id,
-                      child: Text(c.name),
-                    ),
-                ],
-                onChanged: saving
-                    ? null
-                    : (value) => setState(() {
-                        contextId = value;
-                        contextError = null;
-                        dirty.add('context');
-                      }),
-              ),
-              const SizedBox(height: 14),
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                title: const Text('When (optional)'),
-                subtitle: Text(
-                  dueAt == null
-                      ? 'No date'
-                      : _format(
-                          DateTime.parse(
-                            '${focusLocalParts(dueAt!, widget.gigTimezone).date}T${focusLocalParts(dueAt!, widget.gigTimezone).time}',
-                          ),
-                        ),
-                ),
-                trailing: const Icon(CupertinoIcons.calendar),
-                onTap: saving ? null : _pickCaptureTime,
-              ),
-              if (dueAt != null)
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: TextButton(
-                    onPressed: saving
-                        ? null
-                        : () => setState(() {
-                            dueAt = null;
-                            dirty.add('dueAt');
-                          }),
-                    child: const Text('No date'),
-                  ),
-                ),
-              if (captureError != null)
-                Padding(
-                  padding: const EdgeInsets.only(top: 8),
-                  child: Text(
-                    captureError!,
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.error,
-                    ),
-                  ),
-                ),
-              const SizedBox(height: 16),
-              FilledButton(
-                style: FilledButton.styleFrom(
-                  backgroundColor: p.text,
-                  foregroundColor: p.surface,
-                  minimumSize: const Size(44, 44),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                onPressed: saving || creationResultUnknown
-                    ? null
-                    : () => _save(),
-                child: Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: Text(saving ? 'Saving…' : 'Save reminder'),
-                ),
-              ),
-              if (discardCapture) ...[
-                const SizedBox(height: 14),
-                const Text('Discard this reminder?'),
-                Row(
-                  children: [
-                    TextButton(
-                      onPressed: () => setState(() => discardCapture = false),
-                      child: const Text('Keep editing'),
-                    ),
-                    TextButton(
-                      onPressed: () => Navigator.pop(context),
-                      child: const Text('Discard'),
-                    ),
-                  ],
-                ),
-              ],
-            ],
-          ),
-        ),
-      ),
-    ),
-  );
-
-  Future<void> _pickCaptureTime() async {
-    final parts = focusLocalParts(dueAt ?? DateTime.now(), widget.gigTimezone);
-    final picked = await CompactDateTimePicker.show(
-      context,
-      initial: DateTime.parse(
-        '${parts.date}T${dueAt == null ? '09:00' : parts.time}',
-      ),
-    );
-    if (picked == null || !mounted) return;
-    final time =
-        '${picked.hour.toString().padLeft(2, '0')}:${picked.minute.toString().padLeft(2, '0')}';
-    setState(() {
-      dueAt = focusOccurrenceStart(_dateOnly(picked), time, widget.gigTimezone);
-      dirty.add('dueAt');
-    });
   }
 
   String _format(DateTime d) =>

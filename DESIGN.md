@@ -8,6 +8,10 @@ Companion to PLAN.md §5. This is the buildable spec: tokens, components, and sc
 2. **One-hand operation.** Everything important lives in the bottom 60% of the screen: quick-add bar docked above the keyboard, bottom sheets instead of new pages, tab bar navigation.
 3. **Zero-training UI.** If you've used Apple Notes/Reminders, you already know this app.
 
+### App icon (2026-10-20)
+
+The approved icon is **Chacha’s Reminder** (option 2): a warm ivory bell with round dark glasses and a white moustache on an amber background. The shared source is `design/app-icon.png`. Run `npm run icons` to generate the web/PWA icons, Apple touch icon, favicon and every size in the Flutter iOS AppIcon catalog. Keep square, opaque artwork; the OS applies its own corner mask. The maskable PWA version adds safe spacing around the bell for circular crops.
+
 ## 2. Design tokens
 
 ### Color
@@ -64,7 +68,7 @@ Dark mode follows the system (`prefers-color-scheme`) with a manual override in 
 ```
 
 - **Tab bar:** Today (default), Side Gig, Home, All/Browse. Side Gig uses amber when active; its badge is off. Settings is the gear in the header — not worth a tab.
-- **Quick-add bar** is persistent on Today and All tabs. On Today it opens the Add flow; on All, the minimal capture sheet (see §5.1). This is the app's center of gravity.
+- **Quick-add bar** is persistent on Today and All tabs. On Today and All it opens the Add flow (see §5.1). This is the app's center of gravity.
 
 ## 4. Screens
 
@@ -172,16 +176,16 @@ Grouped iOS-style table: **Contexts** (rename, color, default channel, quiet hou
 ### 5.1 Add — revised 2026-10-19
 The docked quick-add bar is a **tap-anywhere trigger, not a text field**.
 
-**Today → "What would you like to add?"** Today is the overview across all commitments, so its bar is a doorway into the existing organized creation experiences, in one bottom sheet (established 20px corners, handle, 40% scrim, 300ms Apple curve). Rows (icon in the context color, 15/600 label, 13px `text-2` description, chevron, ≥ 76px):
+**Today and All → "What would you like to add?"** Today is the overview across all commitments, so its bar is a doorway into the existing organized creation experiences, in one bottom sheet (established 20px corners, handle, 40% scrim, 300ms Apple curve). Rows (icon in the context color, 15/600 label, 13px `text-2` description, chevron, ≥ 76px):
 - **Work** — A work task or follow-up → the Work reminder form with the optional follow-up details panel.
 - **Side Gig** — Tasks, orders, follow-ups and expected payments → **Task / Order / Follow-up / Expected payment** (the same chooser as Side Gig's own Add) → that canonical form.
 - **Home** — Home care, groceries, bills and study → **Home care / Groceries / Bill pay / Study & kids** → Home care lists its categories (Car, HVAC, Dryer, Batteries, Other); Bill pay and Study & kids have one category each and open the form directly; Groceries creates a shopping list.
 - **Social** — A personal reminder → the simple reminder form.
 - **Shopping** — A shopping checklist → name the list, then continue directly into its checklist editor.
 
-Every step after the first has **‹ Back** in the header; a form you leave with Back keeps what you typed when you return. The destination fixes the context (shown as a chip, not a select). Forms, validation and saves are the destinations' own — `sidegig_mutate` (same record ID and operation ID on retry), `save_home_task`, and the reminder create used by the reminder sheet — so each save makes one canonical record that Today, Side Gig/Ship Queue and Home all show. Optional details stay optional: a title (plus a date where the destination requires one, e.g. a bill's payment due) is enough. Errors appear inline and keep the draft; Save is locked while pending; closing with unsaved input asks **Discard what you’ve entered? · Keep editing / Discard**. After saving, the sheet closes back to Today with a concise toast and **View**: "Task added to Side Gig · View", "Order added to Ship Queue · View", "Bill added to Home · View" (Home toasts use the category noun from `design/home-templates.json`), "Work reminder added to Today · View". View opens the destination, section and saved item. Today keeps its Focus card and list throughout.
+Every step after the first has **‹ Back** in the header; a form you leave with Back keeps what you typed when you return. The destination fixes the context (shown as a chip, not a select). Forms, validation and saves are the destinations' own — `sidegig_mutate` (same record ID and operation ID on retry), `save_home_task`, and the reminder create used by the reminder sheet — so each save makes one canonical record that Today, Side Gig/Ship Queue and Home all show. Optional details stay optional: a title (plus a date where the destination requires one, e.g. a bill's payment due) is enough. Errors appear inline and keep the draft; Save is locked while pending; closing with unsaved input asks **Discard what you’ve entered? · Keep editing / Discard**. After saving, the sheet closes back to the tab you added from with a concise toast and **View**: "Task added to Side Gig · View", "Order added to Ship Queue · View", "Bill added to Home · View" (Home toasts use the category noun from `design/home-templates.json`), "Work reminder added to Today · View". View opens the destination, section and saved item. Today keeps its Focus card and list throughout.
 
-**All → minimal capture.** All opens the minimal sheet: **What do you need to remember? · Context · When (optional) · Save reminder**. Context starts blank. Selecting Work, Side Gig, Social or Shopping never adds fields, choices or panels. No notes, channels, order toggle, clients, estimates, next steps or Focus actions appear during capture. Switching context preserves title and optional date. Show validation inline; retain drafts on failure; prevent repeat submits and guard unsaved dismissal. Shopping opens its checklist immediately after capture. (Until 2026-10-19 Today used this sheet too; the Add flow above replaced it there.)
+**All uses the same Add flow (2026-10-19).** All's bar opens the same "What would you like to add?" sheet as Today, so every reminder starts in its organized form. The earlier minimal capture sheet (title, blank context, optional time) is retired on both clients.
 
 Tap an existing Side Gig task/order in Today or All to load the canonical Side Gig editor (§10), with its notes, next step, estimate and optional order/client fields, updating the same reminder ID. Loading errors offer Retry and preserve the list; never substitute a different editor that can overwrite unloaded details. Work/Social retain their context detail editors. Today keeps Side Gig rows because it is a view across all commitments, not a separate task store.
 
@@ -282,9 +286,9 @@ Extra metadata is optional. An amount requires a valid decimal and three-letter 
 
 The full experience in `SIDEGIG_EXPERIENCE.md` is approved for web and Flutter. `design/sidegig-prototype.html` is the Side Gig visual/interaction specification, linked from the canonical prototype's Side Gig tab. This section supersedes the old Ship-only tab and §4.3's inline-only shipping interaction.
 
-Navigation: **Today · Side Gig · Home · All**. Side Gig has five horizontal pills: **Overview · Work · Ship Queue · Follow-ups · Payments**. It uses the existing Side Gig context, amber selected states, surface cards with hairlines and exact shadows, inverse primary buttons, compact date pickers with OK, and the established sheet motion. Section and scroll position survive tab changes during the session. The docked Add to Side Gig bar opens Task / Order / Follow-up / Expected payment, then a form. Task and Order use the full Side Gig form with Side Gig preselected. Today's Add flow offers the same four choices and forms (§5.1); All captures only title, context and optional time; opening a saved Side Gig reminder uses this same full editor. Detailed creates and edits save through the atomic Side Gig RPC.
+Navigation: **Today · Side Gig · Home · All**. Side Gig has five horizontal pills: **Overview · Tasks · Ship Queue · Follow-ups · Payments**. It uses the existing Side Gig context, amber selected states, surface cards with hairlines and exact shadows, inverse primary buttons, compact date pickers with OK, and the established sheet motion. Section and scroll position survive tab changes during the session. The docked Add to Side Gig bar opens Task / Order / Follow-up / Expected payment, then a form. Task and Order use the full Side Gig form with Side Gig preselected. Today's Add flow offers the same four choices and forms (§5.1); All opens the same Add flow; opening a saved Side Gig reminder uses this same full editor. Detailed creates and edits save through the atomic Side Gig RPC.
 
-Overview shows up to three attention items, a restart card or the existing unfinished Focus session, the next populated Side Gig Focus time with budget, a full Ship Queue entry with up to two orders, and compact Follow-ups/Payments entries. Work includes task and order reminders, current next steps and client/initiative labels. Waiting items stay visible but cannot be suggested, started or planned for Focus. Existing Work sessions remain recoverable while viewing Side Gig.
+Overview shows up to three attention items, a restart card or the existing unfinished Focus session, the next populated Side Gig Focus time with budget, a full Ship Queue entry with up to two orders, and compact Follow-ups/Payments entries. The Tasks section includes task and order reminders, current next steps and client/initiative labels. Waiting items stay visible but cannot be suggested, started or planned for Focus. Existing Work sessions remain recoverable while viewing Side Gig.
 
 Ship Queue provides To ship / Shipped, Add order, full detail and shipping confirmation, optional carrier/tracking, tracking corrections and history. It keeps and labels older orders from other contexts. Cancelled/completed reminders without a shipment require explicit reopening before shipment. Order creation with ship-by but no reminder time defaults its reminder to 9 AM on that account-local day; the form shows this rule. Explicit reminder due times remain independent of ship-by and Focus plans.
 

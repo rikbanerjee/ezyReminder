@@ -22,7 +22,7 @@ The initial audience is an employed seller or freelancer with family commitments
 
 Side Gig contains a horizontally scrollable row of section pills:
 
-**Overview · Work · Ship Queue · Follow-ups · Payments**
+**Overview · Tasks · Ship Queue · Follow-ups · Payments**
 
 Overview is the default on first entry. Preserve section and scroll position during a navigation session. Deep links select the relevant section and record. All sections are reachable without setup; empty sections have one useful explanation and one create action, not a checklist of configuration steps.
 
@@ -46,9 +46,9 @@ There is no separate Clients tab, project hierarchy, accounting dashboard or Foc
 
 The Side Gig bottom-tab badge, if introduced in production, counts distinct commitments requiring attention today, not all open tasks or every occurrence in every section. A payment linked to an order can be a distinct obligation; do not count its same follow-up action again. The prototype leaves the tab badge off to avoid implying the current shipping count has those new semantics.
 
-## 4. Work
+## 4. Tasks
 
-Work contains ordinary Side Gig reminders and focusable order work, with **Open / Completed** filters. Show title, client or initiative, actual deadline, latest next step if present, and an explicit planned time. Orders carry a small Order label and link to their shipping detail; completing fulfillment uses Mark shipped.
+The Tasks section contains ordinary Side Gig reminders and focusable order work, with **Open / Completed** filters. Show title, client or initiative, actual deadline, latest next step if present, and an explicit planned time. Orders carry a small Order label and link to their shipping detail; completing fulfillment uses Mark shipped.
 
 Actions: open detail, Start N min, Work on this, edit, and explicit completion. Keep creation simple: title + context; date, client and initiative remain optional. A named client is plain text initially, not a new CRM record or required setup.
 
@@ -145,7 +145,7 @@ Error and loading states for the real app: retain the last good view on refresh 
 
 ## 12. Release slices and research
 
-**Slice A:** navigation + Overview + Work + full Ship Queue, reusing existing records and Focus. Preserve all current delivery and order behavior. Evaluate whether users can find orders and useful work without instruction.
+**Slice A:** navigation + Overview + Tasks + full Ship Queue, reusing existing records and Focus. Preserve all current delivery and order behavior. Evaluate whether users can find orders and useful work without instruction.
 
 **Slice B:** explicit Follow-ups, with waiting/response semantics and delivery contract. Validate repeated use before adding CRM structure.
 
@@ -205,4 +205,4 @@ Today has no context-filter row or duplicate shipping preview. It keeps one date
 
 ### Add from Today — 2026-10-19 (supersedes Today's minimal capture above)
 
-Today's docked bar now opens "What would you like to add?". Choosing **Side Gig** shows the same Task / Order / Follow-up / Expected payment chooser as Side Gig's Add, then the canonical form, saved with `sidegig_mutate` (client-owned record ID, stable operation ID across retries). A task appears in Today and in Side Gig Work before any enrichment; an order also appears in Ship Queue. The toast ("Task added to Side Gig · View", "Order added to Ship Queue · View") opens the matching section and item. All keeps the minimal capture sheet. No migration is needed. See DESIGN.md §5.1.
+Today's docked bar now opens "What would you like to add?". Choosing **Side Gig** shows the same Task / Order / Follow-up / Expected payment chooser as Side Gig's Add, then the canonical form, saved with `sidegig_mutate` (client-owned record ID, stable operation ID across retries). A task appears in Today and in Side Gig Tasks before any enrichment; an order also appears in Ship Queue. The toast ("Task added to Side Gig · View", "Order added to Ship Queue · View") opens the matching section and item. All opens the same flow (its minimal capture sheet was retired later on 2026-10-19). No migration is needed. See DESIGN.md §5.1.

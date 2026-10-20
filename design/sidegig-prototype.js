@@ -23,7 +23,7 @@ const icons = {
 };
 const icon = (name, cls = "") => `<svg class="${cls}" viewBox="0 0 24 24" aria-hidden="true">${icons[name] || icons.task}</svg>`;
 const action = (name, label, id = "", cls = "btn", extra = "") => `<button type="button" class="${cls}" data-action="${name}" data-id="${esc(id)}" ${extra}>${label}</button>`;
-const secs = [["overview","Overview"],["work","Work"],["orders","Ship Queue"],["followups","Follow-ups"],["payments","Payments"]];
+const secs = [["overview","Overview"],["work","Tasks"],["orders","Ship Queue"],["followups","Follow-ups"],["payments","Payments"]];
 const source = {
   tasks:[
     {id:"proposal",title:"Finish Maya’s website proposal",client:"Maya · Fieldwork Studio",initiative:"Freelance design",due:"2026-10-23",next:"Compare the two pricing options, then send the proposal.",minutes:15,status:"open",planned:{date:TODAY,time:"19:00",minutes:15}},
@@ -129,7 +129,7 @@ function viewHeader(title,kind,addLabel,description){return `<div class="view-he
 function empty(symbol,title,description,kind,label){return `<div class="card empty-state">${icon(symbol)}<h3>${title}</h3><p>${description}</p>${kind?action("create",label,kind,"btn primary"):""}</div>`;}
 function workView(){
   const rows=allWork().filter(({r})=>filters.work==="open"?isOpen(r):r.status==="done").sort((a,b)=>byDate(a.r,b.r));
-  return viewHeader("Work","task","Add task","Client commitments and the small steps that move your gig forward.")+filterBar("work",[["open","Open"],["done","Completed"]])+(rows.length?`<div class="card">${rows.map(({kind,r})=>listRow(kind,r,`${esc(r.client||r.initiative||"Side Gig")} · ${esc(dueLabel(r.due,kind==="order"?"Ship by":"Due"))}${r.waiting?' · <span class="tag">Waiting</span>':""}`,r.next&&isOpen(r)?`<span class="item-next">Next: ${esc(r.next)}</span>${r.planned?`<span class="item-meta">Planned ${esc(dateLabel(r.planned.date))} · ${timeLabel(r.planned.time)}</span>`:""}`:"")).join("")}</div>`:empty("task",filters.work==="open"?"What would you like to move forward?":"Your finished work will appear here.","A client deliverable or a small improvement to your shop is enough to start.",filters.work==="open"?"task":null,"Add a task"));
+  return viewHeader("Tasks","task","Add task","Client commitments and the small steps that move your gig forward.")+filterBar("work",[["open","Open"],["done","Completed"]])+(rows.length?`<div class="card">${rows.map(({kind,r})=>listRow(kind,r,`${esc(r.client||r.initiative||"Side Gig")} · ${esc(dueLabel(r.due,kind==="order"?"Ship by":"Due"))}${r.waiting?' · <span class="tag">Waiting</span>':""}`,r.next&&isOpen(r)?`<span class="item-next">Next: ${esc(r.next)}</span>${r.planned?`<span class="item-meta">Planned ${esc(dateLabel(r.planned.date))} · ${timeLabel(r.planned.time)}</span>`:""}`:"")).join("")}</div>`:empty("task",filters.work==="open"?"What would you like to move forward?":"Your finished work will appear here.","A client deliverable or a small improvement to your shop is enough to start.",filters.work==="open"?"task":null,"Add a task"));
 }
 function ordersView(){
   const rows=data.orders.filter(r=>filters.orders==="open"?!r.shipped:!!r.shipped).sort(filters.orders==="open"?byDate:(a,b)=>b.shipped.localeCompare(a.shipped));
@@ -213,7 +213,7 @@ function edit(kind,id){
 function detail(kind,id){
   const r=get(kind,id);if(!r)return;
   const related=r.related&&get(r.related.kind,r.related.id);
-  let body=`<span class="context-chip"><span class="dot"></span>Side Gig · ${{task:"Work",order:"Order",followup:"Follow-up",payment:"Payment"}[kind]}</span><p class="detail-title">${esc(r.title)}</p><p class="meta">${esc(r.client||r.initiative||"Side Gig")}</p>`;
+  let body=`<span class="context-chip"><span class="dot"></span>Side Gig · ${{task:"Task",order:"Order",followup:"Follow-up",payment:"Payment"}[kind]}</span><p class="detail-title">${esc(r.title)}</p><p class="meta">${esc(r.client||r.initiative||"Side Gig")}</p>`;
   const pairs=[];
   if(kind==="order")pairs.push(["Order",r.ref||"No reference"],["Ship by",dateLabel(r.due)],["Status",r.shipped?`Shipped ${dateLabel(r.shipped)}`:"To ship"],["Carrier",r.carrier||"Not set"],["Tracking",r.tracking||"Not added"]);
   if(kind==="task")pairs.push(["Deadline",r.due?dateLabel(r.due):"No deadline"],["Status",r.status==="done"?"Completed":r.waiting?"Waiting for a response":"Open"]);

@@ -7,7 +7,9 @@ import UIKit
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
-    return super.application(application, didFinishLaunchingWithOptions: launchOptions)
+    let launched = super.application(application, didFinishLaunchingWithOptions: launchOptions)
+    ReminderNotifications.shared.launch()
+    return launched
   }
 
   func didInitializeImplicitFlutterEngine(_ engineBridge: FlutterImplicitEngineBridge) {
@@ -31,5 +33,6 @@ import UIKit
       }
       result(TimeZone.current.identifier)
     }
+    ReminderNotifications.shared.attachMain(registrar.messenger())
   }
 }
