@@ -14,7 +14,10 @@ import 'features/focus/focus_widgets.dart';
 import 'features/home/home_page.dart';
 import 'features/home/home_repository.dart';
 import 'features/shopping/shopping_list_sheet.dart';
-import 'features/ship_queue/ship_queue_page.dart';
+import 'features/sidegig/sidegig_page.dart';
+import 'core/util/device_timezone.dart';
+import 'features/add/today_add_flow.dart';
+import 'features/sidegig/sidegig_repository.dart';
 import 'features/shipping/carrier_fields.dart';
 import 'shared/widgets/compact_date_time_picker.dart';
 import 'features/settings/settings_page.dart';
@@ -1193,6 +1196,53 @@ class DemoRepository
     _stream.add(null);
   }
 
+  void saveSideGigPreview(String id, Map<String, dynamic> payload) {
+    final c = _contexts.firstWhere((c) => _isSideGigSlug(c.slug));
+    final previous = _items.where((r) => r.id == id).firstOrNull;
+    final due = DateTime.tryParse(payload['due_at'] as String? ?? '');
+    final r = Reminder(
+      id: id,
+      title: payload['title'] as String,
+      notes: payload['notes'] as String?,
+      dueAt: due,
+      contextId: c.id,
+      contextName: c.name,
+      contextSlug: c.slug,
+      isOrder: payload['is_order'] == true,
+      channels: List<String>.from(payload['channels'] as List? ?? ['email']),
+      status: previous?.status ?? 'open',
+    );
+    _items.removeWhere((r) => r.id == id);
+    _items.add(r);
+    final oldOrder = _orders.where((o) => o.reminderId == id).firstOrNull;
+    _orders.removeWhere((o) => o.reminderId == id);
+    if (r.isOrder) {
+      _orders.add(
+        OrderDetails(
+          reminderId: id,
+          title: r.title,
+          contextName: c.name,
+          contextSlug: c.slug,
+          orderRef: payload['reference'] as String?,
+          recipientName: payload['person'] as String?,
+          shipBy: payload['ship_by'] as String?,
+          carrier: payload['carrier'] as String?,
+          trackingNumber: payload['tracking'] as String?,
+          shippedAt: oldOrder?.shippedAt,
+        ),
+      );
+    }
+    if (previous == null) {
+      reminderCreateCalls++;
+      lastCreatedReminderId = id;
+    }
+    sideGigDetails[id] = SideGigDetails(
+      initiativeName: payload['initiative'] as String?,
+      clientName: payload['person'] as String?,
+    );
+    _stream.add(null);
+  }
+
   int followUpCalls = 0;
   final _stream = StreamController<void>.broadcast();
   @override
@@ -1623,6 +1673,107 @@ class _TodayPageState extends State<TodayPage>
   final deleting = <String>{};
   final completionPending = <String>{};
   String? homeOpenId;
+  String? gigOpenId;
+  final gigPageKey = GlobalKey<SideGigPageState>();
+  late final GigRepository gigRepository =
+      widget.repository is SupabaseRepository
+      ? SupabaseGigRepository((widget.repository as SupabaseRepository).client)
+      : MemoryGigRepository(
+          onMutation: (action, id, payload) async {
+            final repository = widget.repository;
+            if (action == 'save_work' && repository is DemoRepository) {
+              repository.saveSideGigPreview(id, payload);
+            }
+            if (action == 'ship' && repository is ShippingRepository) {
+              await (repository as ShippingRepository).markShipped(
+                id,
+                payload['tracking'] as String?,
+                payload['carrier'] as String?,
+              );
+            }
+            if (action == 'complete') {
+              await repository.complete(id);
+            }
+            if (action == 'shipping' &&
+                repository is ShippingRepository &&
+                repository is ShipmentEditingRepository) {
+              final shipping = repository as ShippingRepository;
+              final r = await shipping.loadReminderForOrder(id);
+              final o = (await shipping.loadOrders())
+                  .where((o) => o.reminderId == id)
+                  .firstOrNull;
+              if (r != null && o != null) {
+                await (repository as ShipmentEditingRepository)
+                    .saveOrderReminder(
+                      reminder: r,
+                      order: OrderDetails(
+                        reminderId: id,
+                        orderRef: o.orderRef,
+                        recipientName: o.recipientName,
+                        shipBy: o.shipBy,
+                        carrier: payload['carrier'] as String?,
+                        trackingNumber: payload['tracking'] as String?,
+                        shippedAt: o.shippedAt,
+                      ),
+                    );
+              }
+            }
+          },
+          seed: () async {
+            final repository = widget.repository;
+            final rows = repository is BrowseRepository
+                ? await (repository as BrowseRepository).loadAll()
+                : await repository.load();
+            final orders = repository is ShippingRepository
+                ? await (repository as ShippingRepository).loadOrders()
+                : <OrderDetails>[];
+            return [
+              for (final r in rows.where(
+                (r) => _isSideGigSlug(r.contextSlug) || r.isOrder,
+              ))
+                GigItem({
+                  'id': r.id,
+                  'reminder_id': r.id,
+                  'kind': r.isOrder ? 'order' : 'work',
+                  'title': r.title,
+                  'notes': r.notes,
+                  'status': r.status,
+                  'context_slug': _isSideGigSlug(r.contextSlug)
+                      ? 'sidegig'
+                      : r.contextSlug,
+                  'due_at': r.dueAt?.toUtc().toIso8601String(),
+                  'person':
+                      orders
+                          .where((o) => o.reminderId == r.id)
+                          .firstOrNull
+                          ?.recipientName ??
+                      (repository is DemoRepository
+                          ? repository.sideGigDetails[r.id]?.clientName
+                          : null),
+                  'reference': orders
+                      .where((o) => o.reminderId == r.id)
+                      .firstOrNull
+                      ?.orderRef,
+                  'ship_by': orders
+                      .where((o) => o.reminderId == r.id)
+                      .firstOrNull
+                      ?.shipBy,
+                  'carrier': orders
+                      .where((o) => o.reminderId == r.id)
+                      .firstOrNull
+                      ?.carrier,
+                  'tracking': orders
+                      .where((o) => o.reminderId == r.id)
+                      .firstOrNull
+                      ?.trackingNumber,
+                  'shipped_at': orders
+                      .where((o) => o.reminderId == r.id)
+                      .firstOrNull
+                      ?.shippedAt,
+                }),
+            ];
+          },
+        );
   late final HouseholdRepository householdRepository =
       widget.repository is SupabaseRepository
       ? SupabaseHouseholdRepository(
@@ -1659,6 +1810,7 @@ class _TodayPageState extends State<TodayPage>
     focusController.onMarkDone = (id) async { final r = reminderFor(id); if (r != null && mounted) await complete(r); };
     focusController.onOpenReminder = (id) async { final r = reminderFor(id); if (r != null && mounted) await _openSheet(r); };
     refresh();
+    unawaited(_followDeviceTimezone());
     subscription = widget.repository.changes.listen((_) { refresh(); unawaited(focusController.reload()); });
   }
 
@@ -1668,19 +1820,42 @@ class _TodayPageState extends State<TodayPage>
     subscription?.cancel();
     _settingsRepository?.dispose();
     focusController.dispose();
+    gigRepository.dispose();
     super.dispose();
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) { refresh(); unawaited(focusController.reload()); }
+    if (state == AppLifecycleState.resumed) { refresh(); unawaited(focusController.reload()); unawaited(_followDeviceTimezone()); }
+  }
+
+  SettingsRepository get _settings {
+    final repository = widget.repository;
+    return _settingsRepository ??= repository is SupabaseRepository
+        ? SupabaseSettingsRepository(repository.client)
+        : DemoSettingsRepository();
+  }
+
+  /// While Settings → "Use iPhone time zone" is on, keep the account timezone
+  /// (quiet hours, Focus and Side Gig dates) on the phone's zone.
+  Future<void> _followDeviceTimezone() async {
+    if (widget.repository is! SupabaseRepository) return;
+    if (!await DeviceTimezone.follows()) return;
+    final device = await DeviceTimezone.read();
+    if (device == null) return;
+    try {
+      if ((await _settings.load()).timezone == device) return;
+      await _settings.saveTimezone(device);
+      await focusController.reload();
+      unawaited(gigPageKey.currentState?.reload());
+    } catch (_) {
+      // Offline or signed out: the next launch or resume tries again.
+    }
   }
 
   Future<void> _openSettings() async {
     final remindersRepository = widget.repository;
-    _settingsRepository ??= remindersRepository is SupabaseRepository
-        ? SupabaseSettingsRepository(remindersRepository.client)
-        : DemoSettingsRepository();
+    _settings;
     await Navigator.of(context).push<void>(
       MaterialPageRoute(
         builder: (settingsContext) {
@@ -1779,6 +1954,9 @@ class _TodayPageState extends State<TodayPage>
         loading = false;
         loadError = null;
       });
+      // Side Gig stays mounted across tabs, so plain captures/edits must
+      // refresh it too (including previews without Supabase Realtime).
+      await gigPageKey.currentState?.reload();
     } catch (e) {
       if (mounted && generation == _refreshGeneration) {
         setState(() {
@@ -1789,22 +1967,15 @@ class _TodayPageState extends State<TodayPage>
     }
   }
 
-  int? _shipDays(OrderDetails order) {
-    final raw = order.shipBy;
-    if (raw == null) return null;
-    final parts = raw.split('-').map(int.parse).toList();
-    final now = DateTime.now();
-    return DateTime.utc(
-      parts[0],
-      parts[1],
-      parts[2],
-    ).difference(DateTime.utc(now.year, now.month, now.day)).inDays;
-  }
-
-  int get _shipSoonCount =>
-      orders.where((o) => !o.shipped && (_shipDays(o) ?? 999) <= 3).length;
-
   Future<void> complete(Reminder r) async {
+    if (r.isOrder && r.status != 'done') {
+      await _openSheet(r);
+      return;
+    }
+    if (r.tags.any((t) => t.startsWith('sidegig:'))) {
+      await _openSheet(r);
+      return;
+    }
     if (r.isHomeMaintenance) {
       await _openSheet(r);
       return;
@@ -2028,7 +2199,7 @@ class _TodayPageState extends State<TodayPage>
       .where((r) => selected == 'all' || r.contextId == selected)
       .toList();
   List<Reminder> get visibleDoneToday => doneToday
-      .where((r) => selected == 'all' || r.contextId == selected)
+      .where((r) => tab == 0 || selected == 'all' || r.contextId == selected)
       .toList();
 
   Widget _doneTodaySection(Palette p) => Column(
@@ -2264,7 +2435,7 @@ class _TodayPageState extends State<TodayPage>
   @override
   Widget build(BuildContext context) {
     final p = Theme.of(context).extension<Palette>()!;
-    final items = visible;
+    final items = tab == 0 ? reminders : visible;
     return Scaffold(
       bottomNavigationBar: SafeArea(
         top: false,
@@ -2274,6 +2445,7 @@ class _TodayPageState extends State<TodayPage>
             if (tab == 0 || tab == 2) _quickAdd(p),
             BottomNavigationBar(
               type: BottomNavigationBarType.fixed,
+              selectedItemColor: tab == 1 ? p.contexts[1] : p.contexts[0],
               currentIndex: switch (tab) {
                 2 => 3,
                 3 => 2,
@@ -2288,6 +2460,9 @@ class _TodayPageState extends State<TodayPage>
                 if (tab == 2 && widget.repository is BrowseRepository) {
                   refresh();
                 }
+                if (tab == 1) {
+                  unawaited(gigPageKey.currentState?.reload());
+                }
               }),
               items: [
                 BottomNavigationBarItem(
@@ -2295,12 +2470,11 @@ class _TodayPageState extends State<TodayPage>
                   label: 'Today',
                 ),
                 BottomNavigationBarItem(
-                  icon: Badge(
-                    isLabelVisible: _shipSoonCount > 0,
-                    label: Text('$_shipSoonCount'),
-                    child: Icon(CupertinoIcons.cube_box),
+                  icon: Icon(
+                    CupertinoIcons.briefcase,
+                    color: tab == 1 ? p.contexts[1] : null,
                   ),
-                  label: 'Ship Queue',
+                  label: 'Side Gig',
                 ),
                 const BottomNavigationBarItem(
                   icon: Icon(CupertinoIcons.house),
@@ -2315,118 +2489,126 @@ class _TodayPageState extends State<TodayPage>
           ],
         ),
       ),
-      body: tab == 3
-          ? HouseholdPage(
-              reminders: widget.repository,
-              repository: householdRepository,
-              openId: homeOpenId,
+      body: Stack(
+        children: [
+          Offstage(
+            offstage: tab != 1,
+            child: SideGigPage(
+              key: gigPageKey,
+              repository: gigRepository,
+              focus: focusController,
+              openId: gigOpenId,
               onSettings: _openSettings,
-            )
-          : tab == 1 && widget.repository is ShippingRepository
-          ? SafeArea(
-              child: ShipQueuePage(
-                repository: widget.repository as ShippingRepository,
-                onNewOrder: () => _openSheet(null, startWithOrder: true),
-                onEditOrder: (id) async {
-                  final reminder =
-                      await (widget.repository as ShippingRepository)
-                          .loadReminderForOrder(id);
-                  if (mounted && reminder != null) await _openSheet(reminder);
-                },
-              ),
-            )
-          : tab == 2
-          ? _browseScreen(p)
-          : SafeArea(
-              child: RefreshIndicator(
-                onRefresh: refresh,
-                child: CustomScrollView(
-                  slivers: [
-                    SliverPadding(
-                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 120),
-                      sliver: SliverList(
-                        delegate: SliverChildListDelegate([
-                          Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  'Today',
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .headlineLarge
-                                      ?.copyWith(
-                                        fontWeight: EzyDesignTokens
-                                            .screenTitleFontWeight,
-                                        fontSize:
-                                            EzyDesignTokens.screenTitleFontSize,
-                                        letterSpacing: -.3,
+              onCreateWork: (order) =>
+                  _openSheet(null, startWithOrder: order, startInSideGig: true),
+              onEditLegacy: (id) async {
+                final repository = widget.repository;
+                if (repository is ShippingRepository) {
+                  final r = await (repository as ShippingRepository)
+                      .loadReminderForOrder(id);
+                  if (mounted && r != null) {
+                    await _openSheet(r, legacyEditor: true);
+                  }
+                }
+              },
+            ),
+          ),
+          Offstage(
+            offstage: tab == 1,
+            child: tab == 3
+                ? HouseholdPage(
+                    reminders: widget.repository,
+                    repository: householdRepository,
+                    openId: homeOpenId,
+                    onSettings: _openSettings,
+                  )
+                : tab == 2
+                ? _browseScreen(p)
+                : SafeArea(
+                    child: RefreshIndicator(
+                      onRefresh: refresh,
+                      child: CustomScrollView(
+                        slivers: [
+                          SliverPadding(
+                            padding: const EdgeInsets.fromLTRB(16, 16, 16, 120),
+                            sliver: SliverList(
+                              delegate: SliverChildListDelegate([
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        'Today',
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .headlineLarge
+                                            ?.copyWith(
+                                              fontWeight: EzyDesignTokens
+                                                  .screenTitleFontWeight,
+                                              fontSize: EzyDesignTokens
+                                                  .screenTitleFontSize,
+                                              letterSpacing: -.3,
+                                            ),
                                       ),
-                                ),
-                              ),
-                              if (widget.demo)
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 10,
-                                    vertical: 6,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: p.contexts[3].withValues(alpha: .14),
-                                    borderRadius: BorderRadius.circular(999),
-                                  ),
-                                  child: Text(
-                                    'PREVIEW',
-                                    style: TextStyle(
-                                      color: p.contexts[3],
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.w700,
                                     ),
-                                  ),
+                                    if (widget.demo)
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 10,
+                                          vertical: 6,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: p.contexts[3].withValues(
+                                            alpha: .14,
+                                          ),
+                                          borderRadius: BorderRadius.circular(
+                                            999,
+                                          ),
+                                        ),
+                                        child: Text(
+                                          'PREVIEW',
+                                          style: TextStyle(
+                                            color: p.contexts[3],
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                        ),
+                                      ),
+                                    _settingsButton(),
+                                  ],
                                 ),
-                              _settingsButton(),
-                            ],
-                          ),
-                          const SizedBox(height: 18),
-                          SizedBox(
-                            height: 48,
-                            child: ListView(
-                              scrollDirection: Axis.horizontal,
-                              children: [
-                                _contextPill('all', 'All', p),
-                                ...contexts.map(
-                                  (c) => _contextPill(c.id, c.name, p),
-                                ),
-                              ],
+                                const SizedBox(height: 18),
+                                FocusCard(controller: focusController),
+                                if (loading) ...[
+                                  for (var i = 0; i < 3; i++) _skeleton(p),
+                                ] else if (loadError != null)
+                                  _empty(
+                                    loadError!,
+                                    CupertinoIcons.wifi_exclamationmark,
+                                    p,
+                                    onTap: refresh,
+                                  )
+                                else if (items.isEmpty &&
+                                    visibleDoneToday.isEmpty)
+                                  _empty(
+                                    'All clear. Add a reminder when something comes to mind.',
+                                    CupertinoIcons.checkmark_circle,
+                                    p,
+                                  )
+                                else ...[
+                                  ..._sections(items, p),
+                                  if (visibleDoneToday.isNotEmpty)
+                                    _doneTodaySection(p),
+                                ],
+                              ]),
                             ),
                           ),
-                          const SizedBox(height: 22),
-                          FocusCard(controller: focusController),
-                          if (loading) ...[
-                            for (var i = 0; i < 3; i++) _skeleton(p),
-                          ] else if (loadError != null)
-                            _empty(
-                              loadError!,
-                              CupertinoIcons.wifi_exclamationmark,
-                              p,
-                              onTap: refresh,
-                            )
-                          else if (items.isEmpty && visibleDoneToday.isEmpty)
-                            _empty(
-                              'All clear. Add a reminder when something comes to mind.',
-                              CupertinoIcons.checkmark_circle,
-                              p,
-                            )
-                          else ...[
-                            ..._sections(items, p),
-                            if (visibleDoneToday.isNotEmpty)
-                              _doneTodaySection(p),
-                          ],
-                        ]),
+                        ],
                       ),
                     ),
-                  ],
-                ),
-              ),
-            ),
+                  ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -2484,82 +2666,6 @@ class _TodayPageState extends State<TodayPage>
     ];
     final result = <Widget>[];
     for (final group in groups) {
-      if (group.$1 == 'Upcoming') {
-        final shipSoon = orders
-            .where((o) => !o.shipped && (_shipDays(o) ?? 999) <= 3)
-            .toList();
-        if (shipSoon.isNotEmpty) {
-          result.add(
-            Padding(
-              padding: const EdgeInsets.only(bottom: 9, top: 10),
-              child: InkWell(
-                onTap: () => setState(() => tab = 1),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        'SHIP SOON',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: p.secondary,
-                          fontSize: EzyDesignTokens.sectionHeaderFontSize,
-                          fontWeight: FontWeight.w600,
-                          letterSpacing: .7,
-                        ),
-                      ),
-                    ),
-                    Text(
-                      'Ship Queue',
-                      style: TextStyle(color: p.contexts[1], fontSize: 12),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          );
-          result.add(
-            Container(
-              decoration: BoxDecoration(
-                color: p.surface,
-                borderRadius: BorderRadius.circular(EzyDesignTokens.rowRadius),
-                boxShadow: [p.cardShadow],
-              ),
-              child: Column(
-                children: shipSoon.map((o) {
-                  final days = _shipDays(o)!;
-                  return Material(
-                    color: p.surface,
-                    child: ListTile(
-                      dense: true,
-                      leading: Icon(
-                        CupertinoIcons.cube_box,
-                        color: p.contexts[1],
-                      ),
-                      title: Text(
-                        o.orderRef?.isNotEmpty == true ? o.orderRef! : o.title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      subtitle: Text(
-                        '${o.recipientName ?? 'Order'} · ${days < 0
-                            ? '${-days}d overdue'
-                            : days == 0
-                            ? 'today'
-                            : days == 1
-                            ? 'tomorrow'
-                            : 'in $days days'}',
-                      ),
-                      onTap: () => setState(() => tab = 1),
-                    ),
-                  );
-                }).toList(),
-              ),
-            ),
-          );
-          result.add(const SizedBox(height: 14));
-        }
-      }
       if (group.$2.isEmpty) continue;
       result.add(
         Padding(
@@ -2773,7 +2879,8 @@ class _TodayPageState extends State<TodayPage>
         borderRadius: BorderRadius.circular(16),
         elevation: 0,
         child: InkWell(
-          onTap: () => _openSheet(null),
+          // Today opens the organized Add flow; All keeps quick capture.
+          onTap: () => tab == 0 ? _openAddFlow() : _openSheet(null),
           borderRadius: BorderRadius.circular(16),
           child: Container(
             height: 54,
@@ -2971,12 +3078,67 @@ class _TodayPageState extends State<TodayPage>
   Future<void> _openSheet(
     Reminder? reminder, {
     bool startWithOrder = false,
+    bool startInSideGig = false,
+    bool legacyEditor = false,
   }) async {
+    if (reminder?.tags.any((t) => t.startsWith('sidegig:')) == true) {
+      setState(() {
+        gigOpenId = reminder!.id;
+        tab = 1;
+      });
+      return;
+    }
     if (reminder?.isHomeMaintenance == true) {
       setState(() {
         homeOpenId = reminder!.id;
         tab = 3;
       });
+      return;
+    }
+    if (reminder != null &&
+        _isSideGigSlug(reminder.contextSlug) &&
+        !legacyEditor) {
+      try {
+        final dashboard = await gigRepository.load();
+        final item = dashboard.items
+            .where((r) => r.text('reminder_id') == reminder.id && r.work)
+            .firstOrNull;
+        if (!mounted) return;
+        if (item == null) {
+          throw StateError('This reminder is no longer available.');
+        }
+        final result = await showModalBottomSheet<bool>(
+          context: context,
+          isScrollControlled: true,
+          enableDrag: false,
+          isDismissible: false,
+          backgroundColor: Colors.transparent,
+          barrierColor: Colors.black.withValues(alpha: .4),
+          sheetAnimationStyle: AnimationStyle(
+            duration: MediaQuery.disableAnimationsOf(context)
+                ? Duration.zero
+                : EzyDesignTokens.sheetDuration,
+            curve: EzyDesignTokens.sheetCurve,
+          ),
+          builder: (_) => GigFormSheet(
+            repository: gigRepository,
+            dashboard: dashboard,
+            item: item,
+            kind: item.kind,
+            action: 'save_work',
+          ),
+        );
+        if (mounted && result == true) {
+          await refresh();
+          await focusController.reload();
+        }
+      } catch (error) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Could not load Side Gig details: $error')),
+          );
+        }
+      }
       return;
     }
     final snapshot = reminder?.copy();
@@ -3043,10 +3205,14 @@ class _TodayPageState extends State<TodayPage>
       }
     }
     if (!mounted || orderLoadFailed) return;
-    final reduceMotion = MediaQuery.disableAnimationsOf(context);
+    final gigTimezone = await _accountTimezone();
     if (!mounted) return;
+    final reduceMotion = MediaQuery.disableAnimationsOf(context);
+    final basicCapture = reminder == null && !startInSideGig;
     final result = await showModalBottomSheet<Object?>(
       context: context,
+      isDismissible: !basicCapture,
+      enableDrag: !basicCapture,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       barrierColor: (Theme.of(context).brightness == Brightness.dark
@@ -3070,6 +3236,12 @@ class _TodayPageState extends State<TodayPage>
         changes: widget.repository.changes,
         reload: widget.repository.load,
         startWithOrder: startWithOrder,
+        basicCapture: basicCapture,
+        initialContextId: startInSideGig
+            ? contexts.where((c) => _isSideGigSlug(c.slug)).firstOrNull?.id
+            : null,
+        gigRepository: gigRepository,
+        gigTimezone: gigTimezone,
         order: order,
         loadOrder: reminder == null || widget.repository is! ShippingRepository
             ? null
@@ -3147,6 +3319,153 @@ class _TodayPageState extends State<TodayPage>
       if (mounted && created != null) await _openSheet(created);
     } else if (result == true) {
       refresh();
+    }
+  }
+
+  /// Today's Add (DESIGN.md §5.1): destination → its existing form → one
+  /// canonical record, then a confirmation whose View opens it in place.
+  /// The account timezone the server uses for Side Gig dates. Focus or the
+  /// Side Gig dashboard usually has it; otherwise ask rather than assume UTC.
+  Future<String> _accountTimezone() async {
+    final known =
+        focusController.state?.timezone ??
+        gigPageKey.currentState?.data?.timezone;
+    if (known != null) return known;
+    try {
+      return (await gigRepository.load()).timezone;
+    } catch (_) {
+      return focusController.timezone;
+    }
+  }
+
+  Future<void> _openAddFlow() async {
+    AddSaved? saved;
+    final timezone = await _accountTimezone();
+    if (!mounted) return;
+    final reduceMotion = MediaQuery.disableAnimationsOf(context);
+    String? contextFor(String slug) => contexts
+        .where(
+          (c) => slug == 'sidegig' ? _isSideGigSlug(c.slug) : c.slug == slug,
+        )
+        .firstOrNull
+        ?.id;
+    final result = await showModalBottomSheet<Object?>(
+      context: context,
+      isScrollControlled: true,
+      isDismissible: false,
+      enableDrag: false,
+      backgroundColor: Colors.transparent,
+      barrierColor: Theme.of(context).brightness == Brightness.dark
+          ? EzyDesignTokens.darkScrim
+          : EzyDesignTokens.lightScrim,
+      sheetAnimationStyle: AnimationStyle(
+        duration: reduceMotion ? Duration.zero : EzyDesignTokens.sheetDuration,
+        reverseDuration: reduceMotion
+            ? Duration.zero
+            : EzyDesignTokens.sheetDuration,
+        curve: reduceMotion ? Curves.linear : EzyDesignTokens.sheetCurve,
+        reverseCurve: reduceMotion ? Curves.linear : EzyDesignTokens.sheetCurve,
+      ),
+      builder: (_) => TodayAddFlow(
+        reminderForm: (slug, nav) => _ReminderSheet(
+          key: ValueKey('add-reminder-$slug'),
+          reminder: null,
+          contexts: contexts,
+          save: widget.repository.save,
+          changes: widget.repository.changes,
+          reload: widget.repository.load,
+          initialContextId: contextFor(slug),
+          gigTimezone: timezone,
+          flow: nav,
+          onSaved: (id) => saved = (destination: slug, kind: slug, id: id),
+          saveWorkDetails: widget.repository is ContextDetailsRepository
+              ? (
+                  id, {
+                  required managerName,
+                  required departmentResource,
+                  required projectName,
+                }) => (widget.repository as ContextDetailsRepository)
+                    .saveWorkDetails(
+                      id,
+                      managerName: managerName,
+                      departmentResource: departmentResource,
+                      projectName: projectName,
+                    )
+              : null,
+        ),
+        gigForm: (kind, nav) => GigFormSheet(
+          key: ValueKey('add-gig-$kind'),
+          repository: gigRepository,
+          dashboard: GigDashboard(
+            items: const [],
+            timezone: timezone,
+            localDate: focusLocalDate(DateTime.now(), timezone),
+          ),
+          kind: kind,
+          action: kind == 'work' || kind == 'order'
+              ? 'save_work'
+              : 'save_$kind',
+          flow: nav,
+          onSaved: (id, savedKind) =>
+              saved = (destination: 'sidegig', kind: savedKind, id: id),
+        ),
+        homeForm: (category, nav) => MaintenanceEditor(
+          key: ValueKey('add-home-$category'),
+          repository: householdRepository,
+          category: category,
+          flow: nav,
+          onSaved: (id) {
+            if (id != null) {
+              saved = (destination: 'home', kind: category, id: id);
+            }
+          },
+        ),
+      ),
+    );
+    if (!mounted) return;
+    final added = saved;
+    if (added == null) return;
+    await refresh();
+    unawaited(gigPageKey.currentState?.reload());
+    await focusController.reload();
+    if (!mounted) return;
+    if (added.destination == 'shopping' && result is String) {
+      final created = reminders.where((r) => r.id == result).firstOrNull;
+      if (created != null) await _openSheet(created);
+      return;
+    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(addConfirmation(added)),
+        action: SnackBarAction(
+          label: 'View',
+          onPressed: () => _viewAdded(added),
+        ),
+      ),
+    );
+  }
+
+  void _viewAdded(AddSaved added) {
+    switch (added.destination) {
+      case 'sidegig':
+        gigPageKey.currentState?.navigate(switch (added.kind) {
+          'order' => 'orders',
+          'followup' => 'followups',
+          'payment' => 'payments',
+          _ => 'work',
+        });
+        setState(() {
+          tab = 1;
+          gigOpenId = added.id;
+        });
+      case 'home':
+        setState(() {
+          tab = 3;
+          homeOpenId = added.id;
+        });
+      default:
+        final reminder = reminders.where((r) => r.id == added.id).firstOrNull;
+        if (reminder != null) _openSheet(reminder);
     }
   }
 }
@@ -3242,12 +3561,17 @@ class _RingState extends State<_Ring> with SingleTickerProviderStateMixin {
 
 class _ReminderSheet extends StatefulWidget {
   const _ReminderSheet({
+    super.key,
     required this.reminder,
     required this.contexts,
     required this.save,
     required this.changes,
     required this.reload,
     this.startWithOrder = false,
+    this.basicCapture = false,
+    this.initialContextId,
+    this.gigRepository,
+    this.gigTimezone = 'UTC',
     this.onFocus,
     this.onPlan,
     this.planNote,
@@ -3262,12 +3586,18 @@ class _ReminderSheet extends StatefulWidget {
     this.loadSideGigDetails,
     this.saveWorkDetails,
     this.saveSideGigDetails,
+    this.flow,
+    this.onSaved,
   });
   final Reminder? reminder;
   final List<ContextItem> contexts;
   final Stream<void> changes;
   final Future<List<Reminder>> Function() reload;
   final bool startWithOrder;
+  final bool basicCapture;
+  final String? initialContextId;
+  final GigRepository? gigRepository;
+  final String gigTimezone;
   final VoidCallback? onFocus, onPlan;
   final String? planNote;
   final OrderDetails? order;
@@ -3297,6 +3627,11 @@ class _ReminderSheet extends StatefulWidget {
     required String? clientName,
   })?
   saveSideGigDetails;
+
+  /// Hosted by Today's Add flow: the destination fixes the context, errors
+  /// stay inline, and Back/Close go through the flow.
+  final AddFlowNav? flow;
+  final ValueChanged<String>? onSaved;
   final Future<String?> Function({
     String? id,
     required String title,
@@ -3344,13 +3679,16 @@ class _ReminderSheetState extends State<_ReminderSheet>
   bool shipping = false;
   bool shipmentShipped = false;
   OrderDetails? currentOrder;
+  Map<String, dynamic> gigDraft = {};
+  bool discardCapture = false;
+  String? captureError;
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     currentOrder = widget.order;
     shipmentShipped = widget.order?.shipped ?? false;
-    contextId = widget.reminder?.contextId;
+    contextId = widget.reminder?.contextId ?? widget.initialContextId;
     dueAt = widget.reminder?.dueAt;
     isOrder = widget.reminder?.isOrder ?? widget.startWithOrder;
     orderRef.text = widget.order?.orderRef ?? '';
@@ -3571,13 +3909,18 @@ class _ReminderSheetState extends State<_ReminderSheet>
         final createdShoppingList =
             widget.reminder == null &&
             _contextSlug(submittedContextId) == 'shopping';
+        if (stableId != null) widget.onSaved?.call(stableId);
         Navigator.pop(context, createdShoppingList ? savedId : true);
       }
     } catch (e) {
       if (mounted) {
         if (e is ReminderCreationIdMissing) creationResultUnknown = true;
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('Could not save: $e')));
+        if (widget.basicCapture || widget.flow != null) {
+          setState(() => captureError = e.toString());
+        } else {
+          ScaffoldMessenger.of(context)
+              .showSnackBar(SnackBar(content: Text('Could not save: $e')));
+        }
       }
     } finally {
       if (mounted) setState(() => saving = false);
@@ -3757,6 +4100,57 @@ class _ReminderSheetState extends State<_ReminderSheet>
   Widget build(BuildContext context) {
     final p = Theme.of(context).extension<Palette>()!;
     final kb = MediaQuery.viewInsetsOf(context).bottom;
+    if (widget.basicCapture) return _basicCapture(p);
+    if (widget.reminder == null && _isSideGig && widget.gigRepository != null) {
+      return GigFormSheet(
+        key: const ValueKey('shared-sidegig-composer'),
+        repository: widget.gigRepository!,
+        dashboard: GigDashboard(
+          items: const [],
+          timezone: widget.gigTimezone,
+          localDate: focusLocalDate(DateTime.now(), widget.gigTimezone),
+        ),
+        kind: isOrder ? 'order' : 'work',
+        action: 'save_work',
+        contexts: [for (final c in widget.contexts) (id: c.id, name: c.name)],
+        contextId: contextId,
+        initiallyDirty:
+            dirty.any((field) => field != 'context') || gigDraft.isNotEmpty,
+        seed: {
+          ...gigDraft,
+          'title': title.text,
+          'notes': notes.text,
+          'due_at': dueAt?.toUtc().toIso8601String(),
+          'reference': orderRef.text,
+          'person': isOrder ? recipient.text : clientName.text,
+          'initiative': initiativeName.text,
+          'ship_by': shipBy == null ? null : _dateOnly(shipBy!),
+          'carrier': carrier.text,
+          'tracking': tracking.text,
+          'channels': channels,
+        },
+        onContextChanged: (next, draft) => setState(() {
+          gigDraft = draft;
+          merging = true;
+          title.text = draft['title'] as String? ?? '';
+          notes.text = draft['notes'] as String? ?? '';
+          dueAt = DateTime.tryParse(draft['due_at'] as String? ?? '')
+              ?.toLocal();
+          orderRef.text = draft['reference'] as String? ?? '';
+          recipient.text = draft['person'] as String? ?? '';
+          clientName.text = draft['person'] as String? ?? '';
+          initiativeName.text = draft['initiative'] as String? ?? '';
+          carrier.text = draft['carrier'] as String? ?? '';
+          tracking.text = draft['tracking'] as String? ?? '';
+          shipBy = DateTime.tryParse(draft['ship_by'] as String? ?? '');
+          isOrder =
+              draft['is_order'] == true && _contextSlug(next) != 'shopping';
+          contextId = next;
+          merging = false;
+          dirty.add('context');
+        }),
+      );
+    }
     return DraggableScrollableSheet(
       initialChildSize: .72,
       minChildSize: .48,
@@ -3791,11 +4185,40 @@ class _ReminderSheetState extends State<_ReminderSheet>
                   ),
                 ),
                 const SizedBox(height: 18),
-                Text(
-                  widget.reminder == null ? 'New reminder' : 'Reminder',
-                  style: Theme.of(context).textTheme.titleLarge
-                      ?.copyWith(fontWeight: FontWeight.w700),
-                ),
+                if (widget.flow != null)
+                  Row(
+                    children: [
+                      IconButton(
+                        tooltip: 'Back',
+                        onPressed: saving
+                            ? null
+                            : () => widget.flow!.back(dirty.isNotEmpty),
+                        icon: const Icon(CupertinoIcons.chevron_left, size: 20),
+                      ),
+                      Expanded(
+                        child: Text(
+                          _isShopping
+                              ? 'New shopping list'
+                              : 'New ${_contextName ?? ''} reminder',
+                          style: Theme.of(context).textTheme.titleLarge
+                              ?.copyWith(fontWeight: FontWeight.w700),
+                        ),
+                      ),
+                      IconButton(
+                        tooltip: 'Close',
+                        onPressed: saving
+                            ? null
+                            : () => widget.flow!.close(dirty.isNotEmpty),
+                        icon: const Icon(CupertinoIcons.xmark, size: 18),
+                      ),
+                    ],
+                  )
+                else
+                  Text(
+                    widget.reminder == null ? 'New reminder' : 'Reminder',
+                    style: Theme.of(context).textTheme.titleLarge
+                        ?.copyWith(fontWeight: FontWeight.w700),
+                  ),
                 const SizedBox(height: 18),
                 TextField(
                   controller: title,
@@ -3819,32 +4242,47 @@ class _ReminderSheetState extends State<_ReminderSheet>
                   },
                 ),
                 const SizedBox(height: 14),
-                DropdownButtonFormField<String>(
-                  initialValue: contextId,
-                  decoration: InputDecoration(
-                    labelText: 'Context',
-                    errorText: contextError,
-                    border: const OutlineInputBorder(),
+                if (widget.flow != null)
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: Chip(
+                      key: const ValueKey('flow-context'),
+                      avatar: CircleAvatar(
+                        radius: 4,
+                        backgroundColor: _contextColor(p),
+                      ),
+                      label: Text(_contextName ?? ''),
+                      side: BorderSide(color: p.hairline),
+                      backgroundColor: p.surface,
+                    ),
+                  )
+                else
+                  DropdownButtonFormField<String>(
+                    initialValue: contextId,
+                    decoration: InputDecoration(
+                      labelText: 'Context',
+                      errorText: contextError,
+                      border: const OutlineInputBorder(),
+                    ),
+                    items: widget.contexts
+                        .map(
+                          (c) => DropdownMenuItem(
+                            key: ValueKey('context-option-${c.id}'),
+                            value: c.id,
+                            child: Text(c.name),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: (v) => setState(() {
+                      contextId = v;
+                      contextError = null;
+                      dirty.add('context');
+                      if (_isShopping && isOrder) {
+                        isOrder = false;
+                        dirty.add('isOrder');
+                      }
+                    }),
                   ),
-                  items: widget.contexts
-                      .map(
-                        (c) => DropdownMenuItem(
-                          key: ValueKey('context-option-${c.id}'),
-                          value: c.id,
-                          child: Text(c.name),
-                        ),
-                      )
-                      .toList(),
-                  onChanged: (v) => setState(() {
-                    contextId = v;
-                    contextError = null;
-                    dirty.add('context');
-                    if (_isShopping && isOrder) {
-                      isOrder = false;
-                      dirty.add('isOrder');
-                    }
-                  }),
-                ),
                 const SizedBox(height: 14),
                 TextField(
                   controller: notes,
@@ -4086,6 +4524,16 @@ class _ReminderSheetState extends State<_ReminderSheet>
                     ),
                 ],
                 const SizedBox(height: 18),
+                if (widget.flow != null && captureError != null)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Text(
+                      captureError!,
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.error,
+                      ),
+                    ),
+                  ),
                 FilledButton(
                   onPressed: saving ? null : _save,
                   child: Padding(
@@ -4101,6 +4549,224 @@ class _ReminderSheetState extends State<_ReminderSheet>
     );
   }
 
+  void _closeCapture() {
+    if (saving) return;
+    if (dirty.isNotEmpty) {
+      setState(() => discardCapture = true);
+    } else {
+      Navigator.pop(context);
+    }
+  }
+
+  Widget _basicCapture(Palette p) => PopScope(
+    canPop: dirty.isEmpty && !saving,
+    onPopInvokedWithResult: (didPop, _) {
+      if (!didPop) _closeCapture();
+    },
+    child: Container(
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.sizeOf(context).height * .9,
+      ),
+      padding: EdgeInsets.fromLTRB(
+        20,
+        8,
+        20,
+        20 + MediaQuery.viewInsetsOf(context).bottom,
+      ),
+      decoration: BoxDecoration(
+        color: p.surface,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+        boxShadow: [p.sheetShadow],
+      ),
+      child: Material(
+        color: p.surface,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Center(
+                child: Container(
+                  width: 36,
+                  height: 5,
+                  margin: const EdgeInsets.only(top: 8, bottom: 14),
+                  decoration: BoxDecoration(
+                    color: p.hairline,
+                    borderRadius: BorderRadius.circular(99),
+                  ),
+                ),
+              ),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      'New reminder',
+                      style: Theme.of(context).textTheme.titleLarge
+                          ?.copyWith(fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: 'Close',
+                    onPressed: _closeCapture,
+                    icon: const Icon(CupertinoIcons.xmark, size: 18),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                key: const ValueKey('capture-title'),
+                enabled: !saving,
+                controller: title,
+                autofocus: true,
+                maxLength: 180,
+                decoration: InputDecoration(
+                  labelText: 'What do you need to remember?',
+                  errorText: titleError,
+                  counterText: '',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: p.hairline),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: p.text),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<String>(
+                initialValue: contextId,
+                decoration: InputDecoration(
+                  labelText: 'Context',
+                  errorText: contextError,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: p.hairline),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: p.text),
+                  ),
+                ),
+                items: [
+                  for (final c in widget.contexts)
+                    DropdownMenuItem(
+                      key: ValueKey('context-option-${c.id}'),
+                      value: c.id,
+                      child: Text(c.name),
+                    ),
+                ],
+                onChanged: saving
+                    ? null
+                    : (value) => setState(() {
+                        contextId = value;
+                        contextError = null;
+                        dirty.add('context');
+                      }),
+              ),
+              const SizedBox(height: 14),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('When (optional)'),
+                subtitle: Text(
+                  dueAt == null
+                      ? 'No date'
+                      : _format(
+                          DateTime.parse(
+                            '${focusLocalParts(dueAt!, widget.gigTimezone).date}T${focusLocalParts(dueAt!, widget.gigTimezone).time}',
+                          ),
+                        ),
+                ),
+                trailing: const Icon(CupertinoIcons.calendar),
+                onTap: saving ? null : _pickCaptureTime,
+              ),
+              if (dueAt != null)
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton(
+                    onPressed: saving
+                        ? null
+                        : () => setState(() {
+                            dueAt = null;
+                            dirty.add('dueAt');
+                          }),
+                    child: const Text('No date'),
+                  ),
+                ),
+              if (captureError != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Text(
+                    captureError!,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.error,
+                    ),
+                  ),
+                ),
+              const SizedBox(height: 16),
+              FilledButton(
+                style: FilledButton.styleFrom(
+                  backgroundColor: p.text,
+                  foregroundColor: p.surface,
+                  minimumSize: const Size(44, 44),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                onPressed: saving || creationResultUnknown
+                    ? null
+                    : () => _save(),
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Text(saving ? 'Saving…' : 'Save reminder'),
+                ),
+              ),
+              if (discardCapture) ...[
+                const SizedBox(height: 14),
+                const Text('Discard this reminder?'),
+                Row(
+                  children: [
+                    TextButton(
+                      onPressed: () => setState(() => discardCapture = false),
+                      child: const Text('Keep editing'),
+                    ),
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text('Discard'),
+                    ),
+                  ],
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
+
+  Future<void> _pickCaptureTime() async {
+    final parts = focusLocalParts(dueAt ?? DateTime.now(), widget.gigTimezone);
+    final picked = await CompactDateTimePicker.show(
+      context,
+      initial: DateTime.parse(
+        '${parts.date}T${dueAt == null ? '09:00' : parts.time}',
+      ),
+    );
+    if (picked == null || !mounted) return;
+    final time =
+        '${picked.hour.toString().padLeft(2, '0')}:${picked.minute.toString().padLeft(2, '0')}';
+    setState(() {
+      dueAt = focusOccurrenceStart(_dateOnly(picked), time, widget.gigTimezone);
+      dirty.add('dueAt');
+    });
+  }
+
   String _format(DateTime d) =>
       '${['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][d.weekday - 1]}, ${['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][d.month - 1]} ${d.day} · ${d.hour % 12 == 0 ? 12 : d.hour % 12}:${d.minute.toString().padLeft(2, '0')} ${d.hour < 12 ? 'AM' : 'PM'}';
   String _dateOnly(DateTime d) =>
@@ -4112,6 +4778,14 @@ class _ReminderSheetState extends State<_ReminderSheet>
   bool get _isSideGig => _isSideGigSlug(_contextSlug(contextId));
   String? _contextSlug(String? id) =>
       widget.contexts.where((c) => c.id == id).firstOrNull?.slug;
+  String? get _contextName =>
+      widget.contexts.where((c) => c.id == contextId).firstOrNull?.name;
+  Color _contextColor(Palette p) => switch (_contextSlug(contextId)) {
+    'work' => p.contexts[0],
+    'shopping' => p.contexts[3],
+    final slug when _isSideGigSlug(slug) => p.contexts[1],
+    _ => p.contexts[2],
+  };
   Future<void> _pickShipBy() async {
     final picked = await showDatePicker(
       context: context,

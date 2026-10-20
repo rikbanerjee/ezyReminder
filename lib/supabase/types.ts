@@ -502,6 +502,8 @@ export interface Database {
     };
     Views: Record<string, never>;
     Functions: {
+      get_sidegig_dashboard: { Args: Record<string, never>; Returns: import("../sidegig").GigDashboard };
+      sidegig_mutate: { Args: { p_operation_id: string; p_action: string; p_id: string; p_data: import("../sidegig").GigPayload }; Returns: string };
       get_focus_state: {
         Args: Record<string, never>;
         Returns: FocusState;

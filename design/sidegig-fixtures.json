@@ -1,0 +1,15 @@
+{
+  "timezone": "America/New_York",
+  "local_date": "2026-10-22",
+  "items": [
+    {"id":"payment","kind":"payment","title":"Balance","status":"open","context_slug":"sidegig","due_at":"2026-10-20T14:00:00Z","amount":"0.10","currency":"USD"},
+    {"id":"payment-chased","kind":"payment","title":"Collection","status":"open","context_slug":"sidegig","due_at":"2026-10-19T14:00:00Z","amount":"0.20","currency":"USD"},
+    {"id":"chase","kind":"followup","title":"Chase collection","status":"open","context_slug":"sidegig","due_at":"2026-10-22T14:00:00Z","related_payment_id":"payment-chased"},
+    {"id":"waiting","kind":"work","title":"Blocked work","status":"open","context_slug":"sidegig","due_at":"2026-10-19T14:00:00Z","waiting":true},
+    {"id":"order","kind":"order","title":"Ship mugs","status":"open","context_slug":"sidegig","ship_by":"2026-10-23"},
+    {"id":"next-order","kind":"order","title":"Later order","status":"open","context_slug":"work","ship_by":"2026-10-24"},
+    {"id":"paid","kind":"payment","title":"Already received","status":"received","context_slug":"sidegig","due_at":"2026-10-19T14:00:00Z","amount":"2.00","currency":"EUR"}
+  ],
+  "attention_ids": ["payment", "chase", "order"],
+  "money_totals": ["EUR 2.00", "USD 0.30"]
+}

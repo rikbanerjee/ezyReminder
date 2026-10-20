@@ -23,7 +23,9 @@ import type { HomeContext, HomeReminder } from "./types";
 import { ShoppingChecklist } from "./shopping-checklist";
 import { DateTimePicker } from "./date-time-picker";
 import { cn } from "@/lib/utils";
-import { FocusEntry } from "@/components/focus/focus-provider";
+import { SideGigWorkSheet } from "@/components/sidegig/sidegig-work-sheet";
+import type { GigPayload } from "@/lib/sidegig";
+import { FocusEntry, useFocus } from "@/components/focus/focus-provider";
 
 // WhatsApp hidden for now — Twilio/Meta integration not wired up yet
 // (v1.5, see CLAUDE.md); `whatsapp` stays a valid Channel value so any
@@ -54,14 +56,23 @@ function fromDatetimeLocal(value: string): string | null {
 export function ReminderSheet({
   reminder,
   initialTitle,
+  initialContextId,
+  initialIsOrder,
+  onSaved,
   contexts,
   scrollToOrderPanel,
   onClose,
   onCreated,
+  embedded,
+  onDirty,
+  onPendingChange,
 }: {
   reminder: HomeReminder | null;
   /** Pre-fills the title when creating fresh (share-target hand-off). */
   initialTitle?: string;
+  initialContextId?: string;
+  initialIsOrder?: boolean;
+  onSaved?: (result: { isOrder: boolean; id?: string }) => void;
   contexts: HomeContext[];
   /** Opened via the post-create "Add order details?" toast action. */
   scrollToOrderPanel?: boolean;
@@ -70,8 +81,15 @@ export function ReminderSheet({
    * caller swaps this sheet into edit mode for the reminder just created —
    * a checklist is useless if you have to reopen it to add the first item. */
   onCreated?: (reminder: HomeReminder) => void;
+  /** Today's Add flow hosts this form in its own sheet: no chrome, the
+   * destination fixes the context, errors stay inline, and the host closes. */
+  embedded?: boolean;
+  onDirty?: () => void;
+  onPendingChange?: (pending: boolean) => void;
 }) {
   const isNew = reminder === null;
+  const focus = useFocus();
+  const [gigDraft, setGigDraft] = useState<GigPayload>({});
   // Mounted closed, then flipped open next frame so the slide-up transition
   // actually runs (DESIGN.md §2 motion — 300ms cubic-bezier(0.32,0.72,0,1)).
   const [open, setOpen] = useState(false);
@@ -98,10 +116,10 @@ export function ReminderSheet({
   // Deliberately blank when creating fresh — "Choose Template" forces an
   // explicit pick instead of silently defaulting to whichever context
   // happens to sort first.
-  const [contextId, setContextId] = useState(reminder?.context?.id ?? "");
+  const [contextId, setContextId] = useState(reminder?.context?.id ?? initialContextId ?? "");
   const [contextError, setContextError] = useState(false);
   const [channels, setChannels] = useState<Channel[]>(reminder?.channels ?? []);
-  const [isOrder, setIsOrder] = useState(reminder?.is_order ?? false);
+  const [isOrder, setIsOrder] = useState(reminder?.is_order ?? initialIsOrder ?? false);
 
   const [orderRef, setOrderRef] = useState(reminder?.order?.orderRef ?? "");
   const [recipientName, setRecipientName] = useState(reminder?.order?.recipientName ?? "");
@@ -122,6 +140,16 @@ export function ReminderSheet({
   const [clientName, setClientName] = useState(reminder?.sidegigDetails?.clientName ?? "");
 
   const [pending, startTransition] = useTransition();
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const locked = useRef(false);
+  // A failed detail write after a successful create retries as an update, never a second reminder.
+  const createdId = useRef<string | null>(null);
+  useEffect(() => { onPendingChange?.(pending); }, [pending, onPendingChange]);
+  const edited = useRef(false);
+  useEffect(() => {
+    if (!edited.current) { edited.current = true; return; }
+    onDirty?.();
+  }, [title, notes, dueLocal, channels, isOrder, orderRef, recipientName, shipBy, carrier, showWorkPanel, managerName, departmentResource, projectName, showSidegigPanel, initiativeName, clientName, onDirty]);
 
   const done = reminder?.status === "done";
   const shipped = !!reminder?.order?.shippedAt;
@@ -151,14 +179,21 @@ export function ReminderSheet({
       setContextError(true);
       hasError = true;
     }
-    if (hasError) return;
+    if (hasError || locked.current) return;
+    locked.current = true;
+    setSaveError(null);
+    const fail = (message: string, description?: string) => {
+      if (embedded) setSaveError(description ? `${message}: ${description}` : message);
+      else toast.error(message, { description });
+    };
 
     startTransition(async () => {
+     try {
       // Resolve the id we'll attach work/sidegig details to below — either
       // the existing reminder's, or the freshly-created one's.
       let id: string;
 
-      if (isNew) {
+      if (isNew && !createdId.current) {
         const res = await createReminder({
           title,
           notes: notes.trim() || null,
@@ -176,10 +211,11 @@ export function ReminderSheet({
             : null,
         });
         if (!res.ok) {
-          toast.error("Couldn't save", { description: res.error });
+          fail("Couldn't save. Your reminder is still here", res.error);
           return;
         }
         id = res.id;
+        createdId.current = id;
 
         // Shopping lists: don't close — a checklist with nowhere to add
         // items yet is a dead end. Hand off to the caller to reopen this
@@ -205,8 +241,9 @@ export function ReminderSheet({
           return;
         }
       } else {
+        const existingId = reminder?.id ?? createdId.current!;
         const res = await updateReminder({
-          id: reminder.id,
+          id: existingId,
           title,
           notes: notes.trim() || null,
           dueAt: fromDatetimeLocal(dueLocal),
@@ -215,10 +252,10 @@ export function ReminderSheet({
           isOrder,
         });
         if (!res.ok) {
-          toast.error("Couldn't save", { description: res.error });
+          fail("Couldn't save", res.error);
           return;
         }
-        id = reminder.id;
+        id = existingId;
         if (isOrder) {
           const orderRes = await updateOrderDetails({
             reminderId: id,
@@ -228,7 +265,7 @@ export function ReminderSheet({
             carrier: carrier.trim() || null,
           });
           if (!orderRes.ok) {
-            toast.error("Saved, but order details failed", { description: orderRes.error });
+            fail("Saved, but order details failed", orderRes.error);
             return;
           }
         }
@@ -242,7 +279,7 @@ export function ReminderSheet({
           projectName: projectName.trim() || null,
         });
         if (!workRes.ok) {
-          toast.error("Saved, but follow-up details failed", { description: workRes.error });
+          fail("Saved, but follow-up details failed", workRes.error);
           return;
         }
       }
@@ -253,12 +290,21 @@ export function ReminderSheet({
           clientName: clientName.trim() || null,
         });
         if (!sidegigRes.ok) {
-          toast.error("Saved, but initiative details failed", { description: sidegigRes.error });
+          fail("Saved, but initiative details failed", sidegigRes.error);
           return;
         }
       }
+      if (embedded) {
+        onSaved?.({ isOrder, id });
+        return;
+      }
       toast.success(isNew ? "Added ✓" : "Saved");
       requestClose();
+     } catch {
+      fail("Couldn't save. Check your connection and try again");
+     } finally {
+      locked.current = false;
+     }
     });
   }
 
@@ -307,6 +353,238 @@ export function ReminderSheet({
     });
   }
 
+  if (isNew && isSidegig) return <SideGigWorkSheet
+    contexts={contexts} contextId={contextId} zone={focus?.tz ?? Intl.DateTimeFormat().resolvedOptions().timeZone}
+    initial={{...gigDraft, title, notes, due_at:fromDatetimeLocal(dueLocal),is_order:isOrder,reference:orderRef,person:isOrder?recipientName:clientName,initiative:initiativeName,ship_by:shipBy||null,carrier,channels}}
+    initiallyDirty={!!(title||notes||dueLocal||orderRef||recipientName||initiativeName||clientName||Object.keys(gigDraft).length)}
+    onContextChange={(next,draft)=>{setGigDraft(draft);setContextId(next);setTitle(String(draft.title??""));setNotes(String(draft.notes??""));setDueLocal(toDatetimeLocal(draft.due_at as string|null));setIsOrder(draft.is_order===true&&contexts.find(c=>c.id===next)?.slug!=="shopping");setOrderRef(String(draft.reference??""));setRecipientName(String(draft.person??""));setClientName(String(draft.person??""));setInitiativeName(String(draft.initiative??""));setShipBy(String(draft.ship_by??""));setCarrier(String(draft.carrier??""));}}
+    onClose={onClose} onSaved={onSaved}
+  />;
+
+  const content = (
+    <>
+
+          <div className="flex items-start justify-between gap-2">
+            <input
+              value={title}
+              onChange={(e) => {
+                setTitle(e.target.value);
+                if (titleError) setTitleError(false);
+              }}
+              className={cn(
+                "w-full rounded-md bg-transparent text-[20px] font-semibold outline-none",
+                titleError && "rounded-md border border-danger px-1 -mx-1",
+              )}
+              placeholder={embedded ? "What do you need to remember?" : "Reminder title"}
+              aria-label="Reminder title"
+              autoFocus={isNew}
+            />
+            {!embedded && <button type="button" onClick={requestClose} aria-label="Close" className="shrink-0 rounded-md p-1 text-text-2 hover:bg-muted">
+              <X className="size-5" />
+            </button>}
+          </div>
+          {titleError && <p className="mt-1 text-[12px] font-medium text-danger">Title required</p>}
+
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            {embedded && selectedContext ? (
+              <span className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-hairline px-2 text-sm">
+                <span className="size-2 rounded-full" style={{ backgroundColor: selectedContext.color }} />
+                {selectedContext.name}
+              </span>
+            ) : <select
+              value={contextId}
+              onChange={(e) => {
+                setContextId(e.target.value);
+                if (contextError) setContextError(false);
+              }}
+              className={cn(
+                "h-8 rounded-lg border border-input bg-transparent px-2 text-sm outline-none",
+                contextError && "border-danger text-danger",
+              )}
+            >
+              <option value="" disabled>
+                Choose template
+              </option>
+              {contexts.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>}
+            <DateTimePicker value={dueLocal} onChange={setDueLocal} />
+          </div>
+          {contextError && <p className="mt-1 text-[12px] font-medium text-danger">Choose a template</p>}
+
+          {isShopping ? (
+            reminder ? (
+              <ShoppingChecklist reminderId={reminder.id} initialItems={reminder.shoppingItems} />
+            ) : (
+              // Matches the notes+channels section's height on other templates
+              // (min-h) rather than leaving a short sheet — a short sheet here
+              // clipped the date popover's OK button below the fold, forcing a
+              // scroll to confirm. Fill the space with real instructions
+              // instead of blank whitespace.
+              <div className="mt-3 flex min-h-[220px] flex-col items-center justify-center gap-1.5 rounded-lg border border-hairline bg-background px-4 py-6 text-center">
+                <p className="text-[13px] font-medium text-foreground">This will be a running checklist</p>
+                <p className="text-[13px] text-text-2">
+                  Save the list first, then add items one at a time — check them off as you shop.
+                </p>
+              </div>
+            )
+          ) : (
+            <>
+              <div className="mt-3">
+                <Label className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-text-2">Notes</Label>
+                <textarea
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  rows={3}
+                  className="w-full resize-none rounded-lg border border-input bg-transparent p-2 text-sm outline-none placeholder:text-text-2"
+                  placeholder="Add notes…"
+                />
+              </div>
+
+              <div className="mt-3">
+                <Label className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-text-2">Deliver via</Label>
+                <div className="flex gap-1.5">
+                  {CHANNELS.map(({ key, label, icon: Icon }) => (
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={() => toggleChannel(key)}
+                      className={cn(
+                        "inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-[13px]",
+                        channels.includes(key) ? "border-transparent bg-foreground text-background" : "border-hairline text-text-2",
+                      )}
+                    >
+                      <Icon className="size-3.5" />
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                <p className="mt-1 text-[12px] text-text-2">No selection uses the context&apos;s default channel.</p>
+              </div>
+            </>
+          )}
+
+          <div className={cn("mt-4 border-t border-hairline pt-3", isShopping && "hidden")} ref={orderPanelRef}>
+            <PanelToggle icon={Truck} label="This is an order" on={isOrder} onToggle={() => setIsOrder((v) => !v)} />
+
+            {isOrder && (
+              <div className="mt-3 flex flex-col gap-2 rounded-lg border border-hairline p-2.5">
+                <Field label="Order ref">
+                  <Input value={orderRef} onChange={(e) => setOrderRef(e.target.value)} placeholder="Etsy #1042" />
+                </Field>
+                <Field label="Recipient">
+                  <Input value={recipientName} onChange={(e) => setRecipientName(e.target.value)} placeholder="Sarah M." />
+                </Field>
+                <Field label="Ship by">
+                  <Input type="date" value={shipBy} onChange={(e) => setShipBy(e.target.value)} />
+                </Field>
+                <Field label="Carrier">
+                  <Input value={carrier} onChange={(e) => setCarrier(e.target.value)} placeholder="USPS" />
+                </Field>
+
+                {isNew ? null : shipped ? (
+                  <p className="mt-1 text-[13px] text-text-2">
+                    Shipped {reminder.order?.trackingNumber ? `· ${reminder.order.trackingNumber}` : ""}
+                  </p>
+                ) : showTrackingField ? (
+                  <div className="mt-1 flex items-center gap-2">
+                    <Input
+                      value={trackingInput}
+                      onChange={(e) => setTrackingInput(e.target.value)}
+                      placeholder="Tracking #"
+                      className="flex-1"
+                    />
+                    <Button size="sm" disabled={pending} onClick={handleMarkShipped}>
+                      Confirm
+                    </Button>
+                  </div>
+                ) : (
+                  <Button
+                    size="sm"
+                    className="mt-1 w-full bg-sidegig text-white hover:bg-sidegig/90"
+                    onClick={() => setShowTrackingField(true)}
+                  >
+                    Mark shipped
+                  </Button>
+                )}
+              </div>
+            )}
+          </div>
+
+          {isWork && (
+            <div className="mt-4 border-t border-hairline pt-3">
+              <PanelToggle
+                icon={Briefcase}
+                label="Add follow-up details"
+                on={showWorkPanel}
+                onToggle={() => setShowWorkPanel((v) => !v)}
+              />
+              {showWorkPanel && (
+                <div className="mt-3 flex flex-col gap-2 rounded-lg border border-hairline p-2.5">
+                  <Field label="Manager">
+                    <Input value={managerName} onChange={(e) => setManagerName(e.target.value)} placeholder="Priya T." />
+                  </Field>
+                  <Field label="Dept/resource">
+                    <Input value={departmentResource} onChange={(e) => setDepartmentResource(e.target.value)} placeholder="Design" />
+                  </Field>
+                  <Field label="Project">
+                    <Input value={projectName} onChange={(e) => setProjectName(e.target.value)} placeholder="Q3 capacity plan" />
+                  </Field>
+                </div>
+              )}
+            </div>
+          )}
+
+          {isSidegig && !isOrder && (
+            <div className="mt-4 border-t border-hairline pt-3">
+              <PanelToggle
+                icon={Lightbulb}
+                label="Add initiative details"
+                on={showSidegigPanel}
+                onToggle={() => setShowSidegigPanel((v) => !v)}
+              />
+              {showSidegigPanel && (
+                <div className="mt-3 flex flex-col gap-2 rounded-lg border border-hairline p-2.5">
+                  <Field label="Initiative">
+                    <Input value={initiativeName} onChange={(e) => setInitiativeName(e.target.value)} placeholder="Etsy shop refresh" />
+                  </Field>
+                  <Field label="Client/buyer">
+                    <Input value={clientName} onChange={(e) => setClientName(e.target.value)} placeholder="Sarah M." />
+                  </Field>
+                </div>
+              )}
+            </div>
+          )}
+
+          {reminder && <FocusEntry reminder={reminder} onOpen={onClose} />}
+
+          {saveError && <p role="alert" className="mt-3 text-[13px] text-danger">{saveError}</p>}
+          <div className={cn("mt-5 flex items-center border-t border-hairline pt-3", isNew ? "justify-end" : "justify-between")}>
+            {!isNew && (
+              <Button variant="ghost" size="sm" disabled={pending} onClick={handleDelete} className="text-danger">
+                <Trash2 className="size-3.5" />
+                Delete
+              </Button>
+            )}
+            <div className="flex items-center gap-2">
+              {!isNew && (
+                <Button variant="outline" size="sm" disabled={pending} onClick={handleToggleDone}>
+                  {done ? <RotateCcw className="size-3.5" /> : <Check className="size-3.5" />}
+                  {done ? "Reopen" : "Done"}
+                </Button>
+              )}
+              <Button size="sm" disabled={pending} onClick={save} className={cn(embedded && "min-h-11 px-4")}>
+                {pending && embedded ? "Saving…" : isNew ? "Add" : "Save"}
+              </Button>
+            </div>
+          </div>
+    </>
+  );
+  if (embedded) return content;
+
   return (
     // Always bottom-anchored (items-end, no sm:items-center) — matches
     // design/prototype.html's .sheet exactly, which never switches to a
@@ -346,217 +624,7 @@ export function ReminderSheet({
         )}
       >
         <div className="mx-auto mb-3 h-1 w-10 shrink-0 rounded-full bg-hairline" />
-
-        <div className="flex items-start justify-between gap-2">
-          <input
-            value={title}
-            onChange={(e) => {
-              setTitle(e.target.value);
-              if (titleError) setTitleError(false);
-            }}
-            className={cn(
-              "w-full rounded-md bg-transparent text-[20px] font-semibold outline-none",
-              titleError && "rounded-md border border-danger px-1 -mx-1",
-            )}
-            placeholder="Reminder title"
-            autoFocus={isNew}
-          />
-          <button type="button" onClick={requestClose} aria-label="Close" className="shrink-0 rounded-md p-1 text-text-2 hover:bg-muted">
-            <X className="size-5" />
-          </button>
-        </div>
-        {titleError && <p className="mt-1 text-[12px] font-medium text-danger">Title required</p>}
-
-        <div className="mt-3 flex flex-wrap items-center gap-2">
-          <select
-            value={contextId}
-            onChange={(e) => {
-              setContextId(e.target.value);
-              if (contextError) setContextError(false);
-            }}
-            className={cn(
-              "h-8 rounded-lg border border-input bg-transparent px-2 text-sm outline-none",
-              contextError && "border-danger text-danger",
-            )}
-          >
-            <option value="" disabled>
-              Choose template
-            </option>
-            {contexts.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
-          <DateTimePicker value={dueLocal} onChange={setDueLocal} />
-        </div>
-        {contextError && <p className="mt-1 text-[12px] font-medium text-danger">Choose a template</p>}
-
-        {isShopping ? (
-          reminder ? (
-            <ShoppingChecklist reminderId={reminder.id} initialItems={reminder.shoppingItems} />
-          ) : (
-            // Matches the notes+channels section's height on other templates
-            // (min-h) rather than leaving a short sheet — a short sheet here
-            // clipped the date popover's OK button below the fold, forcing a
-            // scroll to confirm. Fill the space with real instructions
-            // instead of blank whitespace.
-            <div className="mt-3 flex min-h-[220px] flex-col items-center justify-center gap-1.5 rounded-lg border border-hairline bg-background px-4 py-6 text-center">
-              <p className="text-[13px] font-medium text-foreground">This will be a running checklist</p>
-              <p className="text-[13px] text-text-2">
-                Save the list first, then add items one at a time — check them off as you shop.
-              </p>
-            </div>
-          )
-        ) : (
-          <>
-            <div className="mt-3">
-              <Label className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-text-2">Notes</Label>
-              <textarea
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                rows={3}
-                className="w-full resize-none rounded-lg border border-input bg-transparent p-2 text-sm outline-none placeholder:text-text-2"
-                placeholder="Add notes…"
-              />
-            </div>
-
-            <div className="mt-3">
-              <Label className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-text-2">Deliver via</Label>
-              <div className="flex gap-1.5">
-                {CHANNELS.map(({ key, label, icon: Icon }) => (
-                  <button
-                    key={key}
-                    type="button"
-                    onClick={() => toggleChannel(key)}
-                    className={cn(
-                      "inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-[13px]",
-                      channels.includes(key) ? "border-transparent bg-foreground text-background" : "border-hairline text-text-2",
-                    )}
-                  >
-                    <Icon className="size-3.5" />
-                    {label}
-                  </button>
-                ))}
-              </div>
-              <p className="mt-1 text-[12px] text-text-2">No selection uses the context&apos;s default channel.</p>
-            </div>
-          </>
-        )}
-
-        <div className={cn("mt-4 border-t border-hairline pt-3", isShopping && "hidden")} ref={orderPanelRef}>
-          <PanelToggle icon={Truck} label="This is an order" on={isOrder} onToggle={() => setIsOrder((v) => !v)} />
-
-          {isOrder && (
-            <div className="mt-3 flex flex-col gap-2 rounded-lg border border-hairline p-2.5">
-              <Field label="Order ref">
-                <Input value={orderRef} onChange={(e) => setOrderRef(e.target.value)} placeholder="Etsy #1042" />
-              </Field>
-              <Field label="Recipient">
-                <Input value={recipientName} onChange={(e) => setRecipientName(e.target.value)} placeholder="Sarah M." />
-              </Field>
-              <Field label="Ship by">
-                <Input type="date" value={shipBy} onChange={(e) => setShipBy(e.target.value)} />
-              </Field>
-              <Field label="Carrier">
-                <Input value={carrier} onChange={(e) => setCarrier(e.target.value)} placeholder="USPS" />
-              </Field>
-
-              {isNew ? null : shipped ? (
-                <p className="mt-1 text-[13px] text-text-2">
-                  Shipped {reminder.order?.trackingNumber ? `· ${reminder.order.trackingNumber}` : ""}
-                </p>
-              ) : showTrackingField ? (
-                <div className="mt-1 flex items-center gap-2">
-                  <Input
-                    value={trackingInput}
-                    onChange={(e) => setTrackingInput(e.target.value)}
-                    placeholder="Tracking #"
-                    className="flex-1"
-                  />
-                  <Button size="sm" disabled={pending} onClick={handleMarkShipped}>
-                    Confirm
-                  </Button>
-                </div>
-              ) : (
-                <Button
-                  size="sm"
-                  className="mt-1 w-full bg-sidegig text-white hover:bg-sidegig/90"
-                  onClick={() => setShowTrackingField(true)}
-                >
-                  Mark shipped
-                </Button>
-              )}
-            </div>
-          )}
-        </div>
-
-        {isWork && (
-          <div className="mt-4 border-t border-hairline pt-3">
-            <PanelToggle
-              icon={Briefcase}
-              label="Add follow-up details"
-              on={showWorkPanel}
-              onToggle={() => setShowWorkPanel((v) => !v)}
-            />
-            {showWorkPanel && (
-              <div className="mt-3 flex flex-col gap-2 rounded-lg border border-hairline p-2.5">
-                <Field label="Manager">
-                  <Input value={managerName} onChange={(e) => setManagerName(e.target.value)} placeholder="Priya T." />
-                </Field>
-                <Field label="Dept/resource">
-                  <Input value={departmentResource} onChange={(e) => setDepartmentResource(e.target.value)} placeholder="Design" />
-                </Field>
-                <Field label="Project">
-                  <Input value={projectName} onChange={(e) => setProjectName(e.target.value)} placeholder="Q3 capacity plan" />
-                </Field>
-              </div>
-            )}
-          </div>
-        )}
-
-        {isSidegig && !isOrder && (
-          <div className="mt-4 border-t border-hairline pt-3">
-            <PanelToggle
-              icon={Lightbulb}
-              label="Add initiative details"
-              on={showSidegigPanel}
-              onToggle={() => setShowSidegigPanel((v) => !v)}
-            />
-            {showSidegigPanel && (
-              <div className="mt-3 flex flex-col gap-2 rounded-lg border border-hairline p-2.5">
-                <Field label="Initiative">
-                  <Input value={initiativeName} onChange={(e) => setInitiativeName(e.target.value)} placeholder="Etsy shop refresh" />
-                </Field>
-                <Field label="Client/buyer">
-                  <Input value={clientName} onChange={(e) => setClientName(e.target.value)} placeholder="Sarah M." />
-                </Field>
-              </div>
-            )}
-          </div>
-        )}
-
-        {reminder && <FocusEntry reminder={reminder} onOpen={onClose} />}
-
-        <div className={cn("mt-5 flex items-center border-t border-hairline pt-3", isNew ? "justify-end" : "justify-between")}>
-          {!isNew && (
-            <Button variant="ghost" size="sm" disabled={pending} onClick={handleDelete} className="text-danger">
-              <Trash2 className="size-3.5" />
-              Delete
-            </Button>
-          )}
-          <div className="flex items-center gap-2">
-            {!isNew && (
-              <Button variant="outline" size="sm" disabled={pending} onClick={handleToggleDone}>
-                {done ? <RotateCcw className="size-3.5" /> : <Check className="size-3.5" />}
-                {done ? "Reopen" : "Done"}
-              </Button>
-            )}
-            <Button size="sm" disabled={pending} onClick={save}>
-              {isNew ? "Add" : "Save"}
-            </Button>
-          </div>
-        </div>
+        {content}
       </div>
     </div>
   );

@@ -8,10 +8,10 @@ class RecordingHomeRepository extends DemoHouseholdRepository {
   bool fail = false;
   Map<String, dynamic>? lastSave;
   @override
-  Future<void> save(Map<String, dynamic> params) async {
+  Future<String?> save(Map<String, dynamic> params) async {
     lastSave = params;
     if (fail) throw StateError('offline');
-    await super.save(params);
+    return super.save(params);
   }
 }
 

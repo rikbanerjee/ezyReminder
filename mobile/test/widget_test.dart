@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:ezyreminder/main.dart';
+import 'package:ezyreminder/features/sidegig/sidegig_page.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -17,14 +18,15 @@ Future<void> revealTodayReminder(WidgetTester tester, Finder reminder) async {
 }
 
 void main() {
-  testWidgets('preview shows fixture reminders and context filters', (
+  testWidgets('Today retains Focus above reminders without context filters', (
     tester,
   ) async {
     await tester.pumpWidget(const EzyApp(connected: false, preview: true));
     await tester.pumpAndSettle();
     expect(find.text('PREVIEW'), findsOneWidget);
-    expect(find.text('Work'), findsOneWidget);
-    expect(find.text('Shopping'), findsOneWidget);
+    expect(find.byType(ChoiceChip), findsNothing);
+    expect(find.text("TODAY'S FOCUS"), findsOneWidget);
+    expect(find.text('Ship soon'), findsNothing);
     await revealTodayReminder(tester, find.text('Send the revised proposal'));
     expect(find.text('Send the revised proposal'), findsOneWidget);
   });
@@ -149,8 +151,6 @@ void main() {
         EzyApp(connected: false, preview: true, repository: repo),
       );
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Shopping').first);
-      await tester.pumpAndSettle();
       await revealTodayReminder(tester, find.text('Pick up oat milk'));
       await tester.tap(find.text('Pick up oat milk'));
       await tester.pumpAndSettle();
@@ -195,8 +195,6 @@ void main() {
         EzyApp(connected: false, preview: true, repository: repo),
       );
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Shopping').first);
-      await tester.pumpAndSettle();
       await revealTodayReminder(tester, find.text('Pick up oat milk'));
       await tester.tap(find.text('Pick up oat milk'));
       await tester.pumpAndSettle();
@@ -223,8 +221,6 @@ void main() {
     await tester.pumpWidget(
       EzyApp(connected: false, preview: true, repository: repo),
     );
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Shopping').first);
     await tester.pumpAndSettle();
     await revealTodayReminder(tester, find.text('Pick up oat milk'));
     await tester.tap(find.text('Pick up oat milk'));
@@ -263,8 +259,6 @@ void main() {
         EzyApp(connected: false, preview: true, repository: repo),
       );
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Shopping').first);
-      await tester.pumpAndSettle();
       await revealTodayReminder(tester, find.text('Pick up oat milk'));
       await tester.tap(find.text('Pick up oat milk'));
       await tester.pumpAndSettle();
@@ -290,8 +284,6 @@ void main() {
       EzyApp(connected: false, preview: true, repository: repo),
     );
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Shopping').first);
-    await tester.pumpAndSettle();
     await revealTodayReminder(tester, find.text('Pick up oat milk'));
     await tester.tap(find.text('Pick up oat milk'));
     await tester.pumpAndSettle();
@@ -312,10 +304,19 @@ void main() {
     expect(find.text('Done'), findsNothing);
   });
 
-  testWidgets('create sheet reports missing title and context', (tester) async {
+  testWidgets('All capture sheet reports missing title and context', (
+    tester,
+  ) async {
     final repo = DemoRepository();
     await tester.pumpWidget(
       EzyApp(connected: false, preview: true, repository: repo),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.descendant(
+        of: find.byType(BottomNavigationBar),
+        matching: find.text('All'),
+      ),
     );
     await tester.pumpAndSettle();
     await tester.tap(find.text('Remind me to…'));
@@ -342,28 +343,38 @@ void main() {
       await tester.tap(
         find.descendant(
           of: find.byType(BottomNavigationBar),
-          matching: find.text('Ship Queue'),
+          matching: find.text('Side Gig'),
         ),
       );
       await tester.pumpAndSettle();
-      expect(find.text('Etsy #1042 · Sarah M.'), findsOneWidget);
-      expect(find.text('Ship by tomorrow'), findsOneWidget);
+      await tester.ensureVisible(
+        find.widgetWithText(OutlinedButton, 'Ship Queue'),
+      );
+      await tester.tap(find.widgetWithText(OutlinedButton, 'Ship Queue'));
+      await tester.pumpAndSettle();
+      expect(find.text('Ship handmade mug'), findsOneWidget);
+      expect(find.textContaining('Ref Etsy #1042 · '), findsOneWidget);
+      expect(find.textContaining('Ship by Tomorrow'), findsOneWidget);
+      await tester.ensureVisible(find.text('Mark shipped'));
       await tester.tap(find.text('Mark shipped'));
       await tester.pumpAndSettle();
-      expect(find.text('Confirm'), findsOneWidget);
+      await tester.ensureVisible(find.text('Confirm shipped'));
+      expect(find.text('Confirm shipped'), findsOneWidget);
       final trackingField = find.byWidgetPredicate(
         (w) =>
             w is TextField &&
-            w.decoration?.labelText == 'Tracking # (optional)',
+            w.decoration?.labelText == 'Tracking number (optional)',
       );
       await tester.enterText(trackingField, 'TRACK-1042');
-      await tester.tap(find.text('Confirm'));
+      await tester.ensureVisible(find.text('Confirm shipped'));
+      await tester.tap(find.text('Confirm shipped'));
       await tester.pumpAndSettle();
-      expect(find.textContaining('Shipped ✓'), findsOneWidget);
+      expect(find.textContaining('Shipment recorded'), findsOneWidget);
       expect((await repo.loadOrders()).single.trackingNumber, 'TRACK-1042');
-      await tester.tap(find.text('+3d follow-up'));
+      await tester.tap(find.text('Add follow-up'));
       await tester.pumpAndSettle();
-      expect(repo.followUpCalls, 1);
+      expect(find.byType(GigFormSheet), findsOneWidget);
+      expect(repo.followUpCalls, 0);
     },
   );
 
@@ -378,9 +389,14 @@ void main() {
       await tester.tap(
         find.descendant(
           of: find.byType(BottomNavigationBar),
-          matching: find.text('Ship Queue'),
+          matching: find.text('Side Gig'),
         ),
       );
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(
+        find.widgetWithText(OutlinedButton, 'Ship Queue'),
+      );
+      await tester.tap(find.widgetWithText(OutlinedButton, 'Ship Queue'));
       await tester.pumpAndSettle();
       await tester.tap(find.byTooltip('Edit order'));
       await tester.pumpAndSettle();
@@ -435,9 +451,24 @@ void main() {
     await tester.tap(
       find.descendant(
         of: find.byType(BottomNavigationBar),
-        matching: find.text('Ship Queue'),
+        matching: find.text('Side Gig'),
       ),
     );
+    await tester.pumpAndSettle();
+    await tester.drag(
+      find
+          .descendant(
+            of: find.byType(SideGigPage),
+            matching: find.byType(ListView),
+          )
+          .first,
+      const Offset(-250, 0),
+    );
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(
+      find.widgetWithText(OutlinedButton, 'Ship Queue'),
+    );
+    await tester.tap(find.widgetWithText(OutlinedButton, 'Ship Queue'));
     await tester.pumpAndSettle();
     await tester.tap(find.byTooltip('Edit order'));
     await tester.pumpAndSettle();
@@ -484,13 +515,40 @@ void main() {
     await tester.tap(
       find.descendant(
         of: find.byType(BottomNavigationBar),
-        matching: find.text('Ship Queue'),
+        matching: find.text('Side Gig'),
       ),
     );
     await tester.pumpAndSettle();
+    await tester.drag(
+      find
+          .descendant(
+            of: find.byType(SideGigPage),
+            matching: find.byType(ListView),
+          )
+          .first,
+      const Offset(-250, 0),
+    );
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(
+      find.widgetWithText(OutlinedButton, 'Ship Queue'),
+    );
+    await tester.tap(find.widgetWithText(OutlinedButton, 'Ship Queue'));
+    await tester.pumpAndSettle();
+    await tester.drag(
+      find
+          .descendant(
+            of: find.byType(SideGigPage),
+            matching: find.byType(ListView),
+          )
+          .last,
+      const Offset(0, -400),
+    );
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Mark shipped'));
     await tester.tap(find.text('Mark shipped'));
     await tester.pumpAndSettle();
-    expect(find.text('Confirm'), findsOneWidget);
+    await tester.ensureVisible(find.text('Confirm shipped'));
+    expect(find.text('Confirm shipped'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 

@@ -77,7 +77,9 @@ class HomeMaintenance {
 abstract interface class HouseholdRepository {
   Future<List<HomeMaintenance>> load();
   Future<List<Map<String, dynamic>>> history();
-  Future<void> save(Map<String, dynamic> params);
+
+  /// Atomic `save_home_task`; returns the reminder ID.
+  Future<String?> save(Map<String, dynamic> params);
   Future<void> record(Map<String, dynamic> params);
   Future<void> delete(String id);
 }
@@ -106,9 +108,8 @@ class SupabaseHouseholdRepository implements HouseholdRepository {
       .select()
       .order('serviced_at', ascending: false);
   @override
-  Future<void> save(Map<String, dynamic> params) async {
-    await client.rpc('save_home_task', params: params);
-  }
+  Future<String?> save(Map<String, dynamic> params) async =>
+      await client.rpc('save_home_task', params: params) as String?;
 
   @override
   Future<void> record(Map<String, dynamic> params) async {
@@ -130,9 +131,10 @@ class DemoHouseholdRepository implements HouseholdRepository {
   @override
   Future<List<Map<String, dynamic>>> history() async => List.of(records);
   @override
-  Future<void> save(Map<String, dynamic> params) async {
+  Future<String?> save(Map<String, dynamic> params) async {
     final id =
-        params['p_id'] ?? DateTime.now().microsecondsSinceEpoch.toString();
+        params['p_id'] as String? ??
+        DateTime.now().microsecondsSinceEpoch.toString();
     items.removeWhere((m) => m.id == id);
     items.add(
       HomeMaintenance({
@@ -152,6 +154,7 @@ class DemoHouseholdRepository implements HouseholdRepository {
         'updated_at': DateTime.now().toUtc().toIso8601String(),
       }),
     );
+    return id;
   }
 
   @override

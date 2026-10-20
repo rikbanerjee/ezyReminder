@@ -155,25 +155,15 @@ Email-in address (`todo@…`); iOS Share Sheet via the Flutter app's Share Exten
 - Dark mode from day one (system-follow).
 - Mobile-first layout; desktop is the same column, wider.
 
-### 5.2 Information architecture
-```
-┌──────────────────────────────────────┐
-│  [All] [Work] [Side Gig] [Social]    │  ← context pills (filter)
-│──────────────────────────────────────│
-│  + Quick add: "type anything…"       │  ← smart-parse input, always on top
-│──────────────────────────────────────│
-│  OVERDUE (red)                       │
-│  TODAY                               │
-│  🚚 SHIP QUEUE (n)   ← only if n>0   │
-│  UPCOMING                            │
-│  DONE (collapsed)                    │
-└──────────────────────────────────────┘
-```
-- **Quick add parsing:** natural-ish language → `"ship mug order tue 6pm #sidegig @whatsapp"` sets title, due date, context, channel. Parsed chips render below the input before saving so nothing feels magical/wrong. Library: `chrono-node` for dates.
-- **Reminder row:** checkbox · title · context dot · due chip ("in 2h", red if overdue) · channel icons · 🚚 if order. Tap → detail sheet (notes, recurrence, channels, order fields).
-- **Ship Queue view:** orders sorted by ship-by date; each row has order ref, recipient, ship-by countdown, and a one-tap **Mark shipped** (asks for tracking # inline). This is the "easy way to tag orders" — flag at creation via 🚚 toggle or `#order` in quick add.
-- **Swipe/keyboard:** swipe right = done, swipe left = snooze menu (1h / tonight / tomorrow / next week). Desktop: `n` new, `e` done, `s` snooze.
-- **Empty/error states:** friendly, single-line. Delivery failures show inline with a retry button.
+### 5.2 Information architecture — revised 2026-10-19
+**Today · Side Gig · Home · All.** Today is a single reminder list across the four contexts: Overdue, Today, Upcoming, Someday and collapsed Done today. No context filters or duplicate Ship soon block. Today retains the full Focus card: choose/start a reminder, planned work, and running-session recovery. All provides search, context filters and completed records. Side Gig owns independent work, Ship Queue, follow-ups and payments.
+
+- **Add from Today:** tap the docked bar → "What would you like to add?" (Work · Side Gig · Home · Social · Shopping) → the destination's existing chooser and form, saved through its own atomic RPC, then a toast with View. Home stays a destination over the four contexts (bills/study/care are Social, groceries are Shopping). See DESIGN.md §5.1.
+- **Quick capture (All):** tap the docked bar → title, blank context select, optional compact date/time, Save. Choosing Side Gig does not change the form. Notes, delivery controls and domain fields wait for editing.
+- **Details:** tapping a saved Side Gig task/order from Today or All opens the canonical Side Gig editor on the same reminder ID. Other contexts retain their respective detail/checklist editors. Shopping opens its checklist after capture.
+- **Side Gig creation:** scoped Add offers Task / Order / Follow-up / Expected payment with full forms. Task/Order details share their implementation with editing from Today; atomic writes remain `sidegig_mutate`.
+- **Reminder row:** completion ring, title, context/due metadata, channel/order icons. Shipping and payment actions remain explicit in their domain views.
+- **Swipe/keyboard:** existing completion and snooze behavior. Empty/error states are short and inline.
 
 ### 5.3 Screens (complete list — deliberately short)
 1. **Home** (list above) 2. **Reminder detail** (bottom sheet) 3. **Ship Queue** 4. **Settings** (channels, quiet hours, contexts, API keys, integrations) 5. **Auth** (magic link).
@@ -217,3 +207,8 @@ Every template controls task, item/person, due date, repeat, instructions, compl
 Repeat presets suit the task: care is generally monthly; batteries and study also offer weekly intervals, and study supports daily. Care repeats from actual completion. Bill and study repeats advance from the planned due date, so early payments or late sessions do not move the schedule. One-time completion closes the reminder. History snapshots the template details and survives deletion of the reminder.
 
 `design/home-templates.json` is the shared copy/field source for web, generated Flutter templates, and the prototype (`node scripts/gen-home-templates.mjs`). Additive migration `0014_contextual_home_tasks.sql` extends 0011 with category-specific details and day intervals. New clients use atomic `save_home_task`; the old save RPC remains compatible. `record_home_service` retains its signature and now snapshots contextual fields and follows the correct repeat anchor. RLS, completion-version checks, existing delivery channels, and quiet hours continue to apply.
+
+
+## 10. Side Gig destination (approved 2026-10-19)
+
+Side Gig replaces the Ship-only tab with Overview, Work, Ship Queue, Follow-ups and Payments. The complete product contract is `SIDEGIG_EXPERIENCE.md`; visual rules are DESIGN.md §10 and `design/sidegig-prototype.html`. Shared backend changes are additive migration 0018, with owner-only state/history, retry-safe atomic RPCs, ordinary reminder delivery and independent fulfillment/collection semantics. No new context, calendar integration, payment processing or CRM entity is introduced. Both clients share these contracts. Shipping-only legacy links remain valid. Local implementation and hosted release status are recorded separately in LAUNCH.md and supabase/MIGRATION_STATUS.md.

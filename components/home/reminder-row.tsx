@@ -64,7 +64,8 @@ export function ReminderRow({ reminder, onOpen }: { reminder: HomeReminder; onOp
   }
 
   function toggleComplete() {
-    if (reminder.tags?.some((t) => t.startsWith("home:"))) { onOpen(); return; }
+    if (reminder.is_order && !done) { onOpen(); return; }
+    if (reminder.tags?.some((t) => t.startsWith("home:") || t.startsWith("sidegig:"))) { onOpen(); return; }
     if (done) {
       run(() => reopenReminder(reminder.id), "Couldn't reopen");
     } else {

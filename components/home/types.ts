@@ -35,6 +35,7 @@ export interface HomeShoppingItem {
 }
 
 export interface HomeReminder {
+  focusBlocked?: boolean;
   id: string;
   title: string;
   notes: string | null;

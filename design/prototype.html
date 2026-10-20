@@ -7,13 +7,13 @@
 <style>
   :root{
     --bg:#F7F6F3; --surface:#FFFFFF; --text:#1A1A1A; --text2:#8A8A8E;
-    --hairline:#E5E4E0; --work:#3478F6; --gig:#F5A623; --social:#34C759;
+    --hairline:#E5E4E0; --work:#3478F6; --gig:#F5A623; --social:#34C759; --shopping:#AF52DE;
     --danger:#FF3B30; --scrim:rgba(0,0,0,.4);
     --sheet-curve:cubic-bezier(0.32,0.72,0,1);
   }
   .dark{
     --bg:#111113; --surface:#1C1C1F; --text:#F2F2F2; --text2:#98989E;
-    --hairline:#2C2C2E; --work:#4C8DFF; --gig:#FFB340; --social:#40D66B;
+    --hairline:#2C2C2E; --work:#4C8DFF; --gig:#FFB340; --social:#40D66B; --shopping:#BF5AF2;
     --danger:#FF453A; --scrim:rgba(0,0,0,.55);
   }
   *{box-sizing:border-box; -webkit-tap-highlight-color:transparent; touch-action:manipulation;}
@@ -109,7 +109,7 @@
   .fieldrow{display:flex; gap:8px; margin:14px 0 4px; flex-wrap:wrap;}
   .fchip{border:none; background:var(--bg); color:var(--text); font-size:13px; font-weight:600; padding:8px 13px;
     border-radius:999px; cursor:pointer; display:flex; align-items:center; gap:6px;}
-  .dot{width:8px;height:8px;border-radius:50%;} .dot.work{background:var(--work)} .dot.gig{background:var(--gig)} .dot.social{background:var(--social)}
+  .dot{width:8px;height:8px;border-radius:50%;} .dot.work{background:var(--work)} .dot.gig{background:var(--gig)} .dot.social{background:var(--social)} .dot.shopping{background:var(--shopping)}
   .sh-notes{width:100%; border:none; background:var(--bg); border-radius:12px; padding:12px; margin-top:12px; color:var(--text);
     font-family:inherit; font-size:14px; resize:none; outline:none;}
   .sh-label{font-size:12px; font-weight:700; letter-spacing:.6px; color:var(--text2); margin:18px 0 8px;}
@@ -194,6 +194,10 @@
   .f-count{font-size:26px; font-weight:600; font-variant-numeric:tabular-nums; letter-spacing:.5px;}
   .f-count.dim{color:var(--text2);}
   .f-err{font-size:13px; color:var(--danger); margin:6px 0 0;}
+  /* Today Add flow (DESIGN.md §5.1) */
+  .add-head{display:flex; align-items:center; gap:4px; margin:0 0 6px;} .add-head h2{font-size:20px; font-weight:600; margin:0;}
+  .add-lbl{display:block; font-size:13px; font-weight:600; margin:16px 0 6px;} .add-lbl .f-input{margin-top:6px;}
+  #captureSheet .f-trow .t{font-size:15px;}
   .f-link{border:none; background:none; color:var(--text2); font:inherit; font-size:13px; font-weight:600; letter-spacing:.2px; text-transform:none; cursor:pointer; min-height:44px; padding:0 4px; margin:-12px -4px;}
   .fb{min-height:44px; min-width:44px; border:1.5px solid transparent; border-radius:12px; padding:0 16px; font-family:inherit; font-size:15px; font-weight:600; line-height:1.2;
     cursor:pointer; display:inline-flex; align-items:center; justify-content:center; gap:6px; text-align:center; color:var(--text); background:none;}
@@ -298,7 +302,7 @@
       <h1 id="screenTitle">Today</h1>
       <button class="gear" id="gearBtn" title="Settings">⚙︎</button>
     </div>
-    <div class="pills" id="pills">
+    <div class="pills" id="pills" style="display:none">
       <button class="pill active" data-ctx="all">All</button>
       <button class="pill" data-ctx="work">Work</button>
       <button class="pill" data-ctx="gig">Side Gig</button>
@@ -312,14 +316,14 @@
     <div class="qa" id="qa">
       <div class="qa-bar" id="qaBar">
         <span class="qa-plus">⊕</span>
-        <input id="qaInput" placeholder="Remind me to…" autocomplete="off">
+        <button id="qaInput" style="background:none;border:0;color:var(--text2);font:inherit;text-align:left;flex:1;min-height:44px">Remind me to…</button>
       </div>
       <div class="chips" id="qaChips" style="display:none"></div>
       <div class="qa-hint" id="qaHint" style="display:none">Try: “ship mug order tue 6pm #gig #order @whatsapp” · Return to add</div>
     </div>
     <nav class="tabbar">
       <button class="tab active" data-tab="today"><span class="ic">▣</span>Today</button>
-      <button class="tab" data-tab="ship"><span class="ic">🚚</span>Ship<span class="cnt" id="shipCnt">2</span></button>
+      <button class="tab" data-tab="ship"><span class="ic">▢</span>Side Gig<span class="cnt" id="shipCnt">2</span></button>
       <button class="tab" data-tab="home"><span class="ic">⌂</span>Home</button>
       <button class="tab" data-tab="all"><span class="ic">☰</span>All</button>
     </nav>
@@ -327,6 +331,7 @@
 
   <div class="scrim" id="scrim"></div>
 
+  <div class="sheet" id="captureSheet" role="dialog" aria-modal="true" aria-label="New reminder"></div>
   <div class="sheet" id="homeSheet" role="dialog" aria-label="Home maintenance"></div>
   <div class="sheet" id="sheet">
     <div class="handle"></div>
@@ -357,6 +362,7 @@
         <button class="btn ship" id="shipFromSheet">Mark shipped</button>
       </div>
     </div>
+    <div id="shGigDetails" hidden><label class="f-lbl" for="shNextStep">Next small step (optional)</label><textarea class="f-input" id="shNextStep" rows="2"></textarea><label class="f-lbl" for="shMinutes">Usually takes (minutes)</label><input class="f-input" type="number" id="shMinutes" min="1" max="180"></div>
     <div id="shFocus" style="display:none">
       <div class="sh-label">FOCUS</div>
       <div class="f-actions" style="margin-top:0">
@@ -379,7 +385,7 @@
 
 <script>
 /* ---------- data ---------- */
-const CTX = {work:{name:"Work",cls:"work"}, gig:{name:"Side Gig",cls:"gig"}, social:{name:"Social",cls:"social"}};
+const CTX = {work:{name:"Work",cls:"work"}, gig:{name:"Side Gig",cls:"gig"}, social:{name:"Social",cls:"social"}, shopping:{name:"Shopping",cls:"shopping"}};
 let reminders = [
  {id:1, title:"Prep talking points for standup", ctx:"work", due:"9:00 AM", over:true,  ch:"📱", section:"overdue"},
  {id:2, title:"Ship mug order to Portland", ctx:"gig", due:"in 2h", ch:"✉ ⧉", order:true, section:"today"},
@@ -389,7 +395,7 @@ let reminders = [
  {id:6, title:"1:1 agenda for Marcus", ctx:"work", due:"Tue 10 AM", ch:"📱", section:"upcoming"},
  {id:7, title:"RSVP to Dana's party", ctx:"social", due:"Wed", ch:"⧉", section:"upcoming"},
  {id:8, title:"Sticker order · Etsy #1038 · Ben K.", ctx:"gig", due:"ship by Fri", ch:"✉", order:true, section:"today"},
- /* Someday (no due date): used by the Focus samples below; they show in All, not Today */
+ /* Someday (no due date): used by the Focus samples below; they show in Someday on Today and All */
  {id:9,  title:"Choose photos for mug listing", ctx:"gig", due:"No date", ch:"✉", section:"someday"},
  {id:10, title:"Write listing description", ctx:"gig", due:"No date", ch:"✉", section:"someday"},
  {id:11, title:"Update shipping rates", ctx:"gig", due:"No date", ch:"✉", section:"someday"},
@@ -442,7 +448,7 @@ function section(title, rows, opts={}){
   return `<div class="section-h ${opts.danger?"danger":""}"><span>${title}</span>${opts.count?`<span>${opts.count}</span>`:""}</div>
     <div class="card">${rows.map(rowHTML).join("")}</div>`;
 }
-function visible(){ return reminders.filter(r => activeCtx==="all" || r.ctx===activeCtx); }
+function visible(){ return reminders.filter(r => activeTab==="today" || activeCtx==="all" || r.ctx===activeCtx); }
 
 /* ---------- screens ---------- */
 function renderToday(){
@@ -451,8 +457,9 @@ function renderToday(){
     section("Overdue", v.filter(r=>r.section==="overdue"), {danger:true}) +
     section("Today", v.filter(r=>r.section==="today")) +
     section("Upcoming", v.filter(r=>r.section==="upcoming")) +
+    section("Someday", v.filter(r=>r.section==="someday")) +
     `<div class="section-h"><span>Done today</span><span>${doneToday} ›</span></div>`;
-  if(!v.length) main.innerHTML = focusTodayHTML() + `<div class="empty">Nothing here. Add one below 👇</div>`;
+  if(!v.length) main.innerHTML = focusTodayHTML() + `<div class="empty">All clear. Add a reminder when something comes to mind.</div>`;
   bindRows();
 }
 function renderShip(){
@@ -484,7 +491,7 @@ function renderAll(){
   const v = visible();
   main.innerHTML = `<div class="card" style="margin-top:10px; padding:10px 14px; display:flex; gap:8px; align-items:center;">
       <span style="color:var(--text2)">🔍</span><input id="searchIn" placeholder="Search reminders" style="border:none;background:none;outline:none;color:var(--text);font-size:15px;width:100%;font-family:inherit;"></div>` +
-    ["work","gig","social"].map(k=>{
+    ["work","gig","social","shopping"].map(k=>{
       const rows = v.filter(r=>r.ctx===k); if(!rows.length) return "";
       return section(CTX[k].name, rows);
     }).join("");
@@ -570,7 +577,12 @@ function bindRows(){
 /* ---------- sheet ---------- */
 function openSheet(id){
   const r = reminders.find(x=>x.id==id); if(!r) return;
+  $("#sheet").dataset.rid=r.id;
   $("#shTitle").value = r.title;
+  $("#sheet .sh-notes").value=r.notes||"";
+  $("#shGigDetails").hidden=r.ctx!=="gig";
+  $("#shNextStep").value=r.nextStep||"";
+  $("#shMinutes").value=r.minutes||"15";
   const c = CTX[r.ctx];
   $("#shCtx").innerHTML = `<span class="dot ${c.cls}"></span>${c.name}`;
   $("#shDue").textContent = "⏰ " + (r.over ? "9:00 AM (overdue)" : r.due);
@@ -581,7 +593,7 @@ function openSheet(id){
 }
 function closeSheet(){ $("#scrim").classList.remove("open"); $("#sheet").classList.remove("open"); }
 $("#scrim").onclick = closeSheet;
-$("#sheetDone").onclick = ()=>{ closeSheet(); toast("Saved ✓"); };
+$("#sheetDone").onclick = ()=>{ const r=reminders.find(r=>r.id===$("#sheet").dataset.rid*1);if(r){r.title=$("#shTitle").value.trim()||r.title;r.notes=$("#sheet .sh-notes").value;r.nextStep=$("#shNextStep").value;r.minutes=$("#shMinutes").value;r.order=$("#orderSwitch").classList.contains("on");} closeSheet();render();toast("Saved ✓"); };
 $("#orderSwitch").onclick = function(){ this.classList.toggle("on"); $("#orderPanel").classList.toggle("open"); haptic(); };
 $("#shipFromSheet").onclick = ()=>{ closeSheet(); toast("Shipped ✓ — follow up with buyer?", "+3d follow-up", ()=>toast("Follow-up reminder added ✓")); };
 document.querySelectorAll(".chan").forEach(b=>b.onclick=()=>b.classList.toggle("on"));
@@ -615,30 +627,155 @@ function parseQA(text){
   chans.forEach(c=>chips.push({t:{email:"✉ Email",iphone:"📱 iPhone",whatsapp:"⧉ WhatsApp"}[c]}));
   return {chips, ctx, order, due, chans};
 }
-const qaInput = $("#qaInput"), qaChips = $("#qaChips"), qaHint = $("#qaHint");
-qaInput.addEventListener("focus", ()=>{ qaHint.style.display="block"; });
-qaInput.addEventListener("input", ()=>{
-  const {chips} = parseQA(qaInput.value);
-  qaChips.style.display = chips.length? "flex":"none";
-  qaChips.innerHTML = chips.map(c=>`<span class="chip ${c.cls||""}">${c.t}</span>`).join("");
-});
-qaInput.addEventListener("blur", ()=>setTimeout(()=>{ if(!qaInput.value){qaHint.style.display="none"; qaChips.style.display="none";} },150));
-qaInput.addEventListener("keydown", e=>{
-  if(e.key!=="Enter" || !qaInput.value.trim()) return;
-  const p = parseQA(qaInput.value);
-  let title = qaInput.value.replace(/#\w+|@\w+/g,"").replace(/\s+/g," ").trim();
-  title = title[0] ? title[0].toUpperCase()+title.slice(1) : "New reminder";
-  reminders.unshift({ id:Date.now(), title, ctx: p.ctx || (activeCtx!=="all"?activeCtx:"gig"),
-    due: p.due || "Today", ch: p.chans.length? p.chans.map(c=>({email:"✉",iphone:"📱",whatsapp:"⧉"}[c])).join(" ") : "✉",
-    order: p.order, section:"today" });
-  qaInput.value=""; qaChips.style.display="none"; haptic(); render();
-  if(p.order) toast("Added ✓ — add order details?", "Open →", ()=>{ openSheet(reminders[0].id); $("#toast").classList.remove("show"); });
-  else toast("Added ✓");
-});
+const qaInput = $("#qaInput");
+let captureDraft = null;
+function closeCapture(force=false){
+  if(!captureDraft) return;
+  if(!force && (captureDraft.title || captureDraft.ctx || captureDraft.due)){
+    $("#captureDiscard").hidden=false;return;
+  }
+  captureDraft=null;$("#captureSheet").classList.remove("open");$("#scrim").classList.remove("open");
+}
+function drawCapture(){
+  const d=captureDraft, el=$("#captureSheet");
+  el.innerHTML=`<div class="handle"></div><div class="f-head"><h2>New reminder</h2><button class="fb ghost" id="captureClose" aria-label="Close">✕</button></div>
+    <form id="captureForm"><label class="f-lbl" for="captureTitle">What do you need to remember?</label><input class="f-input" id="captureTitle" maxlength="180" value="${fesc(d.title)}" placeholder="A reminder…">
+    <label class="f-lbl" for="captureContext">Context</label><select class="f-input" id="captureContext"><option value="">Choose a context</option>${Object.entries(CTX).map(([k,c])=>`<option value="${k}" ${d.ctx===k?'selected':''}>${c.name}</option>`).join('')}</select>
+    <label class="f-lbl">When (optional)</label><button type="button" class="fb outline block" id="captureWhen">${d.due?fesc(d.due):'No date'}</button>
+    ${d.pick? vPicker(d):''}${d.due?'<button type="button" class="fb ghost" id="captureClear">No date</button>':''}
+    ${d.error?`<p class="f-err" role="alert">${d.error}</p>`:''}<button class="fb primary block" style="margin-top:20px">Save reminder</button></form>
+    <div id="captureDiscard" hidden><p>Discard this reminder?</p><button class="fb outline" id="captureKeep">Keep editing</button> <button class="fb ghost" id="captureDrop">Discard</button></div>`;
+  $('#captureTitle').oninput=e=>d.title=e.target.value;
+  $('#captureContext').onchange=e=>d.ctx=e.target.value;
+  $('#captureClose').onclick=()=>closeCapture();$('#captureKeep').onclick=()=>$('#captureDiscard').hidden=true;$('#captureDrop').onclick=()=>closeCapture(true);
+  $('#captureWhen').onclick=()=>{d.pick=!d.pick;drawCapture();};
+  if($('#captureClear'))$('#captureClear').onclick=()=>{d.due=null;d.otherDate=null;drawCapture();};
+  el.querySelectorAll('[data-act]').forEach(btn=>btn.onclick=()=>{
+    if(btn.dataset.act==='cal-prev'){d.calM--;if(d.calM<0){d.calM=11;d.calY--;}}
+    if(btn.dataset.act==='cal-next'){d.calM++;if(d.calM>11){d.calM=0;d.calY++;}}
+    if(btn.dataset.act==='pick-day')d.otherDate=btn.dataset.v;
+    if(btn.dataset.act==='pick-ok'){if(!d.otherDate){d.pickErr=true;}else{d.otherTime=$('#fPickTime').value||'09:00';d.due=d.otherDate+' · '+ft12(d.otherTime);d.pick=false;}}
+    drawCapture();
+  });
+  if($('#fPickTime'))$('#fPickTime').onchange=e=>d.otherTime=e.target.value;
+  $('#captureForm').onsubmit=e=>{e.preventDefault();if(!d.title.trim()||!d.ctx){d.error=!d.title.trim()?'Title required':'Choose a context';drawCapture();return;}
+    reminders.unshift({id:Date.now(),title:d.title.trim(),ctx:d.ctx,due:d.due||'No date',ch:'✉',order:false,section:d.due?'upcoming':'someday'});closeCapture(true);render();toast('Reminder saved');};
+}
+function openCapture(){captureDraft={title:'',ctx:'',due:null,pick:false,calY:2026,calM:9,otherDate:null,otherTime:'09:00'};drawCapture();$('#captureSheet').classList.add('open');$('#scrim').classList.add('open');$('#captureTitle').focus();}
+/* ---------- Today Add flow (DESIGN.md §5.1, revised 2026-10-19) ----------
+   Today's bar opens "What would you like to add?" and routes into the existing organized forms.
+   All keeps the minimal capture sheet above. Drafts are kept per step, so Back never loses typing. */
+const ADD_DEST=[['work','Work','A work task or follow-up','work'],['sidegig','Side Gig','Tasks, orders, follow-ups and expected payments','gig'],['home','Home','Home care, groceries, bills and study','social'],['social','Social','A personal reminder','social'],['shopping','Shopping','A shopping checklist','shopping']];
+const ADD_GIG=[['work','Task','A client deliverable or a small next step'],['order','Order','A recipient, ship-by date and tracking'],['followup','Follow-up','A reply or update to remember'],['payment','Expected payment','Money to collect and when to check in']];
+const addCats=s=>Object.keys(HOME_CONFIG.templates).filter(k=>HOME_CONFIG.templates[k].section===s);
+const addStepFor=d=>d==='sidegig'||d==='home'?d:d==='shopping'?'list:shopping':'form:'+d;
+const addSectionStep=s=>s==='groceries'?'list:groceries':addCats(s).length===1?'task:'+addCats(s)[0]:'home:'+s;
+function addParent(step){
+  if(step==='root')return null; if(step.startsWith('gig:'))return 'sidegig';
+  if(step==='list:groceries'||step.startsWith('home:'))return 'home';
+  if(step.startsWith('task:')){const sec=HOME_CONFIG.templates[step.slice(5)].section;return addCats(sec).length===1?'home':'home:'+sec;}
+  return 'root';
+}
+let addFlow=null;
+const addDraft=step=>addFlow.drafts[step]??={title:'',pick:false,calY:2026,calM:9,otherDate:null,otherTime:'09:00',due:null,...(step.startsWith('task:')?{title:HOME_CONFIG.templates[step.slice(5)].title,repeat:'off',details:{}}:{})};
+const addDirty=()=>Object.values(addFlow.drafts).some(d=>d.touched);
+function closeAddFlow(force=false){
+  if(!addFlow)return;
+  if(!force&&addDirty()){addFlow.discard=true;drawAddFlow();return;}
+  addFlow=null;$('#captureSheet').classList.remove('open');$('#scrim').classList.remove('open');
+}
+function addRow(next,label,desc,dot){return `<button type="button" class="f-trow" data-add-go="${next}">${dot?`<span class="dot ${dot}"></span>`:''}<span class="b"><span class="t">${label}</span><span style="display:block;font-size:13px;color:var(--text2);margin-top:3px">${desc}</span></span><span class="r">›</span></button>`;}
+function addDateField(d,label){return `<label class="add-lbl">${label}</label><button type="button" class="fb outline block" data-add-act="when">${d.due?fesc(d.due):'No date'}</button>${d.pick?vPicker(d):''}${d.due?'<button type="button" class="fb ghost" data-add-act="clear">No date</button>':''}`;}
+function addInput(key,label,d,ph=''){return `<label class="add-lbl">${label}<input class="f-input" data-add-field="${key}" value="${fesc(d[key]??'')}" placeholder="${fesc(ph)}" ${key==='title'&&d.error?'aria-invalid="true"':''}></label>`;}
+function addTitle(step){
+  if(step==='root')return 'What would you like to add?'; if(step==='sidegig')return 'Add to Side Gig'; if(step==='home')return 'Add to Home';
+  if(step.startsWith('gig:'))return {work:'New task',order:'New order',followup:'New follow-up',payment:'Expected payment'}[step.slice(4)];
+  if(step.startsWith('home:'))return HOME_CONFIG.sections[step.slice(5)].label;
+  if(step.startsWith('task:'))return HOME_CONFIG.sections[HOME_CONFIG.templates[step.slice(5)].section].label;
+  if(step.startsWith('list:'))return 'New shopping list';
+  return step==='form:work'?'New Work reminder':'New Social reminder';
+}
+function addBody(step){
+  if(step==='root')return `<div class="card" style="margin-top:8px">${ADD_DEST.map(([k,l,d,dot])=>addRow(addStepFor(k),l,d,dot)).join('')}</div>`;
+  if(step==='sidegig')return `<div class="card" style="margin-top:8px">${ADD_GIG.map(([k,l,d])=>addRow('gig:'+k,l,d,'gig')).join('')}</div>`;
+  if(step==='home')return `<div class="card" style="margin-top:8px">${Object.entries(HOME_CONFIG.sections).map(([k,s])=>addRow(addSectionStep(k),s.label,s.hint,k==='groceries'?'shopping':'social')).join('')}</div>`;
+  if(step.startsWith('home:'))return `<div class="card" style="margin-top:8px">${addCats(step.slice(5)).map(k=>addRow('task:'+k,HOME_CONFIG.templates[k].label,HOME_CONFIG.templates[k].hint,'social')).join('')}</div>`;
+  const d=addDraft(step), err=d.error?`<p class="f-err" role="alert">${d.error}</p>`:'';
+  if(step.startsWith('gig:')){const kind=step.slice(4),work=kind==='work'||kind==='order';
+    return `<p style="margin:8px 0 0"><span class="fchip2" style="border-color:var(--gig)"><span class="dot gig"></span> Side Gig</span></p>${addInput('title','What do you need to remember?',d,'A useful commitment')}
+    ${addDateField(d,work?'Deadline (optional)':kind==='payment'?'Expected by':'Next follow-up')}
+    ${kind==='order'?addInput('reference','Order reference (optional)',d)+addInput('person','Recipient (optional)',d)+'<p style="font-size:12px;color:var(--text2)">Without a reminder time, we’ll remind you at 9 AM on the ship-by day.</p>':''}
+    ${kind==='work'?addInput('next','Next small step (optional)',d):''}${kind==='followup'||kind==='payment'?addInput('person','Person or business (optional)',d):''}
+    ${kind==='payment'?addInput('amount','Amount (optional)',d,'0.00')+addInput('currency','Currency',{currency:d.currency??'USD'}):''}
+    ${err}<button class="fb primary block" style="margin-top:20px" data-add-act="save">Save</button>`;}
+  if(step.startsWith('task:')){const t=HOME_CONFIG.templates[step.slice(5)];
+    return `<p class="f-sub" style="color:var(--social)">${t.label.toUpperCase()}</p>${addInput('title',t.taskLabel,d,t.taskPlaceholder)}${addInput('asset',t.assetLabel,d,t.assetPlaceholder)}
+    ${t.fields.map(f=>`<label class="add-lbl">${f.label}<input class="f-input" data-add-detail="${f.key}" value="${fesc(d.details[f.key]??'')}" placeholder="${fesc(f.placeholder)}"></label>`).join('')}
+    ${addDateField(d,t.dueLabel)}<label class="add-lbl">${t.repeatLabel}<select class="f-input" data-add-field="repeat">${t.repeatOptions.map(v=>`<option value="${v}" ${d.repeat===v?'selected':''}>${homeRepeatLabel(v)}</option>`).join('')}</select></label>
+    <p style="font-size:13px;color:var(--text2)">Email reminders on · Personal quiet hours apply.</p>${err}<button class="fb primary block" style="margin-top:20px" data-add-act="save">Save reminder</button>`;}
+  if(step.startsWith('list:'))return `<p style="margin:8px 0 0"><span class="fchip2"><span class="dot shopping"></span> Shopping</span></p>${addInput('title','List name',d,'Weekly groceries')}<p style="font-size:13px;color:var(--text2)">Save the list, then add items and check them off as you shop.</p>${err}<button class="fb primary block" style="margin-top:20px" data-add-act="save">Save list</button>`;
+  const ctx=step.slice(5);
+  return `<p style="margin:8px 0 0"><span class="fchip2"><span class="dot ${ctx}"></span> ${CTX[ctx].name}</span></p>${addInput('title','What do you need to remember?',d,'A reminder…')}${addDateField(d,'When (optional)')}${addInput('notes','Notes (optional)',d)}
+    ${ctx==='work'?`<label class="home-check" style="margin-top:12px"><input type="checkbox" data-add-toggle="panel" ${d.panel?'checked':''}> Add follow-up details</label>${d.panel?addInput('manager','Manager',d,'Priya T.')+addInput('dept','Dept/resource',d,'Design')+addInput('project','Project',d,'Q3 capacity plan'):''}`:''}
+    ${err}<button class="fb primary block" style="margin-top:20px" data-add-act="save">Save reminder</button>`;
+}
+function saveAddFlow(step){
+  const d=addDraft(step);
+  if(!d.title.trim()){d.error=step.startsWith('task:')?`${HOME_CONFIG.templates[step.slice(5)].taskLabel} required`:'Title required';drawAddFlow();return;}
+  if((step==='gig:followup'||step==='gig:payment'||step.startsWith('task:'))&&!d.due){d.error=step.startsWith('task:')?HOME_CONFIG.templates[step.slice(5)].dueError:'Choose a date, then tap OK.';drawAddFlow();return;}
+  if(d.amount&&!/^\d{1,12}(\.\d{1,2})?$/.test(d.amount)){d.error='Enter a positive amount with up to two decimal places.';drawAddFlow();return;}
+  const id=Date.now(), title=d.title.trim(), due=d.due||'No date', section=d.due?'upcoming':'someday';
+  let msg='Reminder added to Today', view=()=>openSheet(id);
+  if(step.startsWith('gig:')){const kind=step.slice(4);
+    reminders.unshift({id,title,ctx:'gig',due,ch:'✉',order:kind==='order',section});
+    if(kind==='order')orders.unshift({id:'o'+id,ref:title,sub:(d.reference?'Ref '+d.reference+' · ':'')+'Carrier not set',by:'ship by —'});
+    msg={work:'Task added to Side Gig',order:'Order added to Ship Queue',followup:'Follow-up added to Side Gig',payment:'Expected payment added to Side Gig'}[kind];
+    view=()=>{location.href='sidegig-prototype.html';};
+  }else if(step.startsWith('task:')){const category=step.slice(5),t=HOME_CONFIG.templates[category];
+    const task={id,category,title,asset:d.asset||'',details:{...d.details},due:d.otherDate||'',repeat:d.repeat,notes:''};homeTasks.push(task);
+    reminders.unshift({id,title,ctx:'social',due,ch:'✉',section});
+    msg=`${t.noun} added to Home`;view=()=>{homeSection=t.section;fp.tab('home');openHomeSheet(category,task);};
+  }else if(step.startsWith('list:')){
+    homeLists.push({name:title,items:[]});reminders.unshift({id,title,ctx:'shopping',due:'No date',ch:'',section:'someday'});
+    closeAddFlow(true);render();homeSection='groceries';fp.tab('home');toast('List added · add your first item');return;
+  }else{const ctx=step.slice(5);reminders.unshift({id,title,ctx,due,ch:'✉',section});msg=ctx==='work'?'Work reminder added to Today':msg;}
+  closeAddFlow(true);render();toast(msg,'View',view);
+}
+function drawAddFlow(){
+  const f=addFlow, el=$('#captureSheet'), parent=addParent(f.step);
+  el.innerHTML=`<div class="handle"></div><div class="add-head">${parent?'<button class="f-icon back" data-add-act="back" aria-label="Back">‹</button>':''}<h2 style="flex:1">${addTitle(f.step)}</h2><button class="fb ghost" data-add-act="close" aria-label="Close">✕</button></div>
+    <form id="addForm" novalidate>${addBody(f.step)}</form>
+    ${f.discard?'<div role="alert" class="card" style="padding:12px;margin-top:14px"><p style="margin:0 0 10px;font-weight:600">Discard what you’ve entered?</p><button type="button" class="fb primary" data-add-act="keep">Keep editing</button> <button type="button" class="fb outline" data-add-act="discard">Discard</button></div>':''}`;
+  el.setAttribute('aria-label',addTitle(f.step));
+  const d=f.drafts[f.step];
+  el.querySelectorAll('[data-add-go]').forEach(b=>b.onclick=()=>{f.step=b.dataset.addGo;f.discard=false;drawAddFlow();});
+  el.querySelectorAll('[data-add-field]').forEach(i=>i.oninput=i.onchange=()=>{d[i.dataset.addField]=i.value;d.touched=true;});
+  el.querySelectorAll('[data-add-detail]').forEach(i=>i.oninput=()=>{d.details[i.dataset.addDetail]=i.value;d.touched=true;});
+  el.querySelectorAll('[data-add-toggle]').forEach(i=>i.onchange=()=>{d.panel=i.checked;d.touched=true;drawAddFlow();});
+  el.querySelectorAll('[data-add-act]').forEach(b=>b.onclick=e=>{e.preventDefault();const a=b.dataset.addAct;
+    if(a==='back'){f.step=parent;f.discard=false;}
+    if(a==='close'){closeAddFlow();return;} if(a==='keep')f.discard=false; if(a==='discard'){closeAddFlow(true);return;}
+    if(a==='when')d.pick=!d.pick; if(a==='clear'){d.due=null;d.otherDate=null;d.touched=true;}
+    if(a==='save'){saveAddFlow(f.step);return;}
+    drawAddFlow();});
+  el.querySelectorAll('[data-act]').forEach(btn=>btn.onclick=()=>{
+    if(btn.dataset.act==='cal-prev'){d.calM--;if(d.calM<0){d.calM=11;d.calY--;}}
+    if(btn.dataset.act==='cal-next'){d.calM++;if(d.calM>11){d.calM=0;d.calY++;}}
+    if(btn.dataset.act==='pick-day')d.otherDate=btn.dataset.v;
+    if(btn.dataset.act==='pick-ok'){if(!d.otherDate){d.pickErr=true;}else{d.otherTime=$('#fPickTime').value||'09:00';d.due=d.otherDate+' · '+ft12(d.otherTime);d.pick=false;d.touched=true;}}
+    drawAddFlow();});
+  if($('#fPickTime'))$('#fPickTime').onchange=e=>d.otherTime=e.target.value;
+  $('#addForm').onsubmit=e=>{e.preventDefault();saveAddFlow(f.step);};
+}
+function openAddFlow(){addFlow={step:'root',drafts:{},discard:false};drawAddFlow();$('#captureSheet').classList.add('open');$('#scrim').classList.add('open');}
+$('#qaBar').onclick=()=>activeTab==='today'?openAddFlow():openCapture();
+const previousScrimClick=$('#scrim').onclick;
+$('#scrim').onclick=()=>{if(addFlow)closeAddFlow();else if(captureDraft)closeCapture();else previousScrimClick();};
+document.addEventListener('keydown',e=>{if(e.key!=='Escape')return;if(addFlow){e.preventDefault();closeAddFlow();}else if(captureDraft){e.preventDefault();closeCapture();}});
 
 /* ---------- Home: contextual task sections ---------- */
 /* BEGIN HOME TASK TEMPLATES */
-const HOME_CONFIG = {"sections":{"care":{"label":"Home care","heading":"Regular home care","history":"Maintenance history","empty":"Completed home care appears here, with dates and notes."},"groceries":{"label":"Groceries","heading":"Grocery & shopping lists"},"bills":{"label":"Bill pay","heading":"Bills & payments","history":"Payment history","empty":"Bills you mark paid appear here, with payment dates and notes."},"study":{"label":"Study & kids","heading":"Study & kids follow-ups","history":"Study & follow-up history","empty":"Completed study sessions and follow-ups appear here."}},"templates":{"car":{"section":"care","label":"Car service & maintenance","hint":"Oil changes, tires, inspections","title":"Car service","taskLabel":"Service or task","taskPlaceholder":"Oil change, tire rotation, inspection…","assetLabel":"Car name","assetPlaceholder":"Family car, daily driver…","dueLabel":"Next service due","repeatLabel":"Repeat after service","notesLabel":"Service instructions","notesPlaceholder":"Mileage target, oil type, service provider…","recordAction":"Record completed service","recordTitle":"Record car service","recordDate":"Service date","recordNotes":"Service record","recordPlaceholder":"Mileage, work performed, mechanic, cost…","recordSave":"Save service record","recordSuccess":"Service recorded","recordNoun":"service","repeatOptions":["off","m1","m3","m6","m12","m24"],"fields":[{"key":"make","label":"Car make","placeholder":"Toyota, Honda, Ford…"},{"key":"model","label":"Car model","placeholder":"Camry, CR-V, F-150…"}],"dueError":"Choose the next service date"},"hvac":{"section":"care","label":"HVAC & air filters","hint":"Heating, cooling, and air-filter care","title":"HVAC service or filter change","taskLabel":"HVAC task","taskPlaceholder":"Service heating, change air filter…","assetLabel":"System or room","assetPlaceholder":"Upstairs HVAC, basement furnace…","dueLabel":"Next service or filter change","repeatLabel":"Repeat after HVAC care","notesLabel":"HVAC instructions","notesPlaceholder":"Filter rating, service provider, system instructions…","recordAction":"Record HVAC care","recordTitle":"Record HVAC care","recordDate":"Service or change date","recordNotes":"HVAC care record","recordPlaceholder":"Filter replaced, work performed, provider…","recordSave":"Save HVAC record","recordSuccess":"HVAC care recorded","recordNoun":"HVAC care","repeatOptions":["off","m1","m2","m3","m6","m12"],"fields":[{"key":"filter_size","label":"Air-filter size","placeholder":"20 × 20 × 1, if applicable"}],"dueError":"Choose the next HVAC or filter-change date"},"dryer":{"section":"care","label":"Dryer maintenance","hint":"Vent cleaning and appliance care","title":"Clean dryer vent","taskLabel":"Dryer task","taskPlaceholder":"Clean dryer vent, inspect exhaust…","assetLabel":"Dryer location","assetPlaceholder":"Laundry room, upstairs dryer…","dueLabel":"Next dryer maintenance","repeatLabel":"Repeat after dryer care","notesLabel":"Dryer care instructions","notesPlaceholder":"Vent route, appliance model, cleaning instructions…","recordAction":"Record dryer care","recordTitle":"Record dryer care","recordDate":"Maintenance date","recordNotes":"Dryer care record","recordPlaceholder":"Vent cleaned, repairs, provider…","recordSave":"Save dryer record","recordSuccess":"Dryer care recorded","recordNoun":"dryer care","repeatOptions":["off","m1","m3","m6","m12"],"fields":[],"dueError":"Choose the next dryer maintenance date"},"battery":{"section":"care","label":"Smart-home batteries","hint":"Charge devices and replace batteries","title":"Charge or replace battery","taskLabel":"Battery task","taskPlaceholder":"Charge doorbell, replace sensor batteries…","assetLabel":"Device & location","assetPlaceholder":"Front-door camera, hallway sensor…","dueLabel":"Next charge or battery change","repeatLabel":"Repeat after charging or replacing","notesLabel":"Battery instructions","notesPlaceholder":"Charger location, spare batteries, device instructions…","recordAction":"Record battery care","recordTitle":"Record battery care","recordDate":"Charged or replaced on","recordNotes":"Battery care record","recordPlaceholder":"Charged to full, batteries replaced, device status…","recordSave":"Save battery record","recordSuccess":"Battery care recorded","recordNoun":"battery care","repeatOptions":["off","d7","d14","m1","m3","m6"],"fields":[{"key":"battery_type","label":"Battery or charger type","placeholder":"AA, CR2032, USB-C…"}],"dueError":"Choose the next charge or battery-change date"},"other":{"section":"care","label":"Other home care","hint":"Everything else around the house","title":"","taskLabel":"Home-care task","taskPlaceholder":"Test smoke alarm, clean gutters…","assetLabel":"Area or item","assetPlaceholder":"Roof, garden, garage…","dueLabel":"Next due","repeatLabel":"Repeat after completing","notesLabel":"Task instructions","notesPlaceholder":"What to check, supplies, who to contact…","recordAction":"Record completion","recordTitle":"Record home care","recordDate":"Completed on","recordNotes":"Completion notes","recordPlaceholder":"What was done, supplies used, next steps…","recordSave":"Save completion","recordSuccess":"Home care recorded","recordNoun":"completion","repeatOptions":["off","m1","m3","m6","m12"],"fields":[],"dueError":"Choose the next due date"},"bill":{"section":"bills","label":"Bill reminders","hint":"Utilities, subscriptions, and household payments","title":"","taskLabel":"Bill name","taskPlaceholder":"Electricity, internet, school fees…","assetLabel":"Biller or provider","assetPlaceholder":"Utility company, internet provider…","dueLabel":"Payment due","repeatLabel":"Billing schedule","notesLabel":"Payment notes","notesPlaceholder":"Autopay status, payment method, reference…","recordAction":"Mark bill paid","recordTitle":"Record payment","recordDate":"Paid on","recordNotes":"Payment confirmation notes","recordPlaceholder":"Confirmation number, payment method, receipt reference…","recordSave":"Save payment record","recordSuccess":"Payment recorded","recordNoun":"payment","repeatOptions":["off","m1","m3","m6","m12"],"fields":[{"key":"amount","label":"Amount due","placeholder":"e.g. 85.50","input":"decimal"},{"key":"currency","label":"Currency","placeholder":"USD, CAD, GBP…","input":"currency"}],"dueError":"Choose a payment due date"},"study":{"section":"study","label":"Study & kids","hint":"Study sessions, schoolwork, and education follow-ups","title":"","taskLabel":"Study task or follow-up","taskPlaceholder":"Math practice, check assignment, contact teacher…","assetLabel":"Student or family member","assetPlaceholder":"Child’s name, or your own name…","dueLabel":"Session or follow-up due","repeatLabel":"Study or follow-up schedule","notesLabel":"Study or follow-up plan","notesPlaceholder":"Assignment, learning goal, questions for the teacher…","recordAction":"Record study or follow-up","recordTitle":"Record study or follow-up","recordDate":"Completed on","recordNotes":"Progress & next steps","recordPlaceholder":"What was covered, teacher response, next action…","recordSave":"Save study record","recordSuccess":"Study or follow-up recorded","recordNoun":"study or follow-up","repeatOptions":["off","d1","d7","d14","m1"],"fields":[{"key":"subject","label":"Subject or course","placeholder":"Math, reading, science…"},{"key":"teacher","label":"Teacher or school contact","placeholder":"Teacher, tutor, school office…"}],"dueError":"Choose a session or follow-up date"}}};
+const HOME_CONFIG = {"sections":{"care":{"label":"Home care","hint":"Car, HVAC, dryer, batteries and other care","heading":"Regular home care","history":"Maintenance history","empty":"Completed home care appears here, with dates and notes."},"groceries":{"label":"Groceries","hint":"A checklist you tick off as you shop","heading":"Grocery & shopping lists"},"bills":{"label":"Bill pay","hint":"Bills, due dates and payment records","heading":"Bills & payments","history":"Payment history","empty":"Bills you mark paid appear here, with payment dates and notes."},"study":{"label":"Study & kids","hint":"Study sessions and school follow-ups","heading":"Study & kids follow-ups","history":"Study & follow-up history","empty":"Completed study sessions and follow-ups appear here."}},"templates":{"car":{"section":"care","label":"Car service & maintenance","noun":"Car service","hint":"Oil changes, tires, inspections","title":"Car service","taskLabel":"Service or task","taskPlaceholder":"Oil change, tire rotation, inspection…","assetLabel":"Car name","assetPlaceholder":"Family car, daily driver…","dueLabel":"Next service due","repeatLabel":"Repeat after service","notesLabel":"Service instructions","notesPlaceholder":"Mileage target, oil type, service provider…","recordAction":"Record completed service","recordTitle":"Record car service","recordDate":"Service date","recordNotes":"Service record","recordPlaceholder":"Mileage, work performed, mechanic, cost…","recordSave":"Save service record","recordSuccess":"Service recorded","recordNoun":"service","repeatOptions":["off","m1","m3","m6","m12","m24"],"fields":[{"key":"make","label":"Car make","placeholder":"Toyota, Honda, Ford…"},{"key":"model","label":"Car model","placeholder":"Camry, CR-V, F-150…"}],"dueError":"Choose the next service date"},"hvac":{"section":"care","label":"HVAC & air filters","noun":"HVAC task","hint":"Heating, cooling, and air-filter care","title":"HVAC service or filter change","taskLabel":"HVAC task","taskPlaceholder":"Service heating, change air filter…","assetLabel":"System or room","assetPlaceholder":"Upstairs HVAC, basement furnace…","dueLabel":"Next service or filter change","repeatLabel":"Repeat after HVAC care","notesLabel":"HVAC instructions","notesPlaceholder":"Filter rating, service provider, system instructions…","recordAction":"Record HVAC care","recordTitle":"Record HVAC care","recordDate":"Service or change date","recordNotes":"HVAC care record","recordPlaceholder":"Filter replaced, work performed, provider…","recordSave":"Save HVAC record","recordSuccess":"HVAC care recorded","recordNoun":"HVAC care","repeatOptions":["off","m1","m2","m3","m6","m12"],"fields":[{"key":"filter_size","label":"Air-filter size","placeholder":"20 × 20 × 1, if applicable"}],"dueError":"Choose the next HVAC or filter-change date"},"dryer":{"section":"care","label":"Dryer maintenance","noun":"Dryer task","hint":"Vent cleaning and appliance care","title":"Clean dryer vent","taskLabel":"Dryer task","taskPlaceholder":"Clean dryer vent, inspect exhaust…","assetLabel":"Dryer location","assetPlaceholder":"Laundry room, upstairs dryer…","dueLabel":"Next dryer maintenance","repeatLabel":"Repeat after dryer care","notesLabel":"Dryer care instructions","notesPlaceholder":"Vent route, appliance model, cleaning instructions…","recordAction":"Record dryer care","recordTitle":"Record dryer care","recordDate":"Maintenance date","recordNotes":"Dryer care record","recordPlaceholder":"Vent cleaned, repairs, provider…","recordSave":"Save dryer record","recordSuccess":"Dryer care recorded","recordNoun":"dryer care","repeatOptions":["off","m1","m3","m6","m12"],"fields":[],"dueError":"Choose the next dryer maintenance date"},"battery":{"section":"care","label":"Smart-home batteries","noun":"Battery task","hint":"Charge devices and replace batteries","title":"Charge or replace battery","taskLabel":"Battery task","taskPlaceholder":"Charge doorbell, replace sensor batteries…","assetLabel":"Device & location","assetPlaceholder":"Front-door camera, hallway sensor…","dueLabel":"Next charge or battery change","repeatLabel":"Repeat after charging or replacing","notesLabel":"Battery instructions","notesPlaceholder":"Charger location, spare batteries, device instructions…","recordAction":"Record battery care","recordTitle":"Record battery care","recordDate":"Charged or replaced on","recordNotes":"Battery care record","recordPlaceholder":"Charged to full, batteries replaced, device status…","recordSave":"Save battery record","recordSuccess":"Battery care recorded","recordNoun":"battery care","repeatOptions":["off","d7","d14","m1","m3","m6"],"fields":[{"key":"battery_type","label":"Battery or charger type","placeholder":"AA, CR2032, USB-C…"}],"dueError":"Choose the next charge or battery-change date"},"other":{"section":"care","label":"Other home care","noun":"Home-care task","hint":"Everything else around the house","title":"","taskLabel":"Home-care task","taskPlaceholder":"Test smoke alarm, clean gutters…","assetLabel":"Area or item","assetPlaceholder":"Roof, garden, garage…","dueLabel":"Next due","repeatLabel":"Repeat after completing","notesLabel":"Task instructions","notesPlaceholder":"What to check, supplies, who to contact…","recordAction":"Record completion","recordTitle":"Record home care","recordDate":"Completed on","recordNotes":"Completion notes","recordPlaceholder":"What was done, supplies used, next steps…","recordSave":"Save completion","recordSuccess":"Home care recorded","recordNoun":"completion","repeatOptions":["off","m1","m3","m6","m12"],"fields":[],"dueError":"Choose the next due date"},"bill":{"section":"bills","label":"Bill reminders","noun":"Bill","hint":"Utilities, subscriptions, and household payments","title":"","taskLabel":"Bill name","taskPlaceholder":"Electricity, internet, school fees…","assetLabel":"Biller or provider","assetPlaceholder":"Utility company, internet provider…","dueLabel":"Payment due","repeatLabel":"Billing schedule","notesLabel":"Payment notes","notesPlaceholder":"Autopay status, payment method, reference…","recordAction":"Mark bill paid","recordTitle":"Record payment","recordDate":"Paid on","recordNotes":"Payment confirmation notes","recordPlaceholder":"Confirmation number, payment method, receipt reference…","recordSave":"Save payment record","recordSuccess":"Payment recorded","recordNoun":"payment","repeatOptions":["off","m1","m3","m6","m12"],"fields":[{"key":"amount","label":"Amount due","placeholder":"e.g. 85.50","input":"decimal"},{"key":"currency","label":"Currency","placeholder":"USD, CAD, GBP…","input":"currency"}],"dueError":"Choose a payment due date"},"study":{"section":"study","label":"Study & kids","noun":"Study task","hint":"Study sessions, schoolwork, and education follow-ups","title":"","taskLabel":"Study task or follow-up","taskPlaceholder":"Math practice, check assignment, contact teacher…","assetLabel":"Student or family member","assetPlaceholder":"Child’s name, or your own name…","dueLabel":"Session or follow-up due","repeatLabel":"Study or follow-up schedule","notesLabel":"Study or follow-up plan","notesPlaceholder":"Assignment, learning goal, questions for the teacher…","recordAction":"Record study or follow-up","recordTitle":"Record study or follow-up","recordDate":"Completed on","recordNotes":"Progress & next steps","recordPlaceholder":"What was covered, teacher response, next action…","recordSave":"Save study record","recordSuccess":"Study or follow-up recorded","recordNoun":"study or follow-up","repeatOptions":["off","d1","d7","d14","m1"],"fields":[{"key":"subject","label":"Subject or course","placeholder":"Math, reading, science…"},{"key":"teacher","label":"Teacher or school contact","placeholder":"Teacher, tutor, school office…"}],"dueError":"Choose a session or follow-up date"}}};
 /* END HOME TASK TEMPLATES */
 let homeSection='care';
 let homeLists=[{name:'Weekly groceries',items:[{label:'Milk',checked:false},{label:'Eggs',checked:false},{label:'Coffee beans',checked:true}]}];
@@ -671,7 +808,7 @@ function openHomeSheet(category,task,recording=false){
   $('#homeTaskForm').onsubmit=e=>{e.preventDefault();if(recording){const date=$('#homeRecordDate').value;homeHistory.unshift({...task,details:{...task.details},date,notes:$('#homeRecordNotes').value});if(task.repeat!=='off'){const anchor=['bill','study'].includes(category)?task.due:date,d=new Date(anchor+'T12:00:00');if(task.repeat[0]==='m'){const day=d.getDate();d.setDate(1);d.setMonth(d.getMonth()+ +task.repeat.slice(1));d.setDate(Math.min(day,new Date(d.getFullYear(),d.getMonth()+1,0).getDate()));}else d.setDate(d.getDate()+ +task.repeat.slice(1));task.due=d.toISOString().slice(0,10);}else homeTasks=homeTasks.filter(r=>r.id!==task.id);}else{const details=Object.fromEntries([...sheet.querySelectorAll('[data-home-field]')].map(f=>[f.dataset.homeField,f.dataset.homeField==='currency'?f.value.trim().toUpperCase():f.value.trim()]));if(category==='bill'&&((details.amount&&!/^\d{1,9}(\.\d{1,2})?$/.test(details.amount))||(details.currency&&!/^[A-Z]{3}$/.test(details.currency))||(details.amount&&!details.currency))){$('#homeFormError').textContent='Enter a valid amount and three-letter currency.';return;}const draft={id:task?.id||Date.now(),category,title:$('#homeTaskTitle').value,asset:$('#homeTaskAsset').value,details,due:$('#homeTaskDue').value,repeat:$('#homeTaskRepeat').value,notes:$('#homeTaskNotes').value};if(task)Object.assign(task,draft);else homeTasks.push(draft);}closeHomeSheet();renderHome();toast(recording?t.recordSuccess:'Home reminder saved');};
   $('#scrim').classList.add('open');sheet.classList.add('open');
 }
-function closeHomeSheet(){$('#homeSheet').classList.remove('open');$('#scrim').classList.remove('open');}
+function closeHomeSheet(){if(!$('#homeSheet').classList.contains('open'))return;$('#homeSheet').classList.remove('open');if(!captureDraft&&!addFlow)$('#scrim').classList.remove('open');}
 $('#scrim').addEventListener('click',closeHomeSheet);
 
 
@@ -849,7 +986,7 @@ function openF(mode,data){
 function goF(mode,data){ fs.mode = mode; fs.data = data||{}; renderF(); fEl().scrollTop = 0; }
 function closeF(){
   if(!fs.open) return; fs.open = false; fs.mode = null; $("#frame").classList.remove("f-open"); fEl().classList.remove("open");
-  if(!$("#sheet").classList.contains("open") && !$("#homeSheet").classList.contains("open")) $("#scrim").classList.remove("open");
+  if(!captureDraft && !$("#sheet").classList.contains("open") && !$("#homeSheet").classList.contains("open")) $("#scrim").classList.remove("open");
   if(fs.prior && fs.prior.isConnected) fs.prior.focus({preventScroll:true});
 }
 function renderF(keep){
@@ -1185,8 +1322,9 @@ function render(){
 document.querySelectorAll(".tab").forEach(t=>t.onclick=()=>{
   document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active")); t.classList.add("active");
   activeTab = t.dataset.tab;
+  if (activeTab === "ship") { location.href = "sidegig-prototype.html"; return; }
   $("#screenTitle").textContent = {today:"Today", ship:"Ship Queue", home:"Home", all:"All"}[activeTab];
-  $("#pills").style.display = ["ship","home"].includes(activeTab) ? "none":"flex";
+  $("#pills").style.display = activeTab==="all" ? "flex":"none";
   render();
 });
 $("#pills").querySelectorAll(".pill").forEach(p=>p.onclick=()=>{

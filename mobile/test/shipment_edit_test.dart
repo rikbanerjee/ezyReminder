@@ -3,12 +3,20 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:ezyreminder/main.dart' as app;
 
 Future<void> openShipQueue(WidgetTester tester) async {
-  await tester.tap(find.text('Ship Queue').last);
+  await tester.tap(
+    find.descendant(
+      of: find.byType(BottomNavigationBar),
+      matching: find.text('Side Gig'),
+    ),
+  );
+  await tester.pumpAndSettle();
+  await tester.ensureVisible(find.widgetWithText(OutlinedButton, 'Ship Queue'));
+  await tester.tap(find.widgetWithText(OutlinedButton, 'Ship Queue'));
   await tester.pumpAndSettle();
 }
 
 Future<void> openShippedOrderEditor(WidgetTester tester) async {
-  await tester.tap(find.text('SHIPPED THIS WEEK (1)'));
+  await tester.tap(find.text('Shipped'));
   await tester.pumpAndSettle();
   await tester.ensureVisible(find.byTooltip('Edit order').first);
   await tester.tap(find.byTooltip('Edit order').first);
@@ -182,7 +190,9 @@ void main() {
       );
       expect(order.shipped, isFalse);
       expect(reminder.status, 'open');
-      expect(find.text('Ship Queue (1)'), findsOneWidget);
+      await tester.tap(find.text('To ship'));
+      await tester.pumpAndSettle();
+      expect(find.byTooltip('Edit order'), findsOneWidget);
 
       await openPendingOrderEditor(tester);
       final pendingStatusSwitch = find.byKey(

@@ -13,7 +13,7 @@ Reminder app (Next.js web + Flutter iOS) for people balancing a corporate job wi
 - **UI must match `design/prototype.html` and DESIGN.md exactly** (both clients) — card shadows, borders, context-colored active states, and the sheet slide-up motion are not optional polish, they're the spec. If implementation and prototype disagree, the prototype wins; fix the code, not the doc.
 - Shipping is behind a provider interface (`lib/shipping/provider.ts`); manual now, **Shippo** later. Don't hardcode any carrier API.
 - Agent-ready: REST API (`/api/v1/*`, scoped API keys) + MCP server so Claude Cowork / OpenClaw-type agents can create/complete reminders. Agent writes tagged `created_by: 'agent:<name>'`.
-- Quick-add (revised 2026-07, see DESIGN.md §5.1): the docked bar is a tap-anywhere trigger that opens the full create sheet — not an inline shorthand-parse text field. Same sheet as editing (context select, compact `DateTimePicker` with OK, Order/Work/Side Gig panels). `lib/parse/quick-add.ts`'s token parser is unused but kept for possible reuse.
+- Add (revised 2026-10-19, later the same day): the docked bar is a tap-anywhere trigger, never an inline parser. **Today** opens "What would you like to add?" (Work · Side Gig · Home · Social · Shopping), a doorway into the existing organized forms: Side Gig's Task/Order/Follow-up/Expected payment, Home's sections and categories, the Work/Social reminder form, and the Shopping checklist. Each saves through the same atomic RPC as its destination; confirmation offers View. **All** keeps the minimal capture sheet (title, blank context, optional time). Home is a destination, not a context. Tap a saved Side Gig task/order from either list to open the canonical Side Gig editor. See DESIGN.md §5.1. The unused token parser remains available for possible reuse.
 
 ## Stack (decided — don't relitigate)
 - Next.js 15 App Router + TypeScript + Tailwind + shadcn/ui, deployed on Vercel
@@ -25,7 +25,7 @@ Reminder app (Next.js web + Flutter iOS) for people balancing a corporate job wi
 
 ## Conventions
 - Schema lives in `supabase/migrations/`; RLS by `user_id` on every table (single-user today, multi-user-safe always)
-- Migrations **0001–0017 are applied to hosted Supabase** (verified 2026-10-18). They are immutable: never edit or reapply them. Add database changes in the next unused migration number, starting with 0018.
+- Migrations **0001–0018 are applied to hosted Supabase** (0018 Side Gig applied 2026-10-19). They are immutable: never edit or reapply them. Add database changes in the next unused migration number, starting with 0019.
 - Integrations under `lib/integrations/<channel>/`, shipping under `lib/shipping/`; Flutter app under `mobile/`
 - Notification sweep must be idempotent (`FOR UPDATE SKIP LOCKED`)
 - Quiet hours per context are respected by every channel

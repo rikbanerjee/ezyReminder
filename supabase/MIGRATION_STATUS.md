@@ -60,3 +60,22 @@ Applied file SHA-256 values:
 | `0017_focus_intent_restore.sql` | `3e04f283e2611b2b6280f345d5b6666b2aee50c1129cfb64eb385fd7f9fa9dc2` |
 
 Web/iOS release and the signed-in web↔phone handoff remain separate steps.
+
+
+## Side Gig experience — local only, NOT applied (2026-10-19)
+
+`0018_sidegig_experience.sql` is implemented and verified against isolated PostgreSQL. Hosted status remains the last verified 0001–0017 checkpoint above; this implementation did not query, change or push the hosted database. Existing migrations are unchanged. The next unused local migration number is 0019.
+
+0018 adds work restart/waiting state, independent follow-up/payment obligations, action history, a retry ledger, owner-checked atomic `sidegig_mutate` and `get_sidegig_dashboard` RPCs, typed compatibility for `create_follow_up`, reminder/Focus guards, RLS and Realtime. Its collection follow-up trigger pauses the payment reminder's delivery timestamp (as well as channels), preserves the expected date and restores the prior snooze/channels when closed. This uses existing notification enqueue/claim behavior; empty channels alone would inherit the context default and would not pause delivery.
+
+Local verification: the complete migration chain applies; Side Gig SQL passes ownership, rollback/retries, independent shipping/payment outcomes, receipt history after reminder deletion, account deletion and the actual enqueue/claim delivery hold regression. Focus times, Focus, Home and iOS foundation SQL suites also pass. Web production and iOS simulator builds pass; all 245 Flutter tests pass.
+
+Before release, recheck hosted migration history and the exact 0018 diff, apply only the pending migration with release authorization, verify RPC/table ACLs, triggers and Realtime, then deploy the web and signed iOS clients. Authenticated cross-device and provider-delivery checks remain release acceptance work. No sample records or provider messages were created in hosted Supabase during implementation.
+
+## Side Gig experience — applied 2026-10-19
+
+Rik authorized applying 0018 after the new Side Gig tab failed to load on hosted (`get_sidegig_dashboard` returned PGRST202). Hosted history was 0001–0017 and the dry run contained only 0018. The isolated Side Gig SQL suite passed before the push, and the migration was applied with `supabase db push --linked --yes`.
+
+Verified after application: hosted history ends at 0018. `get_sidegig_dashboard`, `sidegig_mutate` and `create_follow_up` allow authenticated execution and deny anonymous execution. `sidegig_work_state`, `sidegig_obligations`, `sidegig_activity` and `sidegig_operations` have RLS enabled, and the first three are in Supabase Realtime. The reminder, Focus assignment, Focus session and collection delivery triggers exist. The five-minute `notification-sweep` cron job 1 is still active and was not changed. No sample records were created.
+
+Applied 0018 SHA-256: `f34db65f88c75eac16fb505bc8e40c61df592d58ef67bb60c53813d128160ad3`. The next unused migration number is 0019.

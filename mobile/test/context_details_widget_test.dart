@@ -20,16 +20,38 @@ Future<void> chooseContext(WidgetTester tester, String label) async {
   await tester.pumpAndSettle();
 }
 
+/// Today opens the organized Add flow; All keeps the minimal capture sheet.
+Future<void> openQuickCapture(WidgetTester tester) async {
+  await tester.tap(
+    find.descendant(
+      of: find.byType(BottomNavigationBar),
+      matching: find.text('All'),
+    ),
+  );
+  await tester.pumpAndSettle();
+  await tester.tap(find.text('Remind me to…'));
+  await tester.pumpAndSettle();
+}
+
 Future<void> revealSheetControl(WidgetTester tester, Finder target) async {
-  final sheet = find.byType(DraggableScrollableSheet).last;
-  final scrollable = find
-      .descendant(of: sheet, matching: find.byType(Scrollable))
-      .first;
+  final scrollable = find.byType(Scrollable).last;
   await tester.scrollUntilVisible(target, 240, scrollable: scrollable);
 }
 
 Future<void> revealTodayReminder(WidgetTester tester, Finder reminder) async {
-  final scrollable = find.descendant(of: find.byType(CustomScrollView).first, matching: find.byType(Scrollable)).first;
+  await tester.tap(
+    find.descendant(
+      of: find.byType(BottomNavigationBar),
+      matching: find.text('Today'),
+    ),
+  );
+  await tester.pumpAndSettle();
+  final scrollable = find
+      .descendant(
+        of: find.byType(CustomScrollView).first,
+        matching: find.byType(Scrollable),
+      )
+      .first;
   await tester.scrollUntilVisible(reminder, 160, scrollable: scrollable);
   await tester.pumpAndSettle();
 }
@@ -43,13 +65,17 @@ void main() {
       EzyApp(connected: false, preview: true, repository: repository),
     );
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Remind me to…'));
-    await tester.pumpAndSettle();
+    await openQuickCapture(tester);
     await tester.enterText(
-      find.byType(TextField).first,
+      find.byKey(const ValueKey('capture-title')),
       'Prepare launch brief',
     );
     await chooseContext(tester, 'Work');
+    await tester.tap(find.text('Save reminder'));
+    await tester.pumpAndSettle();
+    await revealTodayReminder(tester, find.text('Prepare launch brief'));
+    await tester.tap(find.text('Prepare launch brief'));
+    await tester.pumpAndSettle();
     await revealSheetControl(
       tester,
       find.byKey(const ValueKey('work-details-toggle')),
@@ -83,86 +109,91 @@ void main() {
     expect(repository.workDetails[id]?.projectName, 'Launch');
   });
 
-  testWidgets('partial Work panel failure retains created ID for retry', (
-    tester,
-  ) async {
-    final repository = DemoRepository()..failContextDetailWrites.add('work');
-    await tester.pumpWidget(
-      EzyApp(connected: false, preview: true, repository: repository),
-    );
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Remind me to…'));
-    await tester.pumpAndSettle();
-    await tester.enterText(find.byType(TextField).first, 'Review budget');
-    await chooseContext(tester, 'Work');
-    await revealSheetControl(
-      tester,
-      find.byKey(const ValueKey('work-details-toggle')),
-    );
-    await tester.tap(find.byKey(const ValueKey('work-details-toggle')));
-    await tester.pumpAndSettle();
-    await revealSheetControl(
-      tester,
-      find.byKey(const ValueKey('work-manager')),
-    );
-    await tester.enterText(
-      find.byKey(const ValueKey('work-manager')),
-      'Taylor',
-    );
-    await revealSheetControl(tester, find.text('Save reminder'));
-    await tester.tap(find.text('Save reminder'));
-    await tester.pumpAndSettle();
+  testWidgets(
+    'Work detail retry updates the captured reminder without duplicating it',
+    (tester) async {
+      final repository = DemoRepository()..failContextDetailWrites.add('work');
+      await tester.pumpWidget(
+        EzyApp(connected: false, preview: true, repository: repository),
+      );
+      await tester.pumpAndSettle();
+      await openQuickCapture(tester);
+      await tester.enterText(
+        find.byKey(const ValueKey('capture-title')),
+        'Review budget',
+      );
+      await chooseContext(tester, 'Work');
+      await tester.tap(find.text('Save reminder'));
+      await tester.pumpAndSettle();
+      await revealTodayReminder(tester, find.text('Review budget'));
+      await tester.tap(find.text('Review budget'));
+      await tester.pumpAndSettle();
+      await revealSheetControl(
+        tester,
+        find.byKey(const ValueKey('work-details-toggle')),
+      );
+      await tester.tap(find.byKey(const ValueKey('work-details-toggle')));
+      await tester.pumpAndSettle();
+      await revealSheetControl(
+        tester,
+        find.byKey(const ValueKey('work-manager')),
+      );
+      await tester.enterText(
+        find.byKey(const ValueKey('work-manager')),
+        'Taylor',
+      );
+      await revealSheetControl(tester, find.text('Save reminder'));
+      await tester.tap(find.text('Save reminder'));
+      await tester.pumpAndSettle();
 
-    expect(find.textContaining('follow-up details failed'), findsOneWidget);
-    expect(repository.reminderCreateCalls, 1);
-    expect(repository.lastCreatedReminderId, isNotNull);
-    repository.failContextDetailWrites.clear();
-    await revealSheetControl(tester, find.text('Save reminder'));
-    await tester.tap(find.text('Save reminder'));
-    await tester.pumpAndSettle();
-    expect(repository.reminderCreateCalls, 1);
-    expect(repository.reminderUpdateCalls, 1);
-    expect(
-      repository.workDetails[repository.lastCreatedReminderId]?.managerName,
-      'Taylor',
-    );
-  });
+      expect(find.textContaining('follow-up details failed'), findsOneWidget);
+      expect(repository.reminderCreateCalls, 1);
+      expect(repository.lastCreatedReminderId, isNotNull);
+      repository.failContextDetailWrites.clear();
+      await revealSheetControl(tester, find.text('Save reminder'));
+      await tester.tap(find.text('Save reminder'));
+      await tester.pumpAndSettle();
+      expect(repository.reminderCreateCalls, 1);
+      expect(repository.reminderUpdateCalls, 2);
+      expect(
+        repository.workDetails[repository.lastCreatedReminderId]?.managerName,
+        'Taylor',
+      );
+    },
+  );
 
-  testWidgets('missing create ID keeps panel data visible and prevents retry', (
-    tester,
-  ) async {
-    final repository = _NullCreateIdRepository();
-    await tester.pumpWidget(
-      EzyApp(connected: false, preview: true, repository: repository),
-    );
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Remind me to…'));
-    await tester.pumpAndSettle();
-    await tester.enterText(find.byType(TextField).first, 'Review renewal');
-    await chooseContext(tester, 'Work');
-    await revealSheetControl(
-      tester,
-      find.byKey(const ValueKey('work-details-toggle')),
-    );
-    await tester.tap(find.byKey(const ValueKey('work-details-toggle')));
-    await tester.pumpAndSettle();
-    await revealSheetControl(tester, find.text('Save reminder'));
-    await tester.tap(find.text('Save reminder'));
-    await tester.pumpAndSettle();
+  testWidgets(
+    'missing capture ID keeps the draft visible and prevents duplicate retry',
+    (tester) async {
+      final repository = _NullCreateIdRepository();
+      await tester.pumpWidget(
+        EzyApp(connected: false, preview: true, repository: repository),
+      );
+      await tester.pumpAndSettle();
+      await openQuickCapture(tester);
+      await tester.enterText(
+        find.byKey(const ValueKey('capture-title')),
+        'Review renewal',
+      );
+      await chooseContext(tester, 'Work');
+      await revealSheetControl(tester, find.text('Save reminder'));
+      await tester.tap(find.text('Save reminder'));
+      await tester.pumpAndSettle();
 
-    expect(
-      find.textContaining('server did not return a reminder ID'),
-      findsOneWidget,
-    );
-    expect(find.text('Save reminder'), findsOneWidget);
-    expect(repository.reminderCreateCalls, 1);
+      expect(
+        find.textContaining('server did not return a reminder ID'),
+        findsOneWidget,
+      );
+      expect(find.text('Save reminder'), findsOneWidget);
+      expect(repository.reminderCreateCalls, 1);
 
-    await revealSheetControl(tester, find.text('Save reminder'));
-    await tester.tap(find.text('Save reminder'));
-    await tester.pumpAndSettle();
-    expect(repository.reminderCreateCalls, 1);
-    expect(find.textContaining('Refresh before retrying'), findsOneWidget);
-  });
+      await revealSheetControl(tester, find.text('Save reminder'));
+      await tester.tap(find.text('Save reminder'));
+      await tester.pumpAndSettle();
+      expect(repository.reminderCreateCalls, 1);
+      expect(find.textContaining('Refresh before retrying'), findsOneWidget);
+    },
+  );
 
   testWidgets('context controls cannot change during an in-flight save', (
     tester,
@@ -172,33 +203,37 @@ void main() {
       EzyApp(connected: false, preview: true, repository: repository),
     );
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Remind me to…'));
-    await tester.pumpAndSettle();
-    await tester.enterText(find.byType(TextField).first, 'Prepare handoff');
-    await chooseContext(tester, 'Work');
-    await revealSheetControl(
-      tester,
-      find.byKey(const ValueKey('work-details-toggle')),
+    await openQuickCapture(tester);
+    await tester.enterText(
+      find.byKey(const ValueKey('capture-title')),
+      'Prepare handoff',
     );
-    await tester.tap(find.byKey(const ValueKey('work-details-toggle')));
-    await tester.pumpAndSettle();
+    await chooseContext(tester, 'Work');
     await revealSheetControl(tester, find.text('Save reminder'));
     await tester.tap(find.text('Save reminder'));
     await tester.pump();
 
     expect(find.text('Saving…'), findsOneWidget);
     expect(
-      find.byWidgetPredicate(
-        (widget) => widget is AbsorbPointer && widget.absorbing,
-      ),
-      findsOneWidget,
+      tester
+          .widget<TextField>(find.byKey(const ValueKey('capture-title')))
+          .enabled,
+      isFalse,
+    );
+    expect(
+      tester
+          .widget<DropdownButtonFormField<String>>(
+            find.byType(DropdownButtonFormField<String>),
+          )
+          .onChanged,
+      isNull,
     );
 
     repository.saveGate.complete();
     await tester.pumpAndSettle();
     final saved = (await repository.load()).last;
     expect(saved.contextId, 'work');
-    expect(repository.workDetails[saved.id], isNotNull);
+    expect(repository.workDetails[saved.id], isNull);
     expect(repository.sideGigDetails[saved.id], isNull);
   });
 
@@ -210,33 +245,46 @@ void main() {
       EzyApp(connected: false, preview: true, repository: repository),
     );
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Remind me to…'));
-    await tester.pumpAndSettle();
+    await openQuickCapture(tester);
     await tester.enterText(
-      find.byType(TextField).first,
+      find.byKey(const ValueKey('capture-title')),
       'Photograph new products',
     );
     await chooseContext(tester, 'Side Gig');
-    await revealSheetControl(
-      tester,
-      find.byKey(const ValueKey('sidegig-details-toggle')),
-    );
-    await tester.tap(find.byKey(const ValueKey('sidegig-details-toggle')));
+    await tester.tap(find.text('Save reminder'));
     await tester.pumpAndSettle();
-    await revealSheetControl(
-      tester,
-      find.byKey(const ValueKey('sidegig-initiative')),
+    await revealTodayReminder(tester, find.text('Photograph new products'));
+    await tester.tap(find.text('Photograph new products'));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('gig-details-toggle')),
+      240,
+      scrollable: find.byType(Scrollable).last,
+    );
+    await tester.tap(find.byKey(const ValueKey('gig-details-toggle')));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('gig-field-initiative')),
+      240,
+      scrollable: find.byType(Scrollable).last,
     );
     await tester.enterText(
-      find.byKey(const ValueKey('sidegig-initiative')),
+      find.byKey(const ValueKey('gig-field-initiative')),
       'Spring catalog',
     );
     await tester.enterText(
-      find.byKey(const ValueKey('sidegig-client')),
+      find.byKey(const ValueKey('gig-field-person')),
       'Avery',
     );
-    await revealSheetControl(tester, find.text('Save reminder'));
-    await tester.tap(find.text('Save reminder'));
+    await tester.scrollUntilVisible(
+      find.text('Save'),
+      240,
+      scrollable: find.byType(Scrollable).last,
+    );
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.widgetWithText(OutlinedButton, 'Save'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(OutlinedButton, 'Save'));
     await tester.pumpAndSettle();
 
     expect(repository.reminderCreateCalls, 1);

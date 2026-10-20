@@ -26,6 +26,7 @@ Apple doesn't reject apps for using Flutter. The real App Review risks are liste
 - **Conflicts: last edit wins** (decided 2026-10). An `updated_at` precondition can be added later if this ever bites.
 - **Same look:** a single `design/tokens.json` (colors, shadows, radii, type scale, motion) generates both `app/globals.css` variables and the Flutter `ThemeExtension`. Change a token once and both clients follow.
 - **Same dates:** due times are stored in UTC and rendered in `user_settings.timezone`. The Dart port of `lib/dates.ts` must pass the same shared test fixtures, so "in 2h" and "Tue 6pm" read identically on both clients.
+- **Account time zone follows the iPhone (2026-10-19):** Settings → **Use iPhone time zone** (on by default) copies the phone's IANA zone (`TimeZone.current.identifier` over the `ezyreminder/device` channel) into `user_settings.timezone` on launch, on resume and when Settings opens. Saving a zone by hand turns it off; the choice is stored on the device. The Dart tz database is the full one (`latest_all`) so legacy names such as `EST` resolve as they do in Postgres instead of falling back to UTC.
 - **One link, both places:** `/r/<id>` opens a single reminder. With universal links (`/.well-known/apple-app-site-association`) it opens the iOS app when installed, otherwise the web page. Email notifications link there too.
 
 ## 3. Notifications: hybrid local + APNs, email fallback
@@ -97,3 +98,13 @@ The Next.js PWA remains the browser client: manifest, serwist, share_target and 
 Home provides optional Home care, Groceries, Bill pay, and Study & kids section pills. Car, HVAC & air filters, Dryer, Smart-home batteries and Other home care are the maintenance cards. Forms, placeholders, repeat options and completion labels come from `design/home-templates.json`, generated into `features/home/home_templates.g.dart`. Car make/model and other category fields persist and appear in history snapshots. The legacy Filter category renders under HVAC.
 
 `features/home/` uses the shared atomic RPCs: new task saves call `save_home_task` (migration 0014); completion retains `record_home_service`. Care repeats from actual completion, while bills and study advance their planned date. Day intervals support daily/weekly study and weekly battery care. Existing RLS, Realtime, foreground refresh, quiet hours and delivery apply. Today/All task rows open the right Home section. Hosted schema and client release status are tracked separately in `supabase/MIGRATION_STATUS.md` and `mobile/HUMAN_TODO.md`.
+
+
+## 10. Side Gig destination (2026-10-19)
+
+`features/sidegig/` implements the approved five-section Side Gig experience and uses the same migration 0018 RPCs as the web client. The second tab is Side Gig; Today shipping links open its Ship Queue section. Typed follow-up/payment reminders open their Side Gig completion flow from Today/All. The page survives tab changes, refreshes from Realtime and foreground resume, and shares the existing FocusController. Money is parsed/summed with BigInt minor units. Shipping, waiting and collection transitions are atomic on the backend. This is client code, not evidence of a signed release or hosted migration.
+
+
+## 11. Today Add flow (2026-10-19)
+
+`features/add/today_add_flow.dart` hosts Today's "What would you like to add?" sheet (DESIGN.md §5.1). It reuses `GigFormSheet`, `MaintenanceEditor` and the reminder sheet through a small `AddFlowNav` (Back/Close with the form's unsaved state) and an `onSaved` callback; visited forms stay mounted offstage so Back keeps drafts. Saves use the same repositories and RPCs as Side Gig and Home (`HouseholdRepository.save` now returns the reminder ID). The All tab keeps the minimal capture sheet. Regression coverage: `test/today_add_flow_test.dart`.

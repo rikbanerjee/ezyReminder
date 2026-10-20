@@ -177,7 +177,23 @@ class SupabaseFocusRepository implements FocusRepository {
         .inFilter('status', ['open', 'snoozed'])
         .inFilter('contexts.slug', ['work', 'sidegig', 'side-gig'])
         .order('due_at', nullsFirst: false);
+    final blocked = <String>{};
+    try {
+      final gig = Map<String, dynamic>.from(
+        await client.rpc('get_sidegig_dashboard') as Map,
+      );
+      for (final item in gig['items'] as List) {
+        if (item['waiting'] == true ||
+            item['kind'] == 'followup' ||
+            item['kind'] == 'payment') {
+          if (item['reminder_id'] != null) blocked.add(item['reminder_id'] as String);
+        }
+      }
+    } on PostgrestException catch (e) {
+      if (!focusFunctionMissing(e)) rethrow;
+    }
     return rows
+        .where((r) => !blocked.contains(r['id']))
         .map(
           (r) => FocusReminder(
             id: r['id'] as String,

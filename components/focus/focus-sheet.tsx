@@ -5,7 +5,7 @@ import { ChevronLeft, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 /** The prototype's bottom sheet, with a keyboard trap and focus restoration. */
-export function FocusSheet({ title, scrollKey, onClose, onBack, children }: { title: string; scrollKey?: string; onClose: () => void; onBack?: () => void; children: ReactNode }) {
+export function FocusSheet({ title, scrollKey, onClose, onBack, canClose, children }: { title: string; scrollKey?: string; onClose: () => void; onBack?: () => void; canClose?: () => boolean; children: ReactNode }) {
   const [open, setOpen] = useState(false);
   const sheet = useRef<HTMLDivElement>(null);
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -13,6 +13,7 @@ export function FocusSheet({ title, scrollKey, onClose, onBack, children }: { ti
   close.current = onClose;
 
   function requestClose() {
+    if (canClose && !canClose()) return;
     if (closeTimer.current) return;
     setOpen(false);
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -43,13 +44,13 @@ export function FocusSheet({ title, scrollKey, onClose, onBack, children }: { ti
   }
 
   // Switching modes inside the open sheet starts at the top, like a fresh screen.
-  useEffect(() => { sheet.current?.scrollTo({ top: 0 }); }, [scrollKey]);
+  useEffect(() => { sheet.current?.scrollTo({ top: 0 }); sheet.current?.focus(); }, [scrollKey]);
 
   useEffect(() => {
     const prior = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     const frame = requestAnimationFrame(() => {
       setOpen(true);
-      sheet.current?.focus();
+      (sheet.current?.querySelector<HTMLElement>("[data-sheet-autofocus]") ?? sheet.current)?.focus();
     });
     const focusables = () => Array.from(sheet.current?.querySelectorAll<HTMLElement>(
       'button:not([disabled]), input:not([disabled]), textarea:not([disabled]), select:not([disabled]), a[href], [tabindex="0"]',

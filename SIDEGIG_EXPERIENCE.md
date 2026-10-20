@@ -1,8 +1,8 @@
 # Side Gig: a place to follow through
 
-Product design proposal · 2026-10-18 · Not a production implementation or migration approval.
+Product design approved and implemented locally on web + Flutter iOS · 2026-10-19. Migration 0018 and client deployment remain pending release.
 
-Review alongside PLAN.md, DESIGN.md, MOBILE.md, FOCUS_IMPLEMENTATION_PLAN.md §13 and HOLISTIC_FOCUS_PLAN.md. The current app's canonical prototype remains `design/prototype.html`. The proposed experience is `design/sidegig-prototype.html`; it uses the same visual tokens and sheet patterns. Approving this proposal would require promoting its final behavior into DESIGN.md and the canonical prototype before changing web and Flutter.
+Review alongside PLAN.md, DESIGN.md, MOBILE.md, FOCUS_IMPLEMENTATION_PLAN.md §13 and HOLISTIC_FOCUS_PLAN.md. The current app's canonical prototype remains `design/prototype.html`. The proposed experience is `design/sidegig-prototype.html`; it uses the same visual tokens and sheet patterns. Implementation was authorized on 2026-10-19. DESIGN.md §10 promotes this contract; the canonical prototype links to the full Side Gig visual specification.
 
 ## 1. Product decision
 
@@ -32,7 +32,7 @@ Ship Queue remains first-class through:
 - A permanent compact Ship Queue entry on Overview, with an actionable count and up to two urgent rows when there are orders.
 - An **Add order** action in the queue and the shared create menu.
 - Full order detail, manual carrier/tracking, explicit Mark shipped, and shipped history.
-- Continued Today → Ship soon and `/ship-queue` links. In implementation, the old route should open Side Gig → Ship Queue, retaining existing shortcuts and incoming links.
+- Retained `/ship-queue` links. Today no longer duplicates shipping previews (2026-10-19). In implementation, the old route should open Side Gig → Ship Queue, retaining existing shortcuts and incoming links.
 
 There is no separate Clients tab, project hierarchy, accounting dashboard or Focus tab. Client/buyer and initiative are lightweight grouping attributes. Focus is reused, not reimplemented.
 
@@ -60,7 +60,7 @@ The prototype demonstrates optional next step and estimate capture; their produc
 
 Filters: **To ship / Shipped**. Sort pending orders by ship-by, undated last; cancelled/completed non-shipment anomalies need an explicit reconciliation state, never a fake pending shipment. A shipping date is a date in the account timezone. Keep existing independent reminder due time and ship-by rules.
 
-Rows show order reference/title, recipient, ship-by, carrier/tracking if entered, and **Mark shipped**. Missing tracking is informational; manual shipping can proceed without it. Do not show Buy label until an actual shipping provider supports it.
+Rows lead with the order title (what the person typed), then reference if entered, recipient, ship-by, carrier/tracking if entered, and **Mark shipped**. Missing tracking is informational; manual shipping can proceed without it. Do not show Buy label until an actual shipping provider supports it.
 
 Mark shipped opens the existing sheet pattern with optional carrier and tracking. Confirmation records shipment and completes the shipping reminder using the existing atomic RPC. It does not mark delivery, payment or a follow-up complete. After confirmation offer **Add buyer follow-up**; this is an explicit user-created reminder, not an outbound message or automatic shipment tracking.
 
@@ -123,7 +123,7 @@ Dates use the existing compact calendar with explicit OK. A planned Focus time i
 
 Do not add all these records to `sidegig_details` or overload tags with business state. Model follow-up/payment facts independently, link deliberately to reminders, validate owner equality on every relation, and keep all multi-step mutations in owner-checked Postgres RPCs. Every table needs RLS and both clients need the same contract. Account deletion must cover new records. Cross-client idempotency, stale edits and failed saves require explicit handling.
 
-The last inspected checkout has local migrations through 0017 and hosted history documented through 0014. No migration is created by this proposal. Recheck the sequence at implementation time. Existing six-hour email repeats, quiet hours, notification deduplication, reminder recurrence and shipment semantics are not changed by this design. New reminder-backed obligations need agreed notification policies before release; do not double-notify a payment and its linked follow-up for the same action.
+The implementation adds migration 0018. The latest repository checkpoint records 0001–0017 hosted; 0018 is local until explicitly released. Recheck hosted history before application. Existing six-hour email repeats, quiet hours, notification deduplication, reminder recurrence and shipment semantics are not changed by this design. New reminder-backed obligations need agreed notification policies before release; do not double-notify a payment and its linked follow-up for the same action.
 
 ## 11. States and acceptance flows
 
@@ -174,3 +174,35 @@ Observed in the in-app browser during this design pass:
 Static JavaScript syntax and the canonical prototype's inline script were checked. These checks are for the prototype, not production, database, notification or Flutter verification.
 
 Prototype boundaries: Today, Home and All link back to the existing canonical prototype and use its separate demo data. This does not demonstrate cross-page persistence or real web↔phone synchronization. Focus preferences, full Focus-time management, remote failures, notification delivery, permission recovery, deletion, partial payments and backend concurrency remain implementation requirements or explicitly deferred scope. The standalone page resets on reload; its fixed sample date is shown in the controls. The product spec covers the complete proposed experience and release slices; the prototype demonstrates the core paths without simulating infrastructure success.
+
+
+## 14. Implementation checkpoint — 2026-10-19
+
+Web: `/side-gig` and `components/sidegig/`; Flutter: `mobile/lib/features/sidegig/`; shared backend: `0018_sidegig_experience.sql`. Atomic mutations cover work/order editing, explicit waiting, follow-up contact/resolution/history, expected payments/receipts, shipment confirmation/tracking corrections and cancellation. New tables have owner-only reads and RPC-only writes. A per-user operation ledger prevents duplicate writes on retries. Payment receipt history survives deletion of its reminder. A collection follow-up holds the payment's delivery timestamp, channels and prior snooze until closed, while preserving the independent expected date. Empty channels alone cannot pause delivery because they inherit the context default. An order with ship-by but no explicit reminder time defaults to 9 AM on the account-local ship-by day; Focus planning never changes that deadline.
+
+Both clients use the existing Focus engine, including one active session, planned work, saved outcomes and restart notes. Existing generic reminder links and order links are retained. Migration 0018 and client release remain separate rollout steps; do not mistake a passing local build for a deployed release.
+
+
+Local verification completed:
+
+- Production Next.js build, TypeScript and scoped ESLint pass. Existing unrelated repository lint warnings remain.
+- Flutter analysis is clean; all 246 Flutter tests pass, including creation, receipts, shipping regression paths and large-text layout. The iOS debug simulator build passes; the preview was installed and visually checked on iPhone 17 Pro.
+- Side Gig shared fixtures and isolated PostgreSQL tests pass. The latter apply all migrations and cover atomic writes, operation retries/collisions, ownership, waiting/Focus guards, delivery holds through the real enqueue/claim functions, independent shipping/receipts, history retention and account deletion.
+- Focus, Focus times, Home and iOS foundation SQL regressions pass. Existing web Focus and notification tests pass.
+- The real web components were exercised against isolated PostgreSQL sample records: shipping, independent payment receipt, and starting/pausing/reviewing a Focus session with a persisted restart note. No hosted user records, notifications or provider messages were created by these checks.
+
+Release sequence: review and apply 0018 after checking hosted history; deploy web; build/sign the iOS release. Then verify an authenticated browser↔iPhone edit/session handoff, background notification replacement, quiet hours and APNs/email delivery on the released clients. The simulator and isolated browser checks do not establish device transport or TestFlight readiness. Partial payments and accounting/payment processing remain outside this experience.
+
+
+### Simple capture, full editing — 2026-10-19
+
+Today remains the daily view and general capture entry across Work / Side Gig / Social / Shopping. Side Gig remains the destination for ongoing independent work, shipping, follow-ups and payments. These are two views of the same commitments.
+
+Web and Flutter keep Today/All capture deliberately small: title, context, optional time and Save. Choosing Side Gig never expands it. The saved plain reminder appears in both views. Tapping it from Today/All loads the canonical Side Gig Task/Order editor, preserving its ID and optional metadata. The user can add a next step, estimate, client/initiative or turn it into an order later. Side Gig's own Add remains the full Task/Order/Follow-up/Expected payment workflow. This supersedes the earlier context-morphing creation approach.
+
+Today has no context-filter row or duplicate shipping preview. It keeps one date-grouped list and the full Focus card, including choosing/starting a reminder, planned work and active-session recovery. Search/filtering stays in All; operations and planning stay in Side Gig/details/Settings. The pending 0018 RPC also accepts an empty channel list as inherited context delivery, so an ordinary quick capture remains editable. No migration beyond 0018 is needed. Hosted deployment and device delivery checks remain pending.
+
+
+### Add from Today — 2026-10-19 (supersedes Today's minimal capture above)
+
+Today's docked bar now opens "What would you like to add?". Choosing **Side Gig** shows the same Task / Order / Follow-up / Expected payment chooser as Side Gig's Add, then the canonical form, saved with `sidegig_mutate` (client-owned record ID, stable operation ID across retries). A task appears in Today and in Side Gig Work before any enrichment; an order also appears in Ship Queue. The toast ("Task added to Side Gig · View", "Order added to Ship Queue · View") opens the matching section and item. All keeps the minimal capture sheet. No migration is needed. See DESIGN.md §5.1.

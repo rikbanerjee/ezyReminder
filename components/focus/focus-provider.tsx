@@ -12,6 +12,7 @@ import { FBtn } from "./focus-ui";
 import { isFocusEligible, subjectOfReminder, useFocusController, type FocusController, type Mode } from "./use-focus-controller";
 
 const FocusContext = createContext<FocusController | null>(null);
+export function useFocus() { return useContext(FocusContext); }
 
 function sheetTitle(c: FocusController, mode: Mode): string {
   switch (mode) {

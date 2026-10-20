@@ -29,7 +29,7 @@ export type TimeDraft = {
 };
 export type SavedSession = { reminderId: string | null; title: string; slug: FocusContextSlug; outcome: FocusOutcome; mins: number; next: string };
 
-export const isFocusEligible = (reminder: HomeReminder) => ["open", "snoozed"].includes(reminder.status) && ["work", "sidegig"].includes(reminder.context?.slug ?? "");
+export const isFocusEligible = (reminder: HomeReminder) => !reminder.focusBlocked && !reminder.tags?.some(t => t.startsWith("sidegig:")) && ["open", "snoozed"].includes(reminder.status) && ["work", "sidegig"].includes(reminder.context?.slug ?? "");
 export const subjectOfReminder = (reminder: HomeReminder): FocusSubject => ({
   id: reminder.id, title: reminder.title, slug: (reminder.context?.slug ?? "work") as FocusContextSlug,
   dueAt: reminder.due_at, shipBy: reminder.order?.shipBy ?? null, isOrder: reminder.is_order,
@@ -378,7 +378,7 @@ export function useFocusController({ reminders, onOpenReminder }: { reminders: H
     mode, go, busy, mutationError, announcement, query, setQuery, setup, setSetup, review, setReview, plan, patchPlan, planChoices, planTarget,
     timeEdit, patchTime, saved,
     // actions
-    open, openSession, openChoose, openSetup, startHighlight, startUpNext, submitSetup, setHighlight, toggleSession, saveReview, continueForTen,
+    open, openSession, openChoose, openSetup, startFree, startHighlight, startUpNext, submitSetup, setHighlight, toggleSession, saveReview, continueForTen,
     markDone, markShipped, openOccurrence, skipInOccurrence, startPlanned, openPlan, stepCalendar, confirmPickedDay, savePlan, missedStart,
     missedNext, missedOther, leaveUnscheduled, openTimes, editTime, saveTime, archiveTime, notify,
   };

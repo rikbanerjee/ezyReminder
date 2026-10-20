@@ -79,6 +79,7 @@ export async function createReminder(input: CreateReminderInput): Promise<Create
   revalidatePath("/home");
   revalidatePath("/all");
   revalidatePath("/ship-queue");
+  revalidatePath("/side-gig");
   return { ok: true, id };
 }
 

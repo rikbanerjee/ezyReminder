@@ -1,25 +1,14 @@
 "use client";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import {
-  Plus,
-  Car,
-  Wind,
-  WashingMachine,
-  BatteryCharging,
-  Wrench,
-  ShoppingBasket,
-  ChevronRight,
-  ReceiptText,
-  GraduationCap,
-  House,
-} from "lucide-react";
+import { Plus, ChevronRight } from "lucide-react";
 import { createReminder } from "@/app/actions";
 import { BottomDock } from "@/components/bottom-dock";
 import { ReminderSheet } from "@/components/home/reminder-sheet";
 import { ShoppingChecklist } from "@/components/home/shopping-checklist";
 import type { HomeContext, HomeReminder } from "@/components/home/types";
 import { MaintenanceSheet } from "./maintenance-sheet";
+import { homeCategoryIcons, homeSectionIcons } from "./home-icons";
 import {
   HOME_CATEGORIES,
   HOME_SECTIONS,
@@ -37,21 +26,8 @@ import {
 } from "@/lib/household";
 import { relativeDue } from "@/lib/dates";
 import { cn } from "@/lib/utils";
-const icons = {
-  car: Car,
-  hvac: Wind,
-  dryer: WashingMachine,
-  battery: BatteryCharging,
-  other: Wrench,
-  bill: ReceiptText,
-  study: GraduationCap,
-};
-const sectionIcons = {
-  care: House,
-  groceries: ShoppingBasket,
-  bills: ReceiptText,
-  study: GraduationCap,
-};
+const icons = homeCategoryIcons;
+const sectionIcons = homeSectionIcons;
 export function HouseholdView({
   contexts,
   shopping,

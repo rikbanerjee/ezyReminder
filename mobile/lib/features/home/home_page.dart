@@ -9,6 +9,7 @@ import '../../main.dart'
 import '../shopping/shopping_list_sheet.dart';
 import '../../shared/widgets/compact_date_time_picker.dart';
 import 'home_repository.dart';
+import '../add/today_add_flow.dart' show AddFlowNav;
 
 class HouseholdPage extends StatefulWidget {
   const HouseholdPage({
@@ -445,10 +446,16 @@ class MaintenanceEditor extends StatefulWidget {
     required this.repository,
     required this.category,
     this.item,
+    this.flow,
+    this.onSaved,
   });
   final HouseholdRepository repository;
   final String category;
   final HomeMaintenance? item;
+
+  /// Hosted by Today's Add flow: Back/Close go through the flow.
+  final AddFlowNav? flow;
+  final ValueChanged<String?>? onSaved;
   @override
   State<MaintenanceEditor> createState() => _MaintenanceEditorState();
 }
@@ -474,8 +481,16 @@ class _MaintenanceEditorState extends State<MaintenanceEditor> {
   late bool apns = (widget.item?.data['channels'] as List? ?? []).contains(
     'apns',
   );
-  bool recording = false, pending = false;
+  bool recording = false, pending = false, dirty = false;
   String? error, dateError;
+  @override
+  void initState() {
+    super.initState();
+    for (final c in [title, asset, notes, ...details.values]) {
+      c.addListener(() => dirty = true);
+    }
+  }
+
   @override
   void dispose() {
     title.dispose();
@@ -534,7 +549,7 @@ class _MaintenanceEditorState extends State<MaintenanceEditor> {
           'p_notes': recordNotes.text,
         });
       } else {
-        await widget.repository.save({
+        final id = await widget.repository.save({
           'p_id': widget.item?.id,
           'p_title': title.text.trim(),
           'p_notes': notes.text,
@@ -556,6 +571,8 @@ class _MaintenanceEditorState extends State<MaintenanceEditor> {
           },
           'p_channels': apns ? ['email', 'apns'] : ['email'],
         });
+        dirty = false;
+        widget.onSaved?.call(id ?? widget.item?.id);
       }
       if (mounted) Navigator.pop(context);
     } catch (_) {
@@ -579,7 +596,7 @@ class _MaintenanceEditorState extends State<MaintenanceEditor> {
         ? 'Choose date'
         : '${dates.formatMediumDate(value)} · ${dates.formatTimeOfDay(TimeOfDay.fromDateTime(value))}';
     return PopScope(
-      canPop: !pending,
+      canPop: widget.flow != null || !pending,
       child: Container(
         constraints: BoxConstraints(
           maxHeight: MediaQuery.sizeOf(context).height * .88,
@@ -620,6 +637,17 @@ class _MaintenanceEditorState extends State<MaintenanceEditor> {
                   ),
                   Row(
                     children: [
+                      if (widget.flow != null)
+                        IconButton(
+                          tooltip: 'Back',
+                          onPressed: pending
+                              ? null
+                              : () => widget.flow!.back(dirty),
+                          icon: const Icon(
+                            CupertinoIcons.chevron_left,
+                            size: 20,
+                          ),
+                        ),
                       Expanded(
                         child: Text(
                           template.text(recording ? 'recordTitle' : 'label'),
@@ -633,6 +661,8 @@ class _MaintenanceEditorState extends State<MaintenanceEditor> {
                         tooltip: 'Close',
                         onPressed: pending
                             ? null
+                            : widget.flow != null
+                            ? () => widget.flow!.close(dirty)
                             : () => Navigator.pop(context),
                         icon: const Icon(CupertinoIcons.xmark),
                       ),
@@ -702,6 +732,7 @@ class _MaintenanceEditorState extends State<MaintenanceEditor> {
                                   completed = selected;
                                 } else {
                                   due = selected;
+                                  dirty = true;
                                 }
                                 dateError = null;
                               });
@@ -732,7 +763,10 @@ class _MaintenanceEditorState extends State<MaintenanceEditor> {
                             child: Text(homeRepeatLabel(v)),
                           ),
                       ],
-                      onChanged: (v) => setState(() => repeat = v!),
+                      onChanged: (v) => setState(() {
+                        repeat = v!;
+                        dirty = true;
+                      }),
                     ),
                     TextFormField(
                       controller: notes,
@@ -750,7 +784,10 @@ class _MaintenanceEditorState extends State<MaintenanceEditor> {
                       contentPadding: EdgeInsets.zero,
                       title: const Text('Also send to my registered iPhone'),
                       value: apns,
-                      onChanged: (v) => setState(() => apns = v!),
+                      onChanged: (v) => setState(() {
+                        apns = v!;
+                        dirty = true;
+                      }),
                     ),
                   ] else
                     Padding(

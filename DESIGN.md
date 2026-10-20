@@ -52,19 +52,19 @@ Dark mode follows the system (`prefers-color-scheme`) with a manual override in 
 ```
 ┌─────────────────────────────┐
 │ Today                    ⚙︎ │  ← large title, collapses to 17pt on scroll
-│ [All] [Work] [Gig] [Social] │  ← context pills, horizontally scrollable
+│                             │  ← Today has no context filter row
 │ ─────────────────────────── │
 │                             │
 │        (screen content)     │
 │                             │
 │ ─────────────────────────── │
 │  ⊕ Remind me to…            │  ← quick-add bar, docked bottom
-│ ▣ Today   🚚 Ship   ☰ All   │  ← tab bar (3 tabs), safe-area padded
+│ ▣ Today  ▢ Side Gig  ⌂ Home  ☰ All │  ← tab bar (4 tabs), safe-area padded
 └─────────────────────────────┘
 ```
 
-- **Tab bar:** Today (default), Ship Queue (badge = orders due ≤ 3 days), All/Browse. Settings is the gear in the header — not worth a tab.
-- **Quick-add bar** is persistent on Today and All tabs; on tap it expands upward into the composer (see §5.1). This is the app's center of gravity.
+- **Tab bar:** Today (default), Side Gig, Home, All/Browse. Side Gig uses amber when active; its badge is off. Settings is the gear in the header — not worth a tab.
+- **Quick-add bar** is persistent on Today and All tabs. On Today it opens the Add flow; on All, the minimal capture sheet (see §5.1). This is the app's center of gravity.
 
 ## 4. Screens
 
@@ -73,9 +73,11 @@ Sections in order, each a rounded `surface` card of rows:
 
 1. **Overdue** — red section header with count; due chips in `danger`.
 2. **Today** — sorted by due time; all-day items last.
-3. **Ship soon** — appears only if orders have `ship_by` ≤ 3 days; rows show 🚚 + countdown; header links to Ship Queue tab.
-4. **Upcoming** — next 7 days, grouped by day label (Tomorrow, Wed…).
+3. **Upcoming** — dated reminders, sorted by due time.
+4. **Someday** — no-date reminders, including newly captured ones.
 5. **Done today** — collapsed by default, count in header, tap to expand.
+
+Today is one list across all contexts. No context-filter row or duplicate shipping preview. The full Focus card remains above the list, including choosing/starting a reminder, planned work, and running/paused/unfinished sessions. All owns search and context filters; Side Gig owns shipping, follow-ups, payments and work planning.
 
 **Row anatomy** (52px, single line + optional second line):
 ```
@@ -140,8 +142,8 @@ Costco run                              (title = list name, inline-editable)
 - No mandatory due date; delivery channels are hidden by default (rarely relevant) but reachable via "More options" if the user wants a nag reminder to go shopping at all.
 - Today-list row for a Shopping reminder shows **"N items left"** instead of a due chip; it lives in the Someday bucket unless the user sets an explicit due date.
 
-### 4.3 Ship Queue tab
-The side-gig money view. Sorted by `ship_by` ascending.
+### 4.3 Ship Queue (inside Side Gig)
+A first-class section inside Side Gig (§10). Sorted by `ship_by` ascending. The old `/ship-queue` route opens `/side-gig?section=orders`.
 
 ```
 SHIP QUEUE (4)                    [+ New order]
@@ -167,14 +169,29 @@ Grouped iOS-style table: **Contexts** (rename, color, default channel, quiet hou
 
 ## 5. Key flows
 
-### 5.1 Quick add — revised 2026-07 (supersedes the original inline-parse spec)
-The docked quick-add bar is a **trigger, not a text field** — tapping anywhere on it (not just a "+" glyph) opens the full create sheet (§4.2, `reminder={null}` mode), per direct product feedback after the inline shorthand-parsing version shipped and proved less intuitive in practice than just filling in the same structured form used for editing. There is one creation path now: the full sheet, with the context select, `DateTimePicker` (below), and the same Order/Work/Side Gig panels as editing.
+### 5.1 Add — revised 2026-10-19
+The docked quick-add bar is a **tap-anywhere trigger, not a text field**.
+
+**Today → "What would you like to add?"** Today is the overview across all commitments, so its bar is a doorway into the existing organized creation experiences, in one bottom sheet (established 20px corners, handle, 40% scrim, 300ms Apple curve). Rows (icon in the context color, 15/600 label, 13px `text-2` description, chevron, ≥ 76px):
+- **Work** — A work task or follow-up → the Work reminder form with the optional follow-up details panel.
+- **Side Gig** — Tasks, orders, follow-ups and expected payments → **Task / Order / Follow-up / Expected payment** (the same chooser as Side Gig's own Add) → that canonical form.
+- **Home** — Home care, groceries, bills and study → **Home care / Groceries / Bill pay / Study & kids** → Home care lists its categories (Car, HVAC, Dryer, Batteries, Other); Bill pay and Study & kids have one category each and open the form directly; Groceries creates a shopping list.
+- **Social** — A personal reminder → the simple reminder form.
+- **Shopping** — A shopping checklist → name the list, then continue directly into its checklist editor.
+
+Every step after the first has **‹ Back** in the header; a form you leave with Back keeps what you typed when you return. The destination fixes the context (shown as a chip, not a select). Forms, validation and saves are the destinations' own — `sidegig_mutate` (same record ID and operation ID on retry), `save_home_task`, and the reminder create used by the reminder sheet — so each save makes one canonical record that Today, Side Gig/Ship Queue and Home all show. Optional details stay optional: a title (plus a date where the destination requires one, e.g. a bill's payment due) is enough. Errors appear inline and keep the draft; Save is locked while pending; closing with unsaved input asks **Discard what you’ve entered? · Keep editing / Discard**. After saving, the sheet closes back to Today with a concise toast and **View**: "Task added to Side Gig · View", "Order added to Ship Queue · View", "Bill added to Home · View" (Home toasts use the category noun from `design/home-templates.json`), "Work reminder added to Today · View". View opens the destination, section and saved item. Today keeps its Focus card and list throughout.
+
+**All → minimal capture.** All opens the minimal sheet: **What do you need to remember? · Context · When (optional) · Save reminder**. Context starts blank. Selecting Work, Side Gig, Social or Shopping never adds fields, choices or panels. No notes, channels, order toggle, clients, estimates, next steps or Focus actions appear during capture. Switching context preserves title and optional date. Show validation inline; retain drafts on failure; prevent repeat submits and guard unsaved dismissal. Shopping opens its checklist immediately after capture. (Until 2026-10-19 Today used this sheet too; the Add flow above replaced it there.)
+
+Tap an existing Side Gig task/order in Today or All to load the canonical Side Gig editor (§10), with its notes, next step, estimate and optional order/client fields, updating the same reminder ID. Loading errors offer Retry and preserve the list; never substitute a different editor that can overwrite unloaded details. Work/Social retain their context detail editors. Today keeps Side Gig rows because it is a view across all commitments, not a separate task store.
+
+Side Gig → Add to Side Gig remains an intentional full Task/Order/Follow-up/Expected payment flow. Its Task/Order forms and the editor opened from Today use the same field implementation and atomic `sidegig_mutate` writes. Quick capture uses the existing plain `create_reminder`; it does not require optional Side Gig metadata.
 
 `lib/parse/quick-add.ts`'s `chrono-node`/`#context`/`@channel` token parser is no longer wired into the UI but is left in place — it's cheap to resurrect later (e.g. inside the sheet's title field, or a search box) if shorthand entry turns out to be worth reintroducing.
 
 **Date/time — compact calendar, not the native picker.** The due-date control is a custom `DateTimePicker` (small popover: month grid with small cells, a time input, and an explicit **OK** button to confirm), not `<input type="datetime-local">` — the native OS picker was too large and had no explicit confirm step. "No date" clears it.
 
-**Context select starts blank ("Choose template").** Creating fresh never silently defaults to an arbitrarily-sorted first context — the select's first option is a disabled "Choose template" placeholder, and attempting to save without picking one shows inline validation (same red-outline-plus-message pattern as a missing title), not a silently-disabled button.
+**Context select starts blank ("Choose a context").** Creating fresh never silently defaults to an arbitrarily-sorted first context — the select's first option is a disabled "Choose a context" placeholder, and attempting to save without picking one shows inline validation (same red-outline-plus-message pattern as a missing title), not a silently-disabled button.
 
 **Validation, everywhere a Save/Add can be disabled:** a disabled button with no explanation is a dead end, not validation. If a required field is missing, the field itself shows the problem (red outline + a one-line message under it, e.g. "Title required") the moment the user tries to submit — never just a button that quietly won't click.
 
@@ -220,7 +237,9 @@ Focus supports existing **Work / Side Gig** reminders, including orders. It adds
 
 **Shared sheet rules.** All Focus sheets reuse the established 20px top corners, drag handle (drag down or scrim-tap or Esc to dismiss), `shadow-sheet`, 40% scrim and 300ms `cubic-bezier(0.32, 0.72, 0, 1)` slide-up. One sheet at a time; modes swap inside the open sheet (a ‹ Back in the header only where there is a parent list). Work/Side Gig colors appear only as dots, selected chips/rows (1.5px context border + 8–10% tint) and the left accent of the session focus block — never filled buttons. **Primary buttons use the existing inverse `text`-on-`bg` fill** (as Done/Save elsewhere); secondary = hairline outline; tertiary = ghost `text-2`. Touch targets ≥ 44px, fields stay above the keyboard, dark mode uses the existing tokens, reduced motion disables transitions. Timers have an accessible name and are not live regions; announce state changes (started, paused, resumed, time is up, saved), not every second. Validation follows §5.1: a visible inline message under the field on submit, never a silently disabled button.
 
-**Today's focus card** sits after the context pills and above the dated sections, under a 13px uppercase `text-2` heading "Today's focus". Card = `surface`, 12px radius, 1px hairline border, `shadow-card`, 14px padding; context dot + name 13/600 `text-2`, title 17/600, metadata 13px `text-2`. It is not filtered by the context pills. Priority: running/paused/time-up session → chosen highlight → first planned task of the current/next occurrence → empty. Primary action is always one tap:
+**Today simplification correction (2026-10-19):** Today retains the full Focus experience below: choose/start a reminder, highlight, up-next, missed work, weekly times and active sessions. All shows only a running/paused/time-up session. The simplified reminder list and minimal capture sheet do not remove Focus from Today.
+
+**Focus card** sits above the dated sections on Today, under a 13px uppercase `text-2` heading "Today's focus". Card = `surface`, 12px radius, 1px hairline border, `shadow-card`, 14px padding; context dot + name 13/600 `text-2`, title 17/600, metadata 13px `text-2`. It is not filtered by the context pills. Priority: running/paused/time-up session → chosen highlight → first planned task of the current/next occurrence → empty. Primary action is always one tap:
 - **Empty:** "What would you like to move forward?" · "Choose one Work or Side Gig reminder." · **Choose a reminder** (primary) + ghost **Set my focus times**.
 - **Highlight:** dot + context, ghost **Change** top-right; title; "Due Fri, Oct 23 · 4 PM" (orders: "Ship by …" — the deadline is never changed by Focus); optional inset (`bg`, 10px radius) "Next step from last time" + saved text (omitted when blank); row of primary **Start 25 min** (N = saved preference) and an adjacent small outline duration chip "25 min" that opens Setup.
 - **Up next:** first line "● Up next · Saturday 9 AM" (never silently pinned), title, "Side Gig · 20 min planned · Sat, Oct 24", same inset, **Start 20 min** (the assignment's minutes) + "20 min" chip, and a ghost **Make today's focus** below (the only way to pin it).
@@ -242,7 +261,7 @@ Focus supports existing **Work / Side Gig** reminders, including orders. It adds
 
 ### 4.7 Home tab (revised 2026-10)
 
-The app tab bar reads **Today · Ship · Home · All**. Home uses existing backgrounds, surface cards, hairlines, shadows, 16px gutters, dark tokens, and bottom dock. Inside Home, a scrollable row of section pills reads **Home care · Groceries · Bill pay · Study & kids**. Open Home care by default; deep links select the task's section. These are optional sections, not new reminder contexts. Only the selected section's forms/history are shown.
+The app tab bar reads **Today · Side Gig · Home · All**. Home uses existing backgrounds, surface cards, hairlines, shadows, 16px gutters, dark tokens, and bottom dock. Inside Home, a scrollable row of section pills reads **Home care · Groceries · Bill pay · Study & kids**. Open Home care by default; deep links select the task's section. These are optional sections, not new reminder contexts. Only the selected section's forms/history are shown.
 
 Home care cards: **Car service & maintenance**, **HVAC & air filters**, **Dryer maintenance**, **Smart-home batteries**, **Other home care**. The old Filter changes card is consolidated into HVAC; existing filter reminders and history stay visible there. Other sections are peers: Groceries uses existing instant checklists, Bill pay uses bill reminders and Payment history, Study & kids uses education reminders and Study & follow-up history.
 
@@ -257,3 +276,18 @@ All task sheets reuse 20px top corners, drag handle, 40% scrim, `shadow-sheet`, 
 - Study: Study task or follow-up · Student or family member · Subject or course · Teacher or school contact · Session or follow-up due · Study or follow-up schedule · Study or follow-up plan. **Record study or follow-up** opens Completed on and Progress & next steps.
 
 Extra metadata is optional. An amount requires a valid decimal and three-letter currency. Missing task/date errors identify the current task's field. Saving errors preserve drafts. Completion explains whether the task closes or advances, and whether its schedule follows the due date (bills/study) or completion (care). Records retain the original make/model, bill amount/currency, or study details after later edits. Deleting a reminder confirms that saved records remain. Each section has its own history and empty copy; Home care also filters by category.
+
+
+## 10. Side Gig — approved implementation (2026-10-19)
+
+The full experience in `SIDEGIG_EXPERIENCE.md` is approved for web and Flutter. `design/sidegig-prototype.html` is the Side Gig visual/interaction specification, linked from the canonical prototype's Side Gig tab. This section supersedes the old Ship-only tab and §4.3's inline-only shipping interaction.
+
+Navigation: **Today · Side Gig · Home · All**. Side Gig has five horizontal pills: **Overview · Work · Ship Queue · Follow-ups · Payments**. It uses the existing Side Gig context, amber selected states, surface cards with hairlines and exact shadows, inverse primary buttons, compact date pickers with OK, and the established sheet motion. Section and scroll position survive tab changes during the session. The docked Add to Side Gig bar opens Task / Order / Follow-up / Expected payment, then a form. Task and Order use the full Side Gig form with Side Gig preselected. Today's Add flow offers the same four choices and forms (§5.1); All captures only title, context and optional time; opening a saved Side Gig reminder uses this same full editor. Detailed creates and edits save through the atomic Side Gig RPC.
+
+Overview shows up to three attention items, a restart card or the existing unfinished Focus session, the next populated Side Gig Focus time with budget, a full Ship Queue entry with up to two orders, and compact Follow-ups/Payments entries. Work includes task and order reminders, current next steps and client/initiative labels. Waiting items stay visible but cannot be suggested, started or planned for Focus. Existing Work sessions remain recoverable while viewing Side Gig.
+
+Ship Queue provides To ship / Shipped, Add order, full detail and shipping confirmation, optional carrier/tracking, tracking corrections and history. It keeps and labels older orders from other contexts. Cancelled/completed reminders without a shipment require explicit reopening before shipment. Order creation with ship-by but no reminder time defaults its reminder to 9 AM on that account-local day; the form shows this rule. Explicit reminder due times remain independent of ship-by and Focus plans.
+
+Follow-ups have independent reminder delivery, next check-in, recorded contact notes/history, optional related work or payment, and response resolution. Waiting is explicit and linked. A response can make linked work actionable without completing it. Payments have exact decimal amounts, separate currency totals, expected/received history, receipt date/notes and explicit collection follow-ups. Recording shipping, a response or receipt never completes an unrelated commitment. An active collection follow-up temporarily holds its payment's reminder timestamp and channels while keeping the expected date intact; closing it restores delivery and the prior snooze/channels, avoiding two reminders for the same collection action. Empty channels alone inherit the context default and cannot pause delivery.
+
+All forms preserve drafts on failure, protect unsaved edits, validate visibly, and keep the same operation ID across a retry. Detail/history and generic reminder links route follow-up/payment reminders to the appropriate Side Gig action. New business state lives in owner-protected tables and atomic RPCs from migration 0018; tags are only routing hints. The existing notification sweep, quiet hours and six-hour repeat policy continue to apply.

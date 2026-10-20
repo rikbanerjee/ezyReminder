@@ -14,7 +14,7 @@ export function BottomDock({
   shipSoonCount,
   children,
 }: {
-  activeTab: "today" | "ship" | "all" | "home";
+  activeTab: "today" | "ship" | "sidegig" | "all" | "home";
   shipSoonCount: number;
   children?: React.ReactNode;
 }) {

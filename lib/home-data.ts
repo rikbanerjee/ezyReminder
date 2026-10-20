@@ -67,7 +67,11 @@ export async function fetchHomeData(supabase: SupabaseClient<Database>): Promise
   const sidegigDetailsByReminder = await fetchSidegigDetailsMap(supabase);
   const shoppingItemsByReminder = await fetchShoppingItemsMap(supabase);
 
+  const gig = await supabase.rpc("get_sidegig_dashboard");
+  if (gig.error && !["PGRST202", "42883"].includes(gig.error.code)) throw gig.error;
+  const waitingIds = new Set(gig.data?.items.filter(r => r.waiting).map(r => r.reminder_id));
   const toReminder = (r: Row): HomeReminder => ({
+    focusBlocked: waitingIds.has(r.id),
     id: r.id,
     title: r.title,
     notes: r.notes,

@@ -1,8 +1,8 @@
 # ezyReminder for iOS
 
-The iOS client includes Today, context filters, completion/snoozing/undo, All with search and completed reminders, reminder deletion, Shopping checklists, order details/Ship Queue, Work/Side Gig detail panels, and Settings for timezone, quiet hours, sign-out, and account deletion. See [PARITY_PROGRESS.md](docs/PARITY_PROGRESS.md) for the ordered build and validation results.
+The iOS client includes a simple Today list, All context filters, completion/snoozing/undo, All with search and completed reminders, reminder deletion, Shopping checklists, order details/Ship Queue, Work/Side Gig detail panels, and Settings for timezone, quiet hours, sign-out, and account deletion. See [PARITY_PROGRESS.md](docs/PARITY_PROGRESS.md) for the ordered build and validation results.
 
-Google sign-in works as confirmed by Rik. Apple sign-in code is included but its provider/signing configuration and real-account verification remain open; see [AUTH_SETUP.md](docs/AUTH_SETUP.md). Magic links, onboarding, native notification delivery, Share Extension, widgets, and Foundation Models are still pending. Native notifications must first pass the hosted APNs HTTP/2 transport gate in FLUTTER_IOS_PROMPT.md. Shipping behavior and the real-account smoke test are documented in [SHIPPING.md](docs/SHIPPING.md).
+Google sign-in works as confirmed by Rik. Apple sign-in is restored and enabled alongside Google, with the Apple entitlement in the iOS target. The Supabase Apple provider is enabled for the native bundle ID; refreshed signing and real-account verification remain release checks; see [AUTH_SETUP.md](docs/AUTH_SETUP.md). Magic links, onboarding, native notification delivery, Share Extension, widgets, and Foundation Models are still pending. The hosted APNs HTTP/2 transport gate in FLUTTER_IOS_PROMPT.md passed on 2026-10-19; native notification delivery is still to be built and verified. Shipping behavior and the real-account smoke test are documented in [SHIPPING.md](docs/SHIPPING.md).
 
 All commands below run from the repository’s `mobile/` directory.
 
@@ -66,7 +66,7 @@ Reminder due times and custom snooze times use a compact calendar plus an hour/m
 
 ## Focus sessions
 
-Today includes a daily focus highlight for an existing Work or Side Gig reminder. Start a 10/25/50-minute or custom session, pause/resume it, and save an outcome plus a next step. Reopening the app restores the server session. Closing the sheet keeps the timer running; the active session is reachable on Today and All. Focus never completes a reminder or marks an order shipped.
+Start Focus from an existing Work or Side Gig reminder or from Side Gig. Choose a 10/25/50-minute or custom session, pause/resume it, and save an outcome plus a next step. Reopening the app restores the server session. Closing the sheet keeps the timer running; the active session is reachable on Today and All. Focus never completes a reminder or marks an order shipped.
 
 Migration `0012_focus_sessions.sql` was applied to hosted Supabase on 2026-10-18 and independently verified. Preview mode uses an isolated in-memory focus repository. Scheduled sessions, background timer notifications, and notification suppression are deferred.
 
@@ -75,3 +75,12 @@ Checks: `flutter test test/focus_test.dart` and `flutter analyze`. A real signed
 ## Xcode “Unable to resolve module dependency: Flutter”
 
 On 2026-10-18 the failing Xcode log showed `Release-iphonesimulator`. [Flutter does not support Release on a simulator](https://docs.flutter.dev/testing/build-modes); this configuration left native plugins unable to resolve the matching Flutter framework. Runner now defaults to Debug; the previous Release Run setup is retained as RunnerDevice. Open `ios/Runner.xcworkspace` and choose Runner for a simulator or RunnerDevice for your phone. If Xcode still shows stale errors from the previous build, use Product → Clean Build Folder and build the selected scheme again. Do not edit plugin files under `.pub-cache`.
+
+
+## Simple Today capture, full Side Gig editing
+
+Today and All capture only title, context and optional time. Choosing Side Gig leaves the form unchanged. Tap the saved task/order to open the canonical Side Gig editor and add notes, next step, duration or optional order/client fields without duplicating the record. Side Gig's own Add opens the full Task/Order/Follow-up/Expected payment flow.
+
+Today has one date-grouped list and a recovery card only when a Focus session exists; no context-filter row, empty Focus setup or duplicate Ship soon preview. All retains search/filtering. Focus starts from details or Side Gig; weekly times stay in Settings.
+
+Connected Side Gig editing requires `0018_sidegig_experience.sql` (pending hosted release as of 2026-10-19). This simplification adds no migration. Rebuild the mobile client. Preview mode needs no migration and shares captures/edits with Today and All in memory.

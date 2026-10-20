@@ -2,22 +2,26 @@
 const homeSectionData = <String, dynamic>{
   "care": {
     "label": "Home care",
+    "hint": "Car, HVAC, dryer, batteries and other care",
     "heading": "Regular home care",
     "history": "Maintenance history",
     "empty": "Completed home care appears here, with dates and notes."
   },
   "groceries": {
     "label": "Groceries",
+    "hint": "A checklist you tick off as you shop",
     "heading": "Grocery & shopping lists"
   },
   "bills": {
     "label": "Bill pay",
+    "hint": "Bills, due dates and payment records",
     "heading": "Bills & payments",
     "history": "Payment history",
     "empty": "Bills you mark paid appear here, with payment dates and notes."
   },
   "study": {
     "label": "Study & kids",
+    "hint": "Study sessions and school follow-ups",
     "heading": "Study & kids follow-ups",
     "history": "Study & follow-up history",
     "empty": "Completed study sessions and follow-ups appear here."
@@ -27,6 +31,7 @@ const homeTemplateData = <String, dynamic>{
   "car": {
     "section": "care",
     "label": "Car service & maintenance",
+    "noun": "Car service",
     "hint": "Oil changes, tires, inspections",
     "title": "Car service",
     "taskLabel": "Service or task",
@@ -70,6 +75,7 @@ const homeTemplateData = <String, dynamic>{
   "hvac": {
     "section": "care",
     "label": "HVAC & air filters",
+    "noun": "HVAC task",
     "hint": "Heating, cooling, and air-filter care",
     "title": "HVAC service or filter change",
     "taskLabel": "HVAC task",
@@ -108,6 +114,7 @@ const homeTemplateData = <String, dynamic>{
   "dryer": {
     "section": "care",
     "label": "Dryer maintenance",
+    "noun": "Dryer task",
     "hint": "Vent cleaning and appliance care",
     "title": "Clean dryer vent",
     "taskLabel": "Dryer task",
@@ -139,6 +146,7 @@ const homeTemplateData = <String, dynamic>{
   "battery": {
     "section": "care",
     "label": "Smart-home batteries",
+    "noun": "Battery task",
     "hint": "Charge devices and replace batteries",
     "title": "Charge or replace battery",
     "taskLabel": "Battery task",
@@ -177,6 +185,7 @@ const homeTemplateData = <String, dynamic>{
   "other": {
     "section": "care",
     "label": "Other home care",
+    "noun": "Home-care task",
     "hint": "Everything else around the house",
     "title": "",
     "taskLabel": "Home-care task",
@@ -208,6 +217,7 @@ const homeTemplateData = <String, dynamic>{
   "bill": {
     "section": "bills",
     "label": "Bill reminders",
+    "noun": "Bill",
     "hint": "Utilities, subscriptions, and household payments",
     "title": "",
     "taskLabel": "Bill name",
@@ -252,6 +262,7 @@ const homeTemplateData = <String, dynamic>{
   "study": {
     "section": "study",
     "label": "Study & kids",
+    "noun": "Study task",
     "hint": "Study sessions, schoolwork, and education follow-ups",
     "title": "",
     "taskLabel": "Study task or follow-up",
