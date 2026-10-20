@@ -16,7 +16,7 @@ import 'sidegig_repository.dart';
 
 const gigSections = {
   'overview': 'Overview',
-  'work': 'Work',
+  'work': 'Tasks',
   'orders': 'Ship Queue',
   'followups': 'Follow-ups',
   'payments': 'Payments',

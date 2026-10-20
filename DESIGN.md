@@ -8,6 +8,10 @@ Companion to PLAN.md §5. This is the buildable spec: tokens, components, and sc
 2. **One-hand operation.** Everything important lives in the bottom 60% of the screen: quick-add bar docked above the keyboard, bottom sheets instead of new pages, tab bar navigation.
 3. **Zero-training UI.** If you've used Apple Notes/Reminders, you already know this app.
 
+### App icon (2026-10-20)
+
+The approved icon is **Chacha’s Reminder** (option 2): a warm ivory bell with round dark glasses and a white moustache on an amber background. The shared source is `design/app-icon.png`. Run `npm run icons` to generate the web/PWA icons, Apple touch icon, favicon and every size in the Flutter iOS AppIcon catalog. Keep square, opaque artwork; the OS applies its own corner mask. The maskable PWA version adds safe spacing around the bell for circular crops.
+
 ## 2. Design tokens
 
 ### Color
@@ -282,9 +286,9 @@ Extra metadata is optional. An amount requires a valid decimal and three-letter 
 
 The full experience in `SIDEGIG_EXPERIENCE.md` is approved for web and Flutter. `design/sidegig-prototype.html` is the Side Gig visual/interaction specification, linked from the canonical prototype's Side Gig tab. This section supersedes the old Ship-only tab and §4.3's inline-only shipping interaction.
 
-Navigation: **Today · Side Gig · Home · All**. Side Gig has five horizontal pills: **Overview · Work · Ship Queue · Follow-ups · Payments**. It uses the existing Side Gig context, amber selected states, surface cards with hairlines and exact shadows, inverse primary buttons, compact date pickers with OK, and the established sheet motion. Section and scroll position survive tab changes during the session. The docked Add to Side Gig bar opens Task / Order / Follow-up / Expected payment, then a form. Task and Order use the full Side Gig form with Side Gig preselected. Today's Add flow offers the same four choices and forms (§5.1); All opens the same Add flow; opening a saved Side Gig reminder uses this same full editor. Detailed creates and edits save through the atomic Side Gig RPC.
+Navigation: **Today · Side Gig · Home · All**. Side Gig has five horizontal pills: **Overview · Tasks · Ship Queue · Follow-ups · Payments**. It uses the existing Side Gig context, amber selected states, surface cards with hairlines and exact shadows, inverse primary buttons, compact date pickers with OK, and the established sheet motion. Section and scroll position survive tab changes during the session. The docked Add to Side Gig bar opens Task / Order / Follow-up / Expected payment, then a form. Task and Order use the full Side Gig form with Side Gig preselected. Today's Add flow offers the same four choices and forms (§5.1); All opens the same Add flow; opening a saved Side Gig reminder uses this same full editor. Detailed creates and edits save through the atomic Side Gig RPC.
 
-Overview shows up to three attention items, a restart card or the existing unfinished Focus session, the next populated Side Gig Focus time with budget, a full Ship Queue entry with up to two orders, and compact Follow-ups/Payments entries. Work includes task and order reminders, current next steps and client/initiative labels. Waiting items stay visible but cannot be suggested, started or planned for Focus. Existing Work sessions remain recoverable while viewing Side Gig.
+Overview shows up to three attention items, a restart card or the existing unfinished Focus session, the next populated Side Gig Focus time with budget, a full Ship Queue entry with up to two orders, and compact Follow-ups/Payments entries. The Tasks section includes task and order reminders, current next steps and client/initiative labels. Waiting items stay visible but cannot be suggested, started or planned for Focus. Existing Work sessions remain recoverable while viewing Side Gig.
 
 Ship Queue provides To ship / Shipped, Add order, full detail and shipping confirmation, optional carrier/tracking, tracking corrections and history. It keeps and labels older orders from other contexts. Cancelled/completed reminders without a shipment require explicit reopening before shipment. Order creation with ship-by but no reminder time defaults its reminder to 9 AM on that account-local day; the form shows this rule. Explicit reminder due times remain independent of ship-by and Focus plans.
 

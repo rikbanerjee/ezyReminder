@@ -154,7 +154,7 @@ void main() {
       await _revealToday(tester, find.text('Draft client proposal'));
       expect(find.text('Draft client proposal'), findsOneWidget);
 
-      // View opens Side Gig's Work section with the saved item.
+      // View opens Side Gig's Tasks section with the saved item.
       await tester.tap(find.text('View'));
       await tester.pumpAndSettle();
       final gig = find.byType(SideGigPage);
@@ -182,7 +182,7 @@ void main() {
       expect(saved.single.title, 'Send client proposal');
       expect(repository.reminderCreateCalls, 1);
 
-      // Completing from Today removes it from Side Gig's open Work too.
+      // Completing from Today removes it from Side Gig's open Tasks too.
       await _revealToday(tester, find.text('Send client proposal'));
       await tester.tap(find.byKey(ValueKey('ring-$id')));
       await tester.pumpAndSettle();
@@ -191,7 +191,7 @@ void main() {
         'done',
       );
       await _tab(tester, 'Side Gig');
-      await tester.tap(find.widgetWithText(OutlinedButton, 'Work'));
+      await tester.tap(find.widgetWithText(OutlinedButton, 'Tasks'));
       await tester.pumpAndSettle();
       expect(
         find.descendant(of: gig, matching: find.text('Send client proposal')),

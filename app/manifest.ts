@@ -2,8 +2,8 @@ import type { MetadataRoute } from "next";
 
 /**
  * Web App Manifest (MOBILE.md Stage 1). Installed via Safari → Share → Add
- * to Home Screen; runs full-screen with no browser chrome. Icons are
- * placeholders (scripts/generate-icons.mjs) — swap for real branding.
+ * to Home Screen; runs full-screen with no browser chrome. Icons use the
+ * approved Chacha bell artwork (design/app-icon.png; npm run icons).
  */
 export default function manifest(): MetadataRoute.Manifest {
   return {

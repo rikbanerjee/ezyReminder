@@ -61,7 +61,7 @@ await asUser(a,async()=>{
   assert.ok(row,'Today lists the task immediately');
   assert.equal(row.context_id,sidegig);
   let item=(await dashboard()).items.find(r=>r.reminder_id===task);
-  assert.equal(item?.kind,'work','Side Gig Work lists the same record before enrichment');
+  assert.equal(item?.kind,'work','Side Gig Tasks lists the same record before enrichment');
   assert.equal(item.status,'open');
 
   // Editing from either view updates that ID; completing from Today closes it in Side Gig.

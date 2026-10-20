@@ -86,7 +86,7 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      await tester.tap(find.widgetWithText(OutlinedButton, 'Work'));
+      await tester.tap(find.widgetWithText(OutlinedButton, 'Tasks'));
       await tester.pumpAndSettle();
       await tester.scrollUntilVisible(
         find.text('Write the client estimate'),
@@ -158,7 +158,7 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      await tester.tap(find.widgetWithText(OutlinedButton, 'Work'));
+      await tester.tap(find.widgetWithText(OutlinedButton, 'Tasks'));
       await tester.pumpAndSettle();
       await tester.scrollUntilVisible(
         find.text('Write the client estimate'),
