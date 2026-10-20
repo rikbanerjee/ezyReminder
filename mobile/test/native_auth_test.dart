@@ -157,28 +157,37 @@ void main() {
     },
   );
 
-  test('Apple hashes the provider nonce but exchanges the raw nonce', () async {
-    final apple = _FakeApple();
-    final exchanger = _FakeExchanger();
-    final auth = NativeAuth(
-      apple: apple,
-      exchanger: exchanger,
-      appleEnabled: true,
-      isApplePlatform: true,
-    );
+  test(
+    'Apple is enabled by default and exchanges the raw nonce securely',
+    () async {
+      final apple = _FakeApple();
+      final exchanger = _FakeExchanger();
+      final auth = NativeAuth(
+        apple: apple,
+        exchanger: exchanger,
+        isApplePlatform: true,
+      );
 
-    await auth.signInWithApple();
+      await auth.signInWithApple();
 
-    expect(apple.receivedNonce, matches(RegExp(r'^[a-f0-9]{64}$')));
-    expect(apple.receivedNonce, isNot(exchanger.rawNonce));
-    expect(exchanger.appleTokens, ('apple-id', exchanger.rawNonce));
-  });
+      expect(
+        apple.receivedNonce,
+        sha256.convert(utf8.encode(exchanger.rawNonce)).toString(),
+      );
+      expect(apple.receivedNonce, isNot(exchanger.rawNonce));
+      expect(exchanger.appleTokens, ('apple-id', exchanger.rawNonce));
+    },
+  );
 
   test(
     'Apple disabled reports setup and does not launch provider UI',
     () async {
       final apple = _FakeApple();
-      final auth = NativeAuth(apple: apple, exchanger: _FakeExchanger());
+      final auth = NativeAuth(
+        apple: apple,
+        exchanger: _FakeExchanger(),
+        appleEnabled: false,
+      );
       await expectLater(
         auth.signInWithApple(),
         throwsA(isA<NativeAuthSetupException>()),
@@ -186,6 +195,75 @@ void main() {
       expect(apple.authenticateCalls, 0);
     },
   );
+
+  test('Apple cancellation never exchanges a token', () async {
+    final exchanger = _FakeExchanger();
+    final auth = NativeAuth(
+      apple: _FakeApple(cancelled: true),
+      exchanger: exchanger,
+      isApplePlatform: true,
+    );
+    await expectLater(
+      auth.signInWithApple(),
+      throwsA(isA<NativeAuthCancelled>()),
+    );
+    expect(exchanger.appleTokens, isNull);
+  });
+
+  test('Apple unavailable device does not launch the provider', () async {
+    final apple = _FakeApple(available: false);
+    final auth = NativeAuth(
+      apple: apple,
+      exchanger: _FakeExchanger(),
+      isApplePlatform: true,
+    );
+    await expectLater(
+      auth.signInWithApple(),
+      throwsA(isA<NativeAuthSetupException>()),
+    );
+    expect(apple.authenticateCalls, 0);
+  });
+
+  test('Apple missing identity token never reaches Supabase', () async {
+    final exchanger = _FakeExchanger();
+    final auth = NativeAuth(
+      apple: _FakeApple(idToken: null),
+      exchanger: exchanger,
+      isApplePlatform: true,
+    );
+    await expectLater(
+      auth.signInWithApple(),
+      throwsA(isA<NativeAuthSetupException>()),
+    );
+    expect(exchanger.appleTokens, isNull);
+  });
+
+  test('Supabase Apple exchange includes its original raw nonce', () async {
+    final received = <String, Object?>{};
+    final exchange = SupabaseTokenExchanger(
+      SupabaseClient(
+        'https://example.supabase.co',
+        'anon-key',
+        authOptions: const AuthClientOptions(autoRefreshToken: false),
+      ),
+      idTokenSignIn:
+          ({required provider, required idToken, accessToken, nonce}) async {
+            received.addAll({
+              'provider': provider,
+              'idToken': idToken,
+              'accessToken': accessToken,
+              'nonce': nonce,
+            });
+          },
+    );
+    await exchange.apple(idToken: 'apple-id', rawNonce: 'raw-apple-nonce');
+    expect(received, {
+      'provider': OAuthProvider.apple,
+      'idToken': 'apple-id',
+      'accessToken': null,
+      'nonce': 'raw-apple-nonce',
+    });
+  });
 
   testWidgets('login presents both providers and email password fallback', (
     tester,
@@ -299,15 +377,22 @@ class _FakeGoogle implements GoogleIdentity {
 }
 
 class _FakeApple implements AppleIdentity {
+  _FakeApple({
+    this.available = true,
+    this.cancelled = false,
+    this.idToken = 'apple-id',
+  });
+  final bool available, cancelled;
+  final String? idToken;
   String? receivedNonce;
   int authenticateCalls = 0;
   @override
-  Future<bool> isAvailable() async => true;
+  Future<bool> isAvailable() async => available;
   @override
   Future<AppleIdentityToken?> authenticate(String hashedNonce) async {
     authenticateCalls++;
     receivedNonce = hashedNonce;
-    return const AppleIdentityToken('apple-id');
+    return cancelled ? null : AppleIdentityToken(idToken);
   }
 }
 

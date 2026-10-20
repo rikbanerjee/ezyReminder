@@ -121,7 +121,9 @@ class _LoginPageState extends State<LoginPage> {
                       borderRadius: BorderRadius.circular(
                         EzyDesignTokens.rowRadius,
                       ),
-                      style: SignInWithAppleButtonStyle.black,
+                      style: dark
+                          ? SignInWithAppleButtonStyle.white
+                          : SignInWithAppleButtonStyle.black,
                       onPressed: _busy
                           ? null
                           : () => _run(_auth.signInWithApple),

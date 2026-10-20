@@ -12,7 +12,12 @@ const _googleWebClientId = String.fromEnvironment('GOOGLE_WEB_CLIENT_ID');
 const _googleReversedClientId = String.fromEnvironment(
   'GOOGLE_IOS_REVERSED_CLIENT_ID',
 );
-const _appleSignInEnabled = bool.fromEnvironment('APPLE_SIGN_IN_ENABLED');
+// Apple is part of the standard iOS login flow; an explicit false remains
+// available for builds whose provider/capability has not been configured.
+const _appleSignInEnabled = bool.fromEnvironment(
+  'APPLE_SIGN_IN_ENABLED',
+  defaultValue: true,
+);
 
 /// Error presented as setup guidance in the login screen.
 class NativeAuthSetupException implements Exception {
