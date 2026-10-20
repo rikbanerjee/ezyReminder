@@ -1,10 +1,12 @@
 import 'dart:async';
 
+import 'package:ezyreminder/core/util/device_timezone.dart';
 import 'package:ezyreminder/core/util/quiet_hours.dart';
 import 'package:ezyreminder/features/settings/settings_page.dart';
 import 'package:ezyreminder/features/settings/settings_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   testWidgets('timezone rejects invalid names and saves a trimmed IANA name', (
@@ -41,6 +43,44 @@ void main() {
     await tester.pumpAndSettle();
     expect((await repository.load()).timezone, 'America/Los_Angeles');
     expect(changed, 1);
+  });
+
+  testWidgets('follows the iPhone time zone until a zone is chosen by hand', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    final read = DeviceTimezone.read;
+    DeviceTimezone.read = () async => 'America/New_York';
+    addTearDown(() => DeviceTimezone.read = read);
+    final repository = DemoSettingsRepository(timezone: 'EST');
+    await _mount(tester, repository);
+
+    // On by default: the account catches up with the phone.
+    expect((await repository.load()).timezone, 'America/New_York');
+    final follow = find.byKey(const ValueKey('settings-follow-device'));
+    expect(tester.widget<SwitchListTile>(follow).value, isTrue);
+    expect(find.byKey(const ValueKey('save-timezone')), findsNothing);
+
+    await tester.tap(follow);
+    await tester.pumpAndSettle();
+    expect(await DeviceTimezone.follows(), isFalse);
+    await tester.enterText(
+      find.byKey(const ValueKey('settings-timezone')),
+      'Europe/Paris',
+    );
+    await _dismissKeyboard(tester);
+    await _reveal(tester, find.byKey(const ValueKey('save-timezone')));
+    await tester.tap(find.byKey(const ValueKey('save-timezone')));
+    await tester.pumpAndSettle();
+    expect((await repository.load()).timezone, 'Europe/Paris');
+    expect(await DeviceTimezone.follows(), isFalse);
+
+    await tester.ensureVisible(follow);
+    await tester.pumpAndSettle();
+    await tester.tap(follow);
+    await tester.pumpAndSettle();
+    expect((await repository.load()).timezone, 'America/New_York');
+    expect(await DeviceTimezone.follows(), isTrue);
   });
 
   testWidgets('timezone save failure retains the draft for retry', (

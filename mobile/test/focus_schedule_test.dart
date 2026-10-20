@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:timezone/data/latest.dart' as tzdata;
+import 'package:timezone/data/latest_all.dart' as tzdata;
 
 import 'package:ezyreminder/features/focus/focus_schedule.dart';
 
@@ -15,25 +15,41 @@ Map<String, dynamic> _fixtures() {
 DateTime _t(String iso) => DateTime.parse(iso);
 
 void main() {
+  test('legacy account timezone names resolve like Postgres, not as UTC', () {
+    // user_settings.timezone is free text; 'EST' is fixed UTC-5 in Postgres.
+    expect(
+      focusOccurrenceStart('2026-10-19', '21:00', 'EST').toUtc(),
+      DateTime.utc(2026, 10, 20, 2),
+    );
+    expect(
+      focusOccurrenceStart('2026-10-19', '21:00', 'US/Eastern').toUtc(),
+      DateTime.utc(2026, 10, 20, 1),
+    );
+  });
   setUpAll(tzdata.initializeTimeZones);
   final f = _fixtures();
 
   group('occurrenceStart fixtures', () {
-    for (final c in (f['occurrenceStart'] as List).cast<Map<String, dynamic>>()) {
+    for (final c
+        in (f['occurrenceStart'] as List).cast<Map<String, dynamic>>()) {
       test(c['name'] as String, () {
         final got = focusOccurrenceStart(
           c['localDate'] as String,
           c['startTime'] as String,
           c['timeZone'] as String,
         );
-        expect(got.isAtSameMomentAs(_t(c['expected'] as String)), isTrue,
-            reason: '${c['description']} got ${got.toIso8601String()}');
+        expect(
+          got.isAtSameMomentAs(_t(c['expected'] as String)),
+          isTrue,
+          reason: '${c['description']} got ${got.toIso8601String()}',
+        );
       });
     }
   });
 
   group('nextOccurrences fixtures', () {
-    for (final c in (f['nextOccurrences'] as List).cast<Map<String, dynamic>>()) {
+    for (final c
+        in (f['nextOccurrences'] as List).cast<Map<String, dynamic>>()) {
       test(c['name'] as String, () {
         final time = c['time'] as Map<String, dynamic>;
         final got = nextFocusOccurrences(
@@ -48,10 +64,18 @@ void main() {
         expect(got.length, expected.length, reason: c['description'] as String);
         for (var i = 0; i < expected.length; i++) {
           expect(got[i].localDate, expected[i]['localDate']);
-          expect(got[i].startsAt.isAtSameMomentAs(_t(expected[i]['startsAt'] as String)), isTrue,
-              reason: 'start $i got ${got[i].startsAt}');
-          expect(got[i].endsAt.isAtSameMomentAs(_t(expected[i]['endsAt'] as String)), isTrue,
-              reason: 'end $i got ${got[i].endsAt}');
+          expect(
+            got[i].startsAt.isAtSameMomentAs(
+              _t(expected[i]['startsAt'] as String),
+            ),
+            isTrue,
+            reason: 'start $i got ${got[i].startsAt}',
+          );
+          expect(
+            got[i].endsAt.isAtSameMomentAs(_t(expected[i]['endsAt'] as String)),
+            isTrue,
+            reason: 'end $i got ${got[i].endsAt}',
+          );
         }
       });
     }
@@ -78,17 +102,25 @@ void main() {
   });
 
   group('nextWeekdayAfter fixtures', () {
-    for (final c in (f['nextWeekdayAfter'] as List).cast<Map<String, dynamic>>()) {
+    for (final c
+        in (f['nextWeekdayAfter'] as List).cast<Map<String, dynamic>>()) {
       test(c['name'] as String, () {
-        expect(nextWeekdayAfter(c['localDate'] as String, c['isoWeekday'] as int),
-            c['expected']);
+        expect(
+          nextWeekdayAfter(c['localDate'] as String, c['isoWeekday'] as int),
+          c['expected'],
+        );
       });
     }
   });
 
   test('fixture groups are all exercised', () {
     expect(
-      f.keys.toSet().containsAll(['occurrenceStart', 'nextOccurrences', 'missed', 'nextWeekdayAfter']),
+      f.keys.toSet().containsAll([
+        'occurrenceStart',
+        'nextOccurrences',
+        'missed',
+        'nextWeekdayAfter',
+      ]),
       isTrue,
     );
   });

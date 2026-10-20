@@ -1,6 +1,6 @@
 import 'dart:math';
 
-import 'package:timezone/data/latest.dart' as tzdata;
+import 'package:timezone/data/latest_all.dart' as tzdata;
 import 'package:timezone/timezone.dart' as tz;
 
 // Dart port of the occurrence rules in lib/focus.ts. Both implementations must

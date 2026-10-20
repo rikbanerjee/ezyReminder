@@ -23,5 +23,13 @@ import UIKit
       let schemes = types.flatMap { $0["CFBundleURLSchemes"] as? [String] ?? [] }
       result(schemes)
     }
+    let device = FlutterMethodChannel(name: "ezyreminder/device", binaryMessenger: registrar.messenger())
+    device.setMethodCallHandler { call, result in
+      guard call.method == "timeZone" else {
+        result(FlutterMethodNotImplemented)
+        return
+      }
+      result(TimeZone.current.identifier)
+    }
   }
 }

@@ -1,4 +1,4 @@
-import 'package:timezone/data/latest.dart' as tzdata;
+import 'package:timezone/data/latest_all.dart' as tzdata;
 import 'package:timezone/timezone.dart' as tz;
 
 /// Wall-clock quiet-hours window. An absent or partial window is inactive.

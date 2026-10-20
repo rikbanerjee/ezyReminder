@@ -4,6 +4,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
 import '../../core/theme/tokens.g.dart';
+import '../../core/util/device_timezone.dart';
 import '../../core/util/quiet_hours.dart';
 import '../focus/focus_controller.dart';
 import '../focus/focus_widgets.dart';
@@ -48,6 +49,8 @@ class _SettingsPageState extends State<SettingsPage>
   bool timezoneDirty = false;
   String? timezoneError;
   bool savingTimezone = false;
+  String? deviceZone;
+  bool followDevice = false;
   int _timezoneRevision = 0;
   bool signingOut = false;
   bool deleting = false;
@@ -67,6 +70,39 @@ class _SettingsPageState extends State<SettingsPage>
     WidgetsBinding.instance.addObserver(this);
     _changes = widget.repository.changes.listen((_) => _load());
     _load();
+    unawaited(_loadDeviceZone());
+  }
+
+  Future<void> _loadDeviceZone() async {
+    final zone = await DeviceTimezone.read();
+    final follows = await DeviceTimezone.follows();
+    if (!mounted) return;
+    setState(() {
+      deviceZone = zone;
+      followDevice = zone != null && follows;
+    });
+    _catchUpWithDevice();
+  }
+
+  /// Following the iPhone, but the account still has another zone.
+  void _catchUpWithDevice() {
+    final zone = deviceZone;
+    if (followDevice &&
+        zone != null &&
+        !savingTimezone &&
+        data != null &&
+        data!.timezone != zone) {
+      unawaited(_saveTimezone(zone: zone, follow: true));
+    }
+  }
+
+  Future<void> _setFollowDevice(bool value) async {
+    setState(() => followDevice = value);
+    if (value) {
+      await _saveTimezone(zone: deviceZone, follow: true);
+    } else {
+      await DeviceTimezone.setFollows(false);
+    }
   }
 
   @override
@@ -111,6 +147,7 @@ class _SettingsPageState extends State<SettingsPage>
         loading = false;
         loadError = null;
       });
+      _catchUpWithDevice();
     } catch (error) {
       if (!mounted || generation != _loadGeneration) return;
       setState(() {
@@ -120,8 +157,9 @@ class _SettingsPageState extends State<SettingsPage>
     }
   }
 
-  Future<void> _saveTimezone() async {
-    final value = timezoneDraft.trim();
+  /// Saving a zone by hand stops following the iPhone; [follow] keeps it.
+  Future<void> _saveTimezone({String? zone, bool follow = false}) async {
+    final value = zone ?? timezoneDraft.trim();
     if (!isValidTimeZone(value)) {
       setState(
         () => timezoneError =
@@ -150,13 +188,16 @@ class _SettingsPageState extends State<SettingsPage>
         }
         savingTimezone = false;
         if (data != null) data = data!.copyWith(timezone: value);
+        if (deviceZone != null) followDevice = follow;
       });
+      if (deviceZone != null) await DeviceTimezone.setFollows(follow);
       widget.onChanged();
     } catch (error) {
       if (!mounted) return;
       setState(() {
         savingTimezone = false;
         timezoneDirty = true;
+        if (follow) followDevice = false;
         timezoneError = 'Could not save time zone: $error';
       });
     }
@@ -411,18 +452,31 @@ class _SettingsPageState extends State<SettingsPage>
                         style: theme.textTheme.titleMedium,
                       ),
                     ),
+                    if (deviceZone != null)
+                      Material(
+                        type: MaterialType.transparency,
+                        child: SwitchListTile.adaptive(
+                          key: const ValueKey('settings-follow-device'),
+                          title: const Text('Use iPhone time zone'),
+                          subtitle: Text(deviceZone!),
+                          value: followDevice,
+                          onChanged: savingTimezone ? null : _setFollowDevice,
+                        ),
+                      ),
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                       child: TextField(
                         key: const ValueKey('settings-timezone'),
                         controller: _timezoneController,
-                        readOnly: savingTimezone,
+                        readOnly: savingTimezone || followDevice,
                         autocorrect: false,
                         enableSuggestions: false,
                         decoration: InputDecoration(
                           hintText: 'America/New_York',
                           errorText: timezoneError,
-                          helperText: 'Use an IANA time zone identifier.',
+                          helperText: followDevice
+                              ? 'Follows this iPhone. Turn it off to choose another zone.'
+                              : 'Use an IANA time zone identifier.',
                           border: const OutlineInputBorder(),
                         ),
                         onChanged: (value) => setState(() {
@@ -433,21 +487,24 @@ class _SettingsPageState extends State<SettingsPage>
                         }),
                       ),
                     ),
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(12, 4, 16, 8),
-                        child: FilledButton(
-                          key: const ValueKey('save-timezone'),
-                          onPressed: savingTimezone || !timezoneDirty
-                              ? null
-                              : _saveTimezone,
-                          child: Text(
-                            savingTimezone ? 'Saving…' : 'Save time zone',
+                    if (followDevice)
+                      const SizedBox(height: 12)
+                    else
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(12, 4, 16, 8),
+                          child: FilledButton(
+                            key: const ValueKey('save-timezone'),
+                            onPressed: savingTimezone || !timezoneDirty
+                                ? null
+                                : _saveTimezone,
+                            child: Text(
+                              savingTimezone ? 'Saving…' : 'Save time zone',
+                            ),
                           ),
                         ),
                       ),
-                    ),
                   ]),
                   const SizedBox(height: 22),
                   _sectionLabel('CONTEXTS · QUIET HOURS', secondary),
