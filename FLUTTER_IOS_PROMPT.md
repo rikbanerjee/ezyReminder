@@ -289,7 +289,7 @@ Each builder must:
 ### Phase 5: Notifications (2 builders in parallel)
 
 - **5A: Server** (owns `lib/integrations/apns/index.ts`, `supabase/functions/notification-sweep/`, `supabase/migrations/0010_apns.sql`; use the next unused number if more migrations have landed):
-  - **First:** a spike proving HTTP/2 from Edge Functions to APNs sandbox (see §2). Report the result before building on it.
+  - **First:** a spike proving HTTP/2 from Edge Functions to APNs sandbox (see §2). Report the result before building on it. ✅ Passed on hosted 2026-10-19 via `apns-transport-probe` (403 `MissingProviderToken` with an `apns-id`).
   - The adapter:
     - ES256 provider JWT signed with WebCrypto from `APNS_KEY_P8`, `APNS_KEY_ID` and `APNS_TEAM_ID`; cached about 50 minutes.
     - Sandbox or production host chosen by the token's `environment`.

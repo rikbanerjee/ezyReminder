@@ -32,3 +32,15 @@ curl -sS -X POST "$SUPABASE_URL/functions/v1/apns-transport-probe" \
 The expected success JSON contains `ok: true`, `apnsStatus: 403`, `reason: "MissingProviderToken"`, and an `apnsId`. Any other status, reason, missing identifier, timeout, or network error means the transport gate did not pass. A failed probe does not trigger an HTTP/1.1 fallback. Do not proceed to an APNs sender until this probe passes in the hosted environment and the separate human deployment gate is satisfied.
 
 Deno's `Deno.createHttpClient` supports `http1` and `http2` options, and `fetch` accepts its returned client. This probe requests `{ http1: false, http2: true }`, so an unsupported or failed HTTP/2 transport fails closed. See the [Deno Fetch API](https://docs.deno.com/api/deno/fetch/) and [Apple's APNs request documentation](https://developer.apple.com/documentation/usernotifications/sending-notification-requests-to-apns).
+
+## Hosted result — 2026-10-19: PASS
+
+Deployed to project `ojfmtxcrfmyygwfjibwk` (ezyReminder) with JWT verification on (`verify_jwt: true`, version 1) and invoked once with `POST`:
+
+```json
+{"ok":true,"http2OnlyRequested":true,"apnsStatus":403,"reason":"MissingProviderToken","apnsId":"43D247EE-1A85-ACC1-712A-3523438C284F"}
+```
+
+HTTP 200 from the function. Apple's 403 with an `apns-id` shows the HTTP/2-only request reached the APNs sandbox and was rejected only for the deliberately missing provider token. This closes the transport gate only; it does not validate an APNs key or show delivery.
+
+Credential note: in this project the Edge runtime's `SUPABASE_SERVICE_ROLE_KEY` is the new-format secret key (`sb_secret_…`), which the gateway also accepts. The legacy service-role JWT passes the gateway but gets the function's own `401 unauthorized`. Invoke with the secret key from the approved local environment.
