@@ -4,24 +4,12 @@ import 'package:ezyreminder/main.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-Future<void> chooseContext(WidgetTester tester, String label) async {
-  final option = switch (label) {
-    'Work' => 'work',
-    'Side Gig' => 'gig',
-    _ => throw ArgumentError.value(label),
-  };
-  final dropdown = find.byType(DropdownButtonFormField<String>);
-  await revealSheetControl(tester, dropdown);
-  await tester.tap(dropdown);
-  await tester.pumpAndSettle();
-  final item = find.byKey(ValueKey('context-option-$option'));
-  expect(item, findsOneWidget);
-  await tester.tap(find.text(label).last);
-  await tester.pumpAndSettle();
-}
-
-/// Today opens the organized Add flow; All keeps the minimal capture sheet.
-Future<void> openQuickCapture(WidgetTester tester) async {
+/// Today and All both open the organized Add flow; this adds from All.
+Future<void> addFromAll(
+  WidgetTester tester,
+  String destination,
+  String title,
+) async {
   await tester.tap(
     find.descendant(
       of: find.byType(BottomNavigationBar),
@@ -30,6 +18,30 @@ Future<void> openQuickCapture(WidgetTester tester) async {
   );
   await tester.pumpAndSettle();
   await tester.tap(find.text('Remind me to…'));
+  await tester.pumpAndSettle();
+  expect(find.text('What would you like to add?'), findsOneWidget);
+  await tester.tap(find.byKey(ValueKey('add-choice-form:$destination')));
+  await tester.pumpAndSettle();
+  await tester.enterText(
+    find
+        .descendant(
+          of: find.byType(BottomSheet),
+          matching: find.byType(TextField),
+        )
+        .first,
+    title,
+  );
+  FocusManager.instance.primaryFocus?.unfocus();
+  await tester.pumpAndSettle();
+  await revealSheetControl(tester, find.text('Save reminder'));
+  await tester.pumpAndSettle();
+}
+
+/// The Add flow confirms with a toast; clear it so later snackbars show.
+Future<void> clearToast(WidgetTester tester) async {
+  tester
+      .state<ScaffoldMessengerState>(find.byType(ScaffoldMessenger))
+      .clearSnackBars();
   await tester.pumpAndSettle();
 }
 
@@ -65,14 +77,10 @@ void main() {
       EzyApp(connected: false, preview: true, repository: repository),
     );
     await tester.pumpAndSettle();
-    await openQuickCapture(tester);
-    await tester.enterText(
-      find.byKey(const ValueKey('capture-title')),
-      'Prepare launch brief',
-    );
-    await chooseContext(tester, 'Work');
+    await addFromAll(tester, 'work', 'Prepare launch brief');
     await tester.tap(find.text('Save reminder'));
     await tester.pumpAndSettle();
+    await clearToast(tester);
     await revealTodayReminder(tester, find.text('Prepare launch brief'));
     await tester.tap(find.text('Prepare launch brief'));
     await tester.pumpAndSettle();
@@ -117,14 +125,10 @@ void main() {
         EzyApp(connected: false, preview: true, repository: repository),
       );
       await tester.pumpAndSettle();
-      await openQuickCapture(tester);
-      await tester.enterText(
-        find.byKey(const ValueKey('capture-title')),
-        'Review budget',
-      );
-      await chooseContext(tester, 'Work');
+      await addFromAll(tester, 'work', 'Review budget');
       await tester.tap(find.text('Save reminder'));
       await tester.pumpAndSettle();
+      await clearToast(tester);
       await revealTodayReminder(tester, find.text('Review budget'));
       await tester.tap(find.text('Review budget'));
       await tester.pumpAndSettle();
@@ -170,12 +174,7 @@ void main() {
         EzyApp(connected: false, preview: true, repository: repository),
       );
       await tester.pumpAndSettle();
-      await openQuickCapture(tester);
-      await tester.enterText(
-        find.byKey(const ValueKey('capture-title')),
-        'Review renewal',
-      );
-      await chooseContext(tester, 'Work');
+      await addFromAll(tester, 'work', 'Review renewal');
       await revealSheetControl(tester, find.text('Save reminder'));
       await tester.tap(find.text('Save reminder'));
       await tester.pumpAndSettle();
@@ -184,6 +183,7 @@ void main() {
         find.textContaining('server did not return a reminder ID'),
         findsOneWidget,
       );
+      await revealSheetControl(tester, find.text('Save reminder'));
       expect(find.text('Save reminder'), findsOneWidget);
       expect(repository.reminderCreateCalls, 1);
 
@@ -191,11 +191,12 @@ void main() {
       await tester.tap(find.text('Save reminder'));
       await tester.pumpAndSettle();
       expect(repository.reminderCreateCalls, 1);
-      expect(find.textContaining('Refresh before retrying'), findsOneWidget);
+      // Shown inline (the kept error) and as the retry's snackbar.
+      expect(find.textContaining('Refresh before retrying'), findsWidgets);
     },
   );
 
-  testWidgets('context controls cannot change during an in-flight save', (
+  testWidgets('the destination stays fixed during an in-flight save', (
     tester,
   ) async {
     final repository = _GatedSaveRepository();
@@ -203,31 +204,15 @@ void main() {
       EzyApp(connected: false, preview: true, repository: repository),
     );
     await tester.pumpAndSettle();
-    await openQuickCapture(tester);
-    await tester.enterText(
-      find.byKey(const ValueKey('capture-title')),
-      'Prepare handoff',
-    );
-    await chooseContext(tester, 'Work');
+    await addFromAll(tester, 'work', 'Prepare handoff');
     await revealSheetControl(tester, find.text('Save reminder'));
     await tester.tap(find.text('Save reminder'));
     await tester.pump();
 
     expect(find.text('Saving…'), findsOneWidget);
-    expect(
-      tester
-          .widget<TextField>(find.byKey(const ValueKey('capture-title')))
-          .enabled,
-      isFalse,
-    );
-    expect(
-      tester
-          .widget<DropdownButtonFormField<String>>(
-            find.byType(DropdownButtonFormField<String>),
-          )
-          .onChanged,
-      isNull,
-    );
+    // Chosen in the Add flow, so there is no context control to change.
+    expect(find.byKey(const ValueKey('flow-context')), findsOneWidget);
+    expect(find.byType(DropdownButtonFormField<String>), findsNothing);
 
     repository.saveGate.complete();
     await tester.pumpAndSettle();
@@ -240,18 +225,19 @@ void main() {
   testWidgets('Side Gig panel saves initiative and client fields', (
     tester,
   ) async {
+    // A plain Side Gig reminder, as older clients and agents create them.
     final repository = DemoRepository();
+    await repository.save(
+      title: 'Photograph new products',
+      notes: null,
+      dueAt: null,
+      contextId: 'gig',
+      isOrder: false,
+      channels: const [],
+    );
     await tester.pumpWidget(
       EzyApp(connected: false, preview: true, repository: repository),
     );
-    await tester.pumpAndSettle();
-    await openQuickCapture(tester);
-    await tester.enterText(
-      find.byKey(const ValueKey('capture-title')),
-      'Photograph new products',
-    );
-    await chooseContext(tester, 'Side Gig');
-    await tester.tap(find.text('Save reminder'));
     await tester.pumpAndSettle();
     await revealTodayReminder(tester, find.text('Photograph new products'));
     await tester.tap(find.text('Photograph new products'));

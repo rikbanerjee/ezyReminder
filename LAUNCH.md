@@ -25,7 +25,7 @@ Companion to `PLAN.md` (product), `DESIGN.md` (UI), `MOBILE.md` (native strategy
 | Focus MVP (highlight + sessions, 0012) | 🟡 migration hosted; client release + signed-in web↔iPhone handoff pending |
 | Focus times (FOCUS_IMPLEMENTATION_PLAN.md §13) | 🟡 Phase 0/1 + slim Phase 2 built on web + Flutter (2026-10-18); migrations 0015–0017 hosted 2026-10-18 — web/iOS release and signed-in handoff test pending |
 | Side Gig destination (SIDEGIG_EXPERIENCE.md §14) | 🟡 Full web + Flutter iOS experience built and verified locally (2026-10-19): Overview, Work, Ship Queue, Follow-ups, Payments, shared Focus. Migration 0018 applied to hosted 2026-10-19; client releases and authenticated handoff/delivery smoke tests pending |
-| Today Add flow (DESIGN.md §5.1) | 🟡 Built locally on web + Flutter (2026-10-19): Today's Add opens Work / Side Gig / Home / Social / Shopping and their existing forms; All keeps quick capture. Uses hosted RPCs (0001–0018); no migration. Client release and signed-in device check pending |
+| Today Add flow (DESIGN.md §5.1) | 🟡 Built locally on web + Flutter (2026-10-19): Add on Today and All opens Work / Side Gig / Home / Social / Shopping and their existing forms (All's quick capture retired). Uses hosted RPCs (0001–0018); no migration. Client release and signed-in device check pending |
 
 **The architecture is already multi-user.** RLS on every table, per-user Slack OAuth (`slack_integrations`), new-user seeding triggers for contexts and settings. There is no "make it multi-tenant" project. What's missing is the *operational* layer strangers need: deliverability, onboarding, quotas, legal pages, analytics.
 

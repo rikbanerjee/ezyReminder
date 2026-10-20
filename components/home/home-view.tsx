@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { ChevronDown, Search } from "lucide-react";
 import { QuickAdd } from "./quick-add";
 import { ReminderRow } from "./reminder-row";
-import { QuickReminderSheet } from "./quick-reminder-sheet";
 import { TodayAddSheet } from "./today-add-sheet";
 import { toast } from "sonner";
 import { addConfirmation } from "@/lib/add-flow";
@@ -222,7 +221,8 @@ export function HomeView({
         />
       )}
 
-      {creatingNew !== null && activeTab === "today" && (
+      {/* Today and All both open the organized Add flow (DESIGN.md §5.1). */}
+      {creatingNew !== null && (
         <TodayAddSheet
           contexts={contexts}
           initialTitle={creatingNew}
@@ -235,22 +235,6 @@ export function HomeView({
           onShoppingCreated={(created) => {
             // Shopping continues straight into its checklist editor.
             setSelected(created);
-            router.refresh();
-          }}
-        />
-      )}
-
-      {creatingNew !== null && activeTab === "all" && (
-        <QuickReminderSheet
-          initialTitle={creatingNew}
-          contexts={contexts}
-          onClose={() => setCreatingNew(null)}
-          onCreated={(created) => {
-            // Shopping lists only (see ReminderSheet) — swap straight into
-            // edit mode for the reminder just created instead of closing,
-            // so the checklist is immediately usable.
-            setCreatingNew(null);
-            if(created.context?.slug==="shopping")setSelected(created);
             router.refresh();
           }}
         />

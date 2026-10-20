@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:ezyreminder/features/add/today_add_flow.dart';
 import 'package:ezyreminder/main.dart';
 import 'package:ezyreminder/features/sidegig/sidegig_page.dart';
 import 'package:flutter/cupertino.dart';
@@ -304,9 +305,7 @@ void main() {
     expect(find.text('Done'), findsNothing);
   });
 
-  testWidgets('All capture sheet reports missing title and context', (
-    tester,
-  ) async {
+  testWidgets('All opens the same Add flow as Today', (tester) async {
     final repo = DemoRepository();
     await tester.pumpWidget(
       EzyApp(connected: false, preview: true, repository: repo),
@@ -321,15 +320,11 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Remind me to…'));
     await tester.pumpAndSettle();
-    await tester.scrollUntilVisible(
-      find.text('Save reminder'),
-      300,
-      scrollable: find.byType(Scrollable).last,
-    );
-    await tester.tap(find.text('Save reminder'));
-    await tester.pumpAndSettle();
-    expect(find.text('Title required'), findsOneWidget);
-    expect(find.text('Choose a context'), findsOneWidget);
+    expect(find.text('What would you like to add?'), findsOneWidget);
+    for (final d in addDestinations) {
+      expect(find.text(d.description), findsOneWidget);
+    }
+    expect(find.byKey(const ValueKey('capture-title')), findsNothing);
   });
 
   testWidgets(
